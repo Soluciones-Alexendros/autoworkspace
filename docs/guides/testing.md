@@ -1,5 +1,11 @@
 # Tests
 
+### Propósito de este documento
+
+- **Objetivos:** Pirámide CI (`quality`/`test`/`build`/`smoke`/`e2e`), coverage y contrato de smoke.
+- **Estructura:** Esta meta-sección → Pirámide → Coverage → Smoke → e2e.
+- **Contenido a integrar según contexto:** En producto, cambia ejemplos por comandos reales. Declara si hay artefacto (`build` sí/no, [ADR-0003](../architecture/decisions/ADR-0003-job-build-y-required-checks.md)). El gate ≥70% es opcional hasta suite estable ([ADR-0007](../architecture/decisions/ADR-0007-coverage-gate-opcional.md)); documenta 80% en críticos. Sustituye el `smoke.sh` demo.
+
 ## Pirámide de la flota
 
 | Capa | Job CI | Qué demuestra |
@@ -12,10 +18,11 @@
 
 ## Coverage
 
-- **Por defecto:** ≥ **70%** de líneas en el job `test` de producto.
+- **Umbral de flota:** ≥ **70%** de líneas, **dentro** del job `test` (no un check `coverage` aparte).
 - **Módulos críticos** (auth, pagos, parsers, crypto, pipelines de datos): documenta umbral **80%** en el README o en este archivo del producto.
-- Fallo de coverage = bloqueo de merge.
+- El gate es **opcional hasta que la suite sea estable** ([ADR-0007](../architecture/decisions/ADR-0007-coverage-gate-opcional.md)). Cuando está ON, fallar coverage bloquea el merge.
 - Este canon no ejecuta un runner de coverage: el job `test` es el hook donde el producto lo engancha.
+- Job `build`: solo si hay artefacto; si no, **no se declara** ([ADR-0003](../architecture/decisions/ADR-0003-job-build-y-required-checks.md)).
 
 ## Smoke (contrato)
 

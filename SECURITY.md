@@ -1,5 +1,11 @@
 # Política de seguridad
 
+### Propósito de este documento
+
+- **Objetivos:** Canal privado de vulnerabilidades, ventanas de respuesta y versiones soportadas. En producto, las mismas secciones con *tus* versiones y contacto.
+- **Estructura:** Esta meta-sección → Reportar → Ventanas → Versiones soportadas → Alcance.
+- **Contenido a integrar según contexto:** Cambia la URL de advisories y el correo si el producto tiene canal propio. Rellena la tabla de versiones de *aplicación*. No publiques exploits ni secretos. No desactives Dependabot Alerts ni secret scanning ([ADR-0004](docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md), [ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
+
 ## Reportar vulnerabilidades
 
 Si descubres una vulnerabilidad, **no abras un issue público**.
@@ -30,6 +36,7 @@ En repos de producto que hereden este estándar, documenta aquí las versiones d
 ## Alcance de este canon
 
 - Contratos de docs, CI (`quality` → `test` → `build` → `smoke`), Renovate y protección de `main`.
+- Prerrequisitos org de flota: App Renovate; secret scanning + push protection ON ([ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
 - No cubre secretos reales, credenciales ni infraestructura de producción.
 
 Si el hallazgo afecta a un producto de la flota (SaaS, web, CLI, infra), reporta en **ese** repositorio o al mismo canal si no tienes claro el destino.

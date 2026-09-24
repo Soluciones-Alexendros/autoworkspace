@@ -1,5 +1,11 @@
 # Overview del canon
 
+### Propósito de este documento
+
+- **Objetivos:** Diseño del sistema: límites, flujos y relación con stacks/gold. En producto, overview del *producto*.
+- **Estructura:** Esta meta-sección → diagrama → Límites (dentro/fuera) → Flujos → Relación con gold (canon) o cajas (producto) → Stacks.
+- **Contenido a integrar según contexto:** Reescribe límites y flujos del producto. No copies la tabla de gold ni el diagrama del meta-estándar. Enlaza ADRs propios.
+
 ```
                  repo-standard (este repo)
                           │
@@ -36,7 +42,7 @@
 
 1. **Repo nuevo:** GitHub Template → ajustar README/env/CI del stack → PR a `main`.
 2. **Repo existente:** checklist de [REUTILIZACION.md](../REUTILIZACION.md) en un único PR.
-3. **Cambio del canon:** ADR si toca una decisión; snippets de `stacks/` si toca un runtime; bump de contrato reflejado en `CHANGELOG.md`.
+3. **Cambio del canon:** ADR si toca una decisión (P0/P1 en [decisions/](./decisions/)); snippets de `stacks/` si toca un runtime; bump de contrato reflejado en `CHANGELOG.md` ([ADR-0010](./decisions/ADR-0010-semver-contrato-estandar.md)).
 
 ## Relación con los gold
 

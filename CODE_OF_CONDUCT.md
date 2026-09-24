@@ -1,5 +1,11 @@
 # Código de conducta
 
+### Propósito de este documento
+
+- **Objetivos:** Normas de comportamiento en issues, PRs y espacios de la org. Obligatorio en P2; recomendado en P1.
+- **Estructura:** Esta meta-sección → Compromiso → Estándares → Alcance → Aplicación.
+- **Contenido a integrar según contexto:** Conserva los estándares. Cambia el canal de reporte solo si el producto tiene uno propio (sigue siendo **privado**). No uses un issue público para acoso o datos sensibles.
+
 ## Compromiso
 
 Como personas contribuyentes y mantenedoras de este proyecto, nos comprometemos a hacer de la participación una experiencia respetuosa y libre de acoso.

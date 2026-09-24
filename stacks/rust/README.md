@@ -1,5 +1,11 @@
 # Stack Rust / Cargo
 
+### Propósito de este documento
+
+- **Objetivos:** Nombres de comandos Cargo y fachada Makefile para CLIs/workspaces de la flota.
+- **Estructura:** Esta meta-sección → comandos → Makefile típico → Coverage → extra P1 → Smoke.
+- **Contenido a integrar según contexto:** Sustituye `APP` por el binario real. Ajusta `--workspace` si es crate único. Coverage con `cargo llvm-cov` cuando la suite sea estable. No pegues `CARGO_HOME` ni tokens.
+
 Referencia para CLIs y workspaces Cargo (patrón zedazo, recortado a los nombres de la flota).
 
 ## Comandos canónicos

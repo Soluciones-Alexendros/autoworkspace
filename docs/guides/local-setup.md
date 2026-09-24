@@ -1,5 +1,11 @@
 # Setup local
 
+### Propósito de este documento
+
+- **Objetivos:** Cómo clonar y dejar el repo listo para el primer PR (canon o producto).
+- **Estructura:** Esta meta-sección → setup de este repo → setup de producto por stack → hooks recomendados.
+- **Contenido a integrar según contexto:** En producto, deja un solo camino (el del stack). Sustituye versiones (Node/pnpm, MSRV). Si naciste de la plantilla, declara comandos reales o usa el bootstrap ([ADR-0011](../architecture/decisions/ADR-0011-bootstrap-desde-plantilla.md)). Nunca commitees `.env`.
+
 ## Este canon
 
 ```bash

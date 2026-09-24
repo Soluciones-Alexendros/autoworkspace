@@ -1,5 +1,11 @@
 # Reutilizar el estándar en un repo existente
 
+### Propósito de este documento
+
+- **Objetivos:** Cómo **alinear** un repo que ya existe (un PR, sin clonar a ciegas): orden, qué copiar, Dependabot→Renovate, protection, checklist §8.
+- **Estructura:** Esta meta-sección → Antes de tocar nada → Orden → Copiar vs adaptar → Meta-sección obligatoria → Dependabot → Protección → Checklists P0/P1/P2 → Oleadas → Verificación.
+- **Contenido a integrar según contexto:** En un producto ya alineado puedes dejar este archivo como «cumple `repo-standard ≥x.y`» + checklist marcado, o conservarlo entero. No ejecutes oleadas desde el PR del producto. No cambies settings de org.
+
 Objetivo: **alinear**, no clonar a ciegas. El repo de producto conserva su stack, historial y nombre. Este canon aporta contratos (archivos, nombres de jobs, docs, Renovate).
 
 Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
@@ -15,9 +21,9 @@ Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
 
 1. Archivos de raíz P0 (`README`, `LICENSE`, `SECURITY`, `CONTRIBUTING`, `CHANGELOG`).
 2. `.github/CODEOWNERS`, plantillas de issue/PR.
-3. CI: renombra jobs a `quality`, `test`, `smoke` (añade `build` si hay artefacto). Reutiliza snippets de `stacks/`.
-4. Quita version-updates de Dependabot si existen; deja o añade `.github/renovate.json` (copia el de este canon y recorta `packageRules` al stack).
-5. Árbol `docs/` P1 + `AGENTS.md` + `ARCHITECTURE.md` + `.env.example`.
+3. CI: renombra jobs a `quality`, `test`, `smoke`. Añade `build` **solo si hay artefacto**; si no, el job no existe ([ADR-0003](./architecture/decisions/ADR-0003-job-build-y-required-checks.md)). Reutiliza snippets de `stacks/`.
+4. Quita version-updates de Dependabot si existen; deja o añade `.github/renovate.json` (copia el de este canon y recorta `packageRules` al stack). La App Renovate a nivel org es prerrequisito ([ADR-0004](./architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)).
+5. Árbol `docs/` P1 + `AGENTS.md` + `ARCHITECTURE.md` + `.env.example`. Cada markdown contractual lleva la meta-sección (abajo).
 6. Runbooks: adapta deploy/rollback/secretos al hosting real (Vercel, Docker, Cargo release…).
 7. En el PR, pega el checklist §8 de abajo y márcalo con lo que **este** repo ya cumple.
 
@@ -39,21 +45,42 @@ Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
 | `CODE_OF_CONDUCT.md` | Obligatorio en P2; recomendado en P1 |
 | `SUPPORT.md` | Solo P2 / SaaS |
 
+## Meta-sección obligatoria en docs de producto
+
+Al alinear o crear desde plantilla, **cada** markdown contractual debe incluir, **dentro del propio archivo** y preferiblemente justo después del H1, esta sección estable:
+
+```markdown
+### Propósito de este documento
+- **Objetivos:** …
+- **Estructura:** …
+- **Contenido a integrar según contexto:** …
+```
+
+Aplica a: raíz (`README`, `AGENTS`, `ARCHITECTURE`, `SECURITY`, `CONTRIBUTING`, `CODE_OF_CONDUCT`, `SUPPORT` si existe), `docs/**` (README, architecture, guides, runbooks, este archivo), plantillas de issue/PR si son `.md`, y `stacks/**/*.md` si las copias.
+
+**No** aplica a `LICENSE`, JSON/YAML, scripts ni binarios.
+
+**Excepción:** `CHANGELOG.md` sigue Keep a Changelog. No insertes una sección larga: un párrafo breve al inicio o ninguna. Documenta la excepción en el PR si omites el párrafo.
+
+La meta-sección es de **plantilla usable**: corta, accionable. Si el doc ya tenía intro, fusiónala aquí. No copies el texto de este canon: rellena objetivos/estructura/placeholders del *producto* (web vs CLI vs skills vs infra). Qué no copiar tal cual: snippets de CI del canon, runbooks de «este repo no se despliega», §9 de AGENTS ajeno.
+
 ## Dependabot → Renovate
 
 1. Si hay `.github/dependabot.yml` con `package-ecosystem` de npm/cargo/actions/docker **para version-updates**, elimínalo en el mismo PR que añade Renovate.
-2. No desactives Dependabot **Alerts** (seguridad) a nivel repo/org.
+2. No desactives Dependabot **Alerts** (seguridad) a nivel repo/org ([ADR-0004](./architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)).
 3. Renovate: schedule madrugada `Europe/Madrid`, automerge `patch`+`minor`, minors agrupados, label `dependencies`, **sin** automerge de majors.
+4. Sin la GitHub App Renovate instalada en la org (o habilitada en el repo), el JSON no genera PRs: es prerrequisito humano, no lo activa el agente.
 
 ## Protección de `main` (lo hace un humano en Settings)
 
-El agente **no** cambia rulesets de org. El Mantenedor debe dejar:
+El agente **no** cambia rulesets de org ni de otros repos. El contrato versionado (runbook + script `gh` / org rulesets) está en [ADR-0002](./architecture/decisions/ADR-0002-proteccion-metadatos-como-codigo.md). Hasta que exista, el Mantenedor deja:
 
-- PR obligatorio + ≥1 review (CODEOWNERS)
-- Checks required: `quality`, `test`, `smoke` (+ `e2e` si es web P1)
+- PR obligatorio. Reviews: canon/solo-owner → 0 approvals + checks; producto con equipo → ≥1 o code owners ([ADR-0006](./architecture/decisions/ADR-0006-reviews-por-perfil.md))
+- Checks required: `quality`, `test`, `smoke` (+ `build` si el job existe; + `e2e` si es web P1). **No** marques `build` required si el workflow no lo define ([ADR-0003](./architecture/decisions/ADR-0003-job-build-y-required-checks.md))
 - Conversaciones resueltas, historia lineal, sin bypass, sin force-push
 - Allow auto-merge ON; auto-delete head branches ON
-- Automerge humano solo con label `automerge`
+- Automerge humano solo con label `automerge` (documentado; Renovate no usa ese label)
+- No desactives secret scanning / push protection de org ([ADR-0005](./architecture/decisions/ADR-0005-secret-scanning-org.md))
 
 ## Checklist §8 — P0
 
@@ -72,8 +99,9 @@ El agente **no** cambia rulesets de org. El Mantenedor debe dejar:
 - [ ] AGENTS.md + ARCHITECTURE.md
 - [ ] `.env.example` si hay config runtime
 - [ ] Job `smoke` required
-- [ ] Bot de deps = Renovate (sin Dependabot version-updates)
+- [ ] Bot de deps = Renovate (JSON + App org habilitada; sin Dependabot version-updates)
 - [ ] ISSUE + PR templates
+- [ ] Meta-sección «Propósito de este documento» en los markdown contractuales
 
 ## Checklist §8 — P2
 

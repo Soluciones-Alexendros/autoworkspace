@@ -1,3 +1,11 @@
+# Plantilla de pull request
+
+### Propósito de este documento
+
+- **Objetivos:** Contrato del PR: qué/por qué, cómo probar, checklist §8 y notas de revisión.
+- **Estructura:** Esta meta-sección → Qué → Por qué → Cómo probar → Lista §8 (P0 / P1 / Merge) → Notas.
+- **Contenido a integrar según contexto:** Conserva los nombres de checks y el label `automerge`. Añade pasos de prueba del producto. En el body del PR, **marca** el checklist con lo que este cambio cumple. No pegues secretos ni logs con tokens.
+
 ## Qué
 
 Resume en una o dos frases qué cambia este pull request.

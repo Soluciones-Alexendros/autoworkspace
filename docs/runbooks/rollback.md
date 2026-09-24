@@ -1,5 +1,11 @@
 # Runbook — rollback
 
+### Propósito de este documento
+
+- **Objetivos:** Cómo revertir un contrato (canon) o un release (producto) sin force-push a `main`.
+- **Estructura:** Esta meta-sección → rollback de este repo → plantilla de producto (hosting, datos, DNS, flags) → contacto de seguridad.
+- **Contenido a integrar según contexto:** En producto, deja solo el procedimiento real (redesplegar tag, no «arreglar» prod). Añade el runbook de migraciones si existe. Incidentes de seguridad → `SECURITY.md`, no issue público.
+
 ## Canon (este repo)
 
 El «rollback» es revertir el contrato:

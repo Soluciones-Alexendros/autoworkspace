@@ -49,6 +49,16 @@ require_file "docs/architecture/overview.md"
 require_file "docs/architecture/decisions/README.md"
 require_file "docs/architecture/decisions/template.md"
 require_file "docs/architecture/decisions/ADR-0001-canon-repo-standard.md"
+require_file "docs/architecture/decisions/ADR-0002-proteccion-metadatos-como-codigo.md"
+require_file "docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md"
+require_file "docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md"
+require_file "docs/architecture/decisions/ADR-0005-secret-scanning-org.md"
+require_file "docs/architecture/decisions/ADR-0006-reviews-por-perfil.md"
+require_file "docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md"
+require_file "docs/architecture/decisions/ADR-0008-snippets-reales-post-oleada.md"
+require_file "docs/architecture/decisions/ADR-0009-scorecard-cumplimiento-p0.md"
+require_file "docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md"
+require_file "docs/architecture/decisions/ADR-0011-bootstrap-desde-plantilla.md"
 require_file "docs/guides/local-setup.md"
 require_file "docs/guides/coding-standards.md"
 require_file "docs/guides/testing.md"
@@ -80,11 +90,54 @@ require_dir "stacks"
 require_dir ".github/workflows"
 require_dir ".github/ISSUE_TEMPLATE"
 
-# Jobs canónicos en ci.yml
+# Jobs canónicos en ci.yml (este canon no declara `build`: no hay artefacto)
 ci=".github/workflows/ci.yml"
 for job in quality test smoke; do
   if ! grep -Eq "^[[:space:]]*${job}:" "$ci"; then
     echo "FALTA job '${job}' en $ci"
+    errors=$((errors + 1))
+  fi
+done
+
+# Meta-sección contractual (excepto CHANGELOG: Keep a Changelog)
+purpose_heading="### Propósito de este documento"
+purpose_files=(
+  "README.md"
+  "AGENTS.md"
+  "ARCHITECTURE.md"
+  "SECURITY.md"
+  "CONTRIBUTING.md"
+  "CODE_OF_CONDUCT.md"
+  "docs/README.md"
+  "docs/REUTILIZACION.md"
+  "docs/architecture/overview.md"
+  "docs/architecture/decisions/README.md"
+  "docs/architecture/decisions/template.md"
+  "docs/architecture/decisions/ADR-0001-canon-repo-standard.md"
+  "docs/architecture/decisions/ADR-0002-proteccion-metadatos-como-codigo.md"
+  "docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md"
+  "docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md"
+  "docs/architecture/decisions/ADR-0005-secret-scanning-org.md"
+  "docs/architecture/decisions/ADR-0006-reviews-por-perfil.md"
+  "docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md"
+  "docs/architecture/decisions/ADR-0008-snippets-reales-post-oleada.md"
+  "docs/architecture/decisions/ADR-0009-scorecard-cumplimiento-p0.md"
+  "docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md"
+  "docs/architecture/decisions/ADR-0011-bootstrap-desde-plantilla.md"
+  "docs/guides/local-setup.md"
+  "docs/guides/coding-standards.md"
+  "docs/guides/testing.md"
+  "docs/runbooks/deploy.md"
+  "docs/runbooks/rollback.md"
+  "docs/runbooks/rotate-secrets.md"
+  "stacks/typescript/README.md"
+  "stacks/rust/README.md"
+  "stacks/infra/README.md"
+  ".github/PULL_REQUEST_TEMPLATE.md"
+)
+for path in "${purpose_files[@]}"; do
+  if [[ -f "$path" ]] && ! grep -Fq "$purpose_heading" "$path"; then
+    echo "FALTA meta-sección '${purpose_heading}' en $path"
     errors=$((errors + 1))
   fi
 done

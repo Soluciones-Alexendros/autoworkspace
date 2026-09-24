@@ -1,5 +1,11 @@
 # Contribuir a repo-standard
 
+### Propósito de este documento
+
+- **Objetivos:** Cómo se contribuye: ramas, commits, calidad local, checklist de PR y dónde vive cada tipo de cambio.
+- **Estructura:** Esta meta-sección → intro → Flujo → Commits → Calidad local → Checklist → Dónde va cada cosa → Issues.
+- **Contenido a integrar según contexto:** Conserva Conventional Commits, squash y el label `automerge`. Sustituye los comandos stub por los del stack. En producto, el H1 y el primer párrafo hablan del *producto*, no del canon. Reviews: [ADR-0006](docs/architecture/decisions/ADR-0006-reviews-por-perfil.md).
+
 Gracias por mejorar el canon de la flota Iniciativas-Alexendros.
 
 Este repositorio **no es una aplicación**. Cambia contratos que otros repos copiarán: docs, CI, perfiles P0/P1/P2 y convenciones de stacks. Trata cada PR como un cambio de plataforma.

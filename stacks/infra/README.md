@@ -1,5 +1,11 @@
 # Stack infra / Makefile
 
+### Propósito de este documento
+
+- **Objetivos:** Fachada Makefile y quality para repos de configuración/imágenes (sin apply a prod en un PR).
+- **Estructura:** Esta meta-sección → comandos canónicos → Quality → Qué no va aquí.
+- **Contenido a integrar según contexto:** Lista las tools reales (`terraform`, `actionlint`, …). `smoke` = validate + dry-run. Casi nunca hay job `build` de aplicación. Cero credenciales de cloud en el snippet.
+
 Referencia para repos de configuración, imágenes y automatización (patrón `infraestructura-stack`).
 
 ## Comandos canónicos

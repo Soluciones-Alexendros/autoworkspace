@@ -1,5 +1,11 @@
 # Runbook — deploy
 
+### Propósito de este documento
+
+- **Objetivos:** Pasos para publicar (canon = merge + tag; producto = hosting real).
+- **Estructura:** Esta meta-sección → procedimiento de este repo → plantilla de producto → qué no hacer.
+- **Contenido a integrar según contexto:** En producto, **sustituye** el apartado de hosting (Vercel, Docker, Cargo release…). Confirma Environments y reviewers. Cero secretos en el texto. Post-check = smoke contra el artefacto, no logs con credenciales.
+
 Este canon **no se despliega** a un hosting de aplicación. «Publicar» el estándar es mergear a `main` y, cuando toque, etiquetar SemVer.
 
 ## Canon (este repo)

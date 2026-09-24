@@ -10,6 +10,12 @@ adr_id: "ADR-0001"
 **Fecha:** 2026-09-24  
 **Estado:** Accepted
 
+### Propósito de este documento
+
+- **Objetivos:** Dejar sentado que `repo-standard` (no la landing) es el canon de flota y cerrar las decisiones fundacionales (Renovate, idioma, coverage, automerge, gates).
+- **Estructura:** Frontmatter → H1 → esta meta-sección → Contexto, Decisión, Consecuencias, Alternativas, Relacionados.
+- **Contenido a integrar según contexto:** No copies este ADR a un producto. En producto, escribe ADRs del sistema real y enlaza este si adoptas el canon. Las ampliaciones P0/P1 viven en ADR-0002…0011.
+
 ## Contexto
 
 La flota Iniciativas-Alexendros tiene estándares desiguales (inventario 2026-09-24): hay gold (`website-landingpage-template`, `zedazo`, `saas-afiladocs`) y repos sin CI, sin SECURITY, sin CODEOWNERS o con Dependabot y Renovate a la vez.
@@ -45,3 +51,4 @@ Hacía falta un **único contrato** (perfiles P0/P1/P2) que no aplastara el stac
 - [overview.md](../overview.md)
 - [REUTILIZACION.md](../../REUTILIZACION.md)
 - Inventario `repo-std-inventory.md` (2026-09-24)
+- Ampliaciones: [ADR-0002](./ADR-0002-proteccion-metadatos-como-codigo.md) … [ADR-0011](./ADR-0011-bootstrap-desde-plantilla.md)

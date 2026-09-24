@@ -1,5 +1,11 @@
 # Documentación de repo-standard
 
+### Propósito de este documento
+
+- **Objetivos:** Índice de `docs/` y mapa de a quién le toca cada carpeta.
+- **Estructura:** Esta meta-sección → Para quién → Mapa del árbol → Relacionados en raíz. Huecos `api/` y `archive/` cuando existan.
+- **Contenido a integrar según contexto:** En producto, cambia el H1 y la tabla «Para quién». Añade `api/` si hay OpenAPI y `archive/` si retiras docs. Cada `.md` contractual debe llevar la meta-sección «Propósito de este documento» ([REUTILIZACION.md](./REUTILIZACION.md)).
+
 Índice del canon. La raíz del repo (`README.md`, `ARCHITECTURE.md`, `AGENTS.md`) son **resúmenes**; el detalle vive aquí.
 
 ## Para quién

@@ -1,5 +1,11 @@
 # Estándares de código
 
+### Propósito de este documento
+
+- **Objetivos:** Convenios transversales y por stack (nombres de scripts, locks, docs). Homogeneiza contratos, no el lenguaje.
+- **Estructura:** Esta meta-sección → Transversal → bloques por stack (TS / Rust / Infra) → Docs (árbol + ADR + meta-sección).
+- **Contenido a integrar según contexto:** Borra los bloques de stacks que no uses. Añade el del producto (Astro, Python skills, Go…). Los **nombres** de script/job son el contrato; las herramientas son ejemplo.
+
 Homogeneizamos **nombres y contratos**, no el lenguaje.
 
 ## Transversal
@@ -49,4 +55,5 @@ make test
 ## Docs
 
 - Árbol `docs/` de la plantilla. No sueltes markdown suelto en la raíz salvo los resúmenes pactados.
-- ADRs: `ADR-NNNN-titulo-kebab.md` con Contexto, Decisión, Consecuencias, Alternativas.
+- ADRs: `ADR-NNNN-titulo-kebab.md` con Contexto, Decisión, Consecuencias, Prioridad P0/P1, Checklist de implementación, Alternativas.
+- Todo markdown contractual lleva, tras el H1, la sección **Propósito de este documento** (Objetivos / Estructura / Contenido a integrar). Excepción: `CHANGELOG.md` (Keep a Changelog). Detalle en [REUTILIZACION.md](../REUTILIZACION.md).

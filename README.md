@@ -1,5 +1,11 @@
 # repo-standard
 
+### Propósito de este documento
+
+- **Objetivos:** Puerta de entrada del canon (y, en un producto, del repo): qué es, qué no es, cómo arrancar y dónde está el resto de la docs.
+- **Estructura:** Esta meta-sección → badges → Qué hace / no hace → Requisitos → Quickstart → Scripts → índice de docs → decisiones cerradas → metadatos → seguridad → licencia.
+- **Contenido a integrar según contexto:** Sustituye el H1 y «Qué hace» por el *producto*. No copies «este repo es el meta-estándar». Enlaza `repo-standard ≥x.y` ([ADR-0010](docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md)). Ajusta badges, description y topics. Los comandos de la tabla Makefile deben ser los reales del stack, no los stubs.
+
 Canon de plataforma de **Iniciativas-Alexendros**: el contrato P0/P1 que el resto de la flota copia o alinea.
 
 [![CI](https://github.com/Iniciativas-Alexendros/repo-standard/actions/workflows/ci.yml/badge.svg)](https://github.com/Iniciativas-Alexendros/repo-standard/actions/workflows/ci.yml)
@@ -49,7 +55,7 @@ Para **alinear un repo existente**: no hace falta clonar este árbol entero. Sig
    make smoke
    ```
 
-5. Abre un PR a `main`. Los checks required son `quality`, `test` y `smoke`.
+5. Abre un PR a `main`. Los checks required de **este** canon son `quality`, `test` y `smoke` (no hay job `build`: no hay artefacto; [ADR-0003](docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md)). En producto, añade `build`/`e2e` a required **solo** si esos jobs existen.
 
 ### B. Alinear un repo que ya existe
 
@@ -83,7 +89,10 @@ No copies a ciegas. Checklist y orden: **[`docs/REUTILIZACION.md`](docs/REUTILIZ
 - Docs en **español**.
 - Coverage por defecto **≥70%**; documenta **80%** en módulos críticos.
 - Automerge humano/agente **solo** con label `automerge` (más CI verde y review).
-- Orden de gates: quality → test → build → smoke (`e2e` opcional en webs).
+- Orden de gates: quality → test → build → smoke (`e2e` opcional en webs). El job `build` **solo existe si hay artefacto**; si no, no se declara ([ADR-0003](docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md)).
+- Prerrequisito org: GitHub App **Renovate** instalada ([ADR-0004](docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)). Dependabot Alerts ON; sin version-updates de Dependabot.
+- Secret scanning + push protection ON a nivel org ([ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
+- Ampliaciones P0/P1: índice en [`docs/architecture/decisions/`](docs/architecture/decisions/).
 
 ## Metadatos recomendados (Settings del repo)
 

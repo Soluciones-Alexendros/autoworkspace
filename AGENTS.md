@@ -1,5 +1,11 @@
 # AGENTS.md — contrato para Mantenedor y agentes
 
+### Propósito de este documento
+
+- **Objetivos:** Contrato operativo para agentes y Mantenedor: fuentes de verdad, autonomía, gates, DoD. En un producto, el mismo contrato de flota + hechos de *ese* workspace.
+- **Estructura:** Esta meta-sección → §1 Rol → §2 Fuentes → §3 Ficha → §4 Autonomía → §5 Working agreement → §6 Comandos → §7 Zonas prohibidas → §8 Definition of Done → §9 Hechos del workspace.
+- **Contenido a integrar según contexto:** Copia §1–8. Reescribe **solo** §9 (stack, validador, CODEOWNERS, perfiles). No reabras decisiones cerradas. No pegues secretos ni URLs de prod reales.
+
 **Destinatarios:** agentes de código y el rol Mantenedor que trabajen en **este canon** o en un repo que lo haya adoptado.  
 **Idioma:** español en commits, PRs y mensajes a humanos.
 
@@ -55,10 +61,11 @@ Criterio de cierre: CI verde + Definition of Done
 ## 5. Working agreement de la flota
 
 - `main` solo recibe PR verde + revisión. Sin push directo.
-- Gates CI en este orden: `quality` → `test` → `build` → `smoke` (`e2e` opcional en webs).
+- Gates CI en este orden: `quality` → `test` → `build` → `smoke` (`e2e` opcional en webs). `build` **no se declara** si no hay artefacto ([ADR-0003](docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md)).
 - En **este** canon no hay runtime: `quality` valida estructura, `test` es el hook documentado, `smoke` ejecuta `scripts/smoke.sh`.
-- En repos de producto, `test` incluye unit/function y cobertura **≥70%** (documenta **80%** en módulos críticos).
-- Bot de deps: **solo Renovate**. No añadas `.github/dependabot.yml` de version-updates. Las Dependabot Alerts de seguridad pueden quedar ON a nivel org.
+- En repos de producto, `test` incluye unit/function. Coverage **≥70%** (80% en críticos) es gate **opcional** cuando la suite es estable ([ADR-0007](docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
+- Bot de deps: **solo Renovate** (GitHub App a nivel org, [ADR-0004](docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)). No añadas `.github/dependabot.yml` de version-updates. Dependabot Alerts ON.
+- Secret scanning + push protection: prerrequisito org ([ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)). No los desactives.
 - `.env` nunca se commitea. `.env.example` solo con placeholders documentados.
 - Homogeneiza **nombres** de jobs y la carpeta `.github/`; no aplastes el stack (TS/pnpm, Rust/Cargo, infra/Makefile).
 
