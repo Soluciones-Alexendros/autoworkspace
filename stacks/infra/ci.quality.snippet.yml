@@ -1,0 +1,10 @@
+# Fragmento — job quality para repos infra (fachada Makefile).
+
+- name: Lint
+  run: make lint
+
+- name: Typecheck
+  run: make typecheck
+
+- name: Validate
+  run: make validate

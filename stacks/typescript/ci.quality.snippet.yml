@@ -1,0 +1,23 @@
+# Fragmento — job quality para TypeScript/pnpm.
+# Pega bajo jobs.quality.steps (tras checkout + pnpm + setup-node 22 + install).
+# No es un workflow completo.
+
+# - uses: pnpm/action-setup@v6
+# - uses: actions/setup-node@v5
+#     with:
+#       node-version: "22"
+#       cache: pnpm
+# - run: pnpm install --frozen-lockfile
+
+- name: Format
+  run: pnpm format:check
+
+- name: Lint
+  run: pnpm lint
+
+- name: Typecheck
+  run: pnpm typecheck
+
+# Opcional P1: compara keys de .env.example vs las que lee el código.
+# - name: Check env example
+#   run: pnpm check:env
