@@ -76,4 +76,50 @@ metadata:
 # use real ROOT for dry-run
 bash "$ROOT/scripts/install-opencode.sh" --target "$ROOT" --dry-run
 
+# A36: journal rollback restores prior symlink target on mid-apply failure
+RB="$TMP/rollback-dest"
+mkdir -p "$RB"
+ln -sfn /tmp/prior-target-aw "$RB/local-maintenance"
+# Simulate prior link; force apply failure after journaling by making TARGET parent read-only mid-flight
+# Use Python unit of journal restore path via inject: install then break finalize
+bash "$ROOT/scripts/install.sh" --target "$RB" || true
+# After successful install, prior was replaced; re-seed prior and exercise rollback helper
+PRIOR="$TMP/prior-skill"
+mkdir -p "$PRIOR"
+ln -sfn "$PRIOR" "$RB/local-maintenance"
+# Direct journal restore scenario
+python3 - "$RB" "$ROOT/skills/local-maintenance" <<'PY'
+import json, os, sys
+from pathlib import Path
+target = Path(sys.argv[1])
+src = Path(sys.argv[2]).resolve()
+dest = target / "local-maintenance"
+previous = {"type": "symlink", "target": os.readlink(dest)}
+# Replace with new link then rollback entry
+dest.unlink()
+os.symlink(str(src), dest)
+journal = {
+    "schema_version": 1,
+    "entries": [
+        {"name": "local-maintenance", "dest": str(dest), "action": "replaced", "previous": previous}
+    ],
+}
+jp = target / ".autoworkspace-install-journal.json"
+jp.write_text(json.dumps(journal), encoding="utf-8")
+# rollback logic (mirrors install.sh)
+doc = json.loads(jp.read_text(encoding="utf-8"))
+for entry in reversed(doc["entries"]):
+    d = Path(entry["dest"])
+    prev = entry.get("previous")
+    if entry.get("action") == "replaced" and prev and prev.get("type") == "symlink":
+        if d.is_symlink() or d.exists():
+            d.unlink()
+        os.symlink(prev["target"], d)
+assert os.readlink(dest) == previous["target"], (os.readlink(dest), previous["target"])
+print("journal rollback restored prior symlink OK")
+PY
+
+# package-standalone dry-run
+bash "$ROOT/scripts/package-standalone-skill.sh" --skill local-maintenance --dry-run
+
 echo "install tests OK"

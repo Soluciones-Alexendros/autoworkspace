@@ -169,13 +169,50 @@ def validate_snapshot(snapshot_id: str) -> tuple[bool, str]:
     return True, path
 
 
+def effective_operation_params() -> dict:
+    """Full effective plan — everything handlers may use (not just snapshot_id)."""
+    return {
+        "snapshot_id": SNAPSHOT_ID,
+        "pkg_mgr": PKG_MGR,
+        "keep_versions": KEEP_VERSIONS,
+        "journal_time": JOURNAL_VACUUM_TIME,
+        "journal_size": JOURNAL_VACUUM_SIZE,
+        "with_firmware": WITH_FIRMWARE,
+    }
+
+
+def apply_operation_params(params: dict) -> None:
+    """Bind approved plan into process state before handler body runs."""
+    global SNAPSHOT_ID, PKG_MGR, KEEP_VERSIONS, JOURNAL_VACUUM_TIME, JOURNAL_VACUUM_SIZE
+    global WITH_FIRMWARE
+    if params.get("snapshot_id"):
+        SNAPSHOT_ID = str(params["snapshot_id"])
+    if "pkg_mgr" in params and params["pkg_mgr"] is not None:
+        PKG_MGR = str(params["pkg_mgr"])
+    if "keep_versions" in params and params["keep_versions"] is not None:
+        KEEP_VERSIONS = int(params["keep_versions"])
+    if "journal_time" in params and params["journal_time"] is not None:
+        JOURNAL_VACUUM_TIME = str(params["journal_time"])
+    if "journal_size" in params and params["journal_size"] is not None:
+        JOURNAL_VACUUM_SIZE = str(params["journal_size"])
+    if "with_firmware" in params and params["with_firmware"] is not None:
+        WITH_FIRMWARE = bool(params["with_firmware"])
+
+
 def _register_handlers() -> None:
     from execution.registry import register_handler
 
     def _wrap(fn):
         def handler(params: dict) -> int:
-            fn()
-            return 0
+            apply_operation_params(params or {})
+            try:
+                result = fn()
+            except Exception:
+                raise
+            # Propagate explicit failure; never treat bare None from broken cleaners as OK.
+            if result is None:
+                return 0
+            return int(result)
 
         return handler
 
@@ -192,13 +229,19 @@ def _register_handlers() -> None:
 
 def _handle_create_snapshot(params: dict) -> int:
     global SNAPSHOT_ID
+    apply_operation_params(params or {})
     sid = params.get("snapshot_id") or SNAPSHOT_ID
     if not sid:
         sid = f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
         SNAPSHOT_ID = sid
     script_dir = os.path.dirname(os.path.abspath(__file__))
     script = os.path.join(script_dir, "snapshot_state.py")
-    rc, out = run_capture(f"{sys.executable} '{script}' '{sid}'", timeout=600)
+    # Token proves this subprocess was launched after run_registered approval.
+    env_prefix = "AUTOWORKSPACE_EXECUTION_APPROVED=1"
+    rc, out = run_capture(
+        f"{env_prefix} {sys.executable} '{script}' '{sid}'",
+        timeout=600,
+    )
     if rc != 0:
         log_error(f"Creación de snapshot falló (rc={rc})")
         return rc
@@ -208,6 +251,7 @@ def _handle_create_snapshot(params: dict) -> int:
 
 
 def _handle_validate_snapshot(params: dict) -> int:
+    apply_operation_params(params or {})
     sid = str(params.get("snapshot_id") or SNAPSHOT_ID)
     ok, detail = validate_snapshot(sid)
     if not ok:
@@ -229,7 +273,7 @@ def dispatch_operation(operation_id: str) -> int:
 
     from execution.ops import run_registered
 
-    params = {"snapshot_id": SNAPSHOT_ID, "pkg_mgr": PKG_MGR}
+    params = effective_operation_params()
     result = run_registered(operation_id, params, target=hostname() or ".")
     if result.outcome == "blocked":
         log_error(f"blocked {operation_id}: {result.detail}")

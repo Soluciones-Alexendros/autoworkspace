@@ -103,6 +103,7 @@ def test_authorize_rejects_approved_token():
 
 
 def test_f19_backend_failure_not_success(monkeypatch, tmp_path):
+    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     monkeypatch.setattr(snapshot_state, "which", lambda c: "/usr/bin/timeshift" if c == "timeshift" else None)
     monkeypatch.setattr(snapshot_state, "detect_pkg_mgr", lambda: "apt")
     monkeypatch.setattr(snapshot_state, "run", lambda *a, **k: "5.0.0\n")
@@ -118,6 +119,7 @@ def test_f19_backend_failure_not_success(monkeypatch, tmp_path):
 
 
 def test_f20_no_private_ssh_keys_by_default(monkeypatch, tmp_path):
+    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     monkeypatch.setattr(snapshot_state, "which", lambda c: None)
     monkeypatch.setattr(snapshot_state, "detect_pkg_mgr", lambda: "apt")
     monkeypatch.setattr(snapshot_state, "run", lambda *a, **k: "")
@@ -198,16 +200,13 @@ def test_restore_rejects_symlink_member(tmp_path):
         info.type = tarfile.SYMTYPE
         info.linkname = "/etc/passwd"
         tf.addfile(info)
-    staging = tmp_path / "stage"
-    staging.mkdir()
-    # force staging under tempfile by using real temp
-    import tempfile
-
-    with tempfile.TemporaryDirectory(prefix="aw-restore-") as stage:
-        rc = snapshot_state.rollback_snapshot(
-            str(tmp_path), "snap-link", execute=True, restore_root=stage
-        )
-        assert rc != 0
+    # Caller staging rejected; program staging still rejects symlink members
+    rc_foreign = snapshot_state.rollback_snapshot(
+        str(tmp_path), "snap-link", execute=True, restore_root=str(tmp_path / "stage")
+    )
+    assert rc_foreign == 3
+    rc = snapshot_state.rollback_snapshot(str(tmp_path), "snap-link", execute=True)
+    assert rc != 0
 
 
 def test_host_rollback_privileged_root_blocked(tmp_path):
