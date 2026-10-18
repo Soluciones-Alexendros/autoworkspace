@@ -32,6 +32,7 @@ Thumbs.db
 artifacts/
 proteccion-*.json
 proteccion-*.zip
+**/clean-routine-*.json
 .cursor/
 # Permitir hooks de proyecto vacíos (evita ERROR de parseo en Cursor si existe .cursor/)
 !.cursor/hooks.json

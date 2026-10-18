@@ -27,7 +27,18 @@ def resolve_workspace_root(start: Path | None = None) -> Path | None:
     return None
 
 
-def resolve_skill_root(skill: str, workspace: Path | None = None) -> Path | None:
+def resolve_skill_root(
+    skill: str,
+    workspace: Path | None = None,
+    *,
+    skill_root: Path | None = None,
+) -> Path | None:
+    """Resolve skill root. Prefer explicit skill_root (standalone); else workspace/skills."""
+    if skill_root is not None:
+        candidate = Path(skill_root).resolve()
+        if (candidate / "SKILL.md").is_file():
+            return candidate
+        return None
     ws = workspace or resolve_workspace_root()
     if ws is None:
         return None
@@ -49,40 +60,81 @@ def check_binaries(required: list[str], optional: list[str] | None = None) -> Pr
     return result
 
 
-def preflight_contract(contract: dict[str, Any], *, cwd: Path | None = None) -> PreflightResult:
+def check_shared_dependencies(skill_root: Path, deps: list[str]) -> list[str]:
+    """Verify shared dependency paths relative to skill_root exist (or packaged copies)."""
+    missing: list[str] = []
+    for dep in deps:
+        name = Path(dep).name  # tools/execution → execution
+        candidates = [
+            skill_root / dep,
+            skill_root / "vendor" / dep,
+            skill_root / "vendor" / name,
+            skill_root / "lib" / dep,
+            skill_root / "lib" / name,
+            skill_root / name,
+        ]
+        # Workspace-relative: ../../tools/execution from skills/<name>
+        candidates.append((skill_root / ".." / ".." / dep).resolve())
+        if not any(c.exists() for c in candidates):
+            missing.append(dep)
+    return missing
+
+
+def preflight_contract(
+    contract: dict[str, Any],
+    *,
+    cwd: Path | None = None,
+    skill_root: Path | None = None,
+    allow_network: bool | None = None,
+) -> PreflightResult:
     dist = contract.get("distribution")
     skill = contract["skill"]
     result = PreflightResult(ok=True)
     ws = resolve_workspace_root(cwd)
     result.workspace_root = str(ws) if ws else None
-    if dist == "workspace-required" and ws is None:
+
+    if dist == "workspace-required" and ws is None and skill_root is None:
         result.ok = False
         result.blocked_reasons.append(
             "workspace-required skill: install full autoworkspace (skills/ + tools/); "
             "cwd is not an implicit installation"
         )
         return result
-    skill_root = resolve_skill_root(skill, ws)
-    if skill_root is None:
-        # standalone copy: skill root is the directory containing execution.yaml next to SKILL.md
+
+    resolved = resolve_skill_root(skill, ws, skill_root=skill_root)
+    if resolved is None:
         result.ok = False
         result.blocked_reasons.append(f"skill root not found for {skill}")
         return result
-    result.skill_root = str(skill_root)
-    # Refuse reading outside skill/workspace for standalone verification
-    if dist == "standalone":
-        # Ensure we do not need ../../tools from original checkout
-        tools_ref = skill_root / ".." / ".." / "tools"
-        # informational only
-        _ = tools_ref
+    result.skill_root = str(resolved)
+
+    # Shared dependencies (e.g. tools/execution) must be present for standalone
+    shared = list(contract.get("shared_dependencies") or [])
+    if dist == "standalone" and shared:
+        missing = check_shared_dependencies(resolved, shared)
+        if missing:
+            result.ok = False
+            result.blocked_reasons.append(
+                f"standalone missing shared_dependencies: {missing}; "
+                "package vendor copy or reclasificar workspace-required"
+            )
+
     reqs = contract.get("system_requirements") or {}
     hard = list(reqs.get("binaries") or [])
-    bin_check = check_binaries(hard)
+    optional = list(reqs.get("optional_binaries") or [])
+    bin_check = check_binaries(hard, optional)
     if not bin_check.ok:
         result.ok = False
         result.blocked_reasons.extend(bin_check.blocked_reasons)
     result.optional_missing.extend(bin_check.optional_missing)
-    if reqs.get("network") and os.environ.get("AUTOWORKSPACE_ALLOW_NETWORK") != "1":
-        # network required but not authorized → blocked for ops that need it; preflight warns
-        result.optional_missing.append("network:not-authorized")
+
+    net_allowed = (
+        allow_network
+        if allow_network is not None
+        else os.environ.get("AUTOWORKSPACE_ALLOW_NETWORK") == "1"
+    )
+    if reqs.get("network") and not net_allowed:
+        result.ok = False
+        result.blocked_reasons.append("network:required-but-not-authorized")
+
     return result

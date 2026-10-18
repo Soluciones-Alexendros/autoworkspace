@@ -1,10 +1,10 @@
-"""Typed operation runner: registry-only for mutators; argv never caller-supplied."""
+"""Typed operation runner: registry-only; no free-form argv/effect from callers."""
 from __future__ import annotations
 
 import os
 import signal
 import subprocess
-import time
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,6 +16,10 @@ from execution.approval import (
     provider_from_env,
 )
 from execution.registry import get_handler, get_operation, resolve_argv
+
+RESERVED_PARAM_KEYS = frozenset(
+    {"effect", "require_approval", "argv", "executable_id", "handler", "cwd_override"}
+)
 
 
 @dataclass
@@ -45,8 +49,8 @@ def _reject_shell_escape(argv: list[str]) -> str | None:
     return None
 
 
-def _make_run_id(operation_id: str, digest: str) -> str:
-    return f"{operation_id}:{digest[:16]}:{int(time.time())}"
+def _make_run_id() -> str:
+    return str(uuid.uuid4())
 
 
 def run_registered(
@@ -58,12 +62,21 @@ def run_registered(
     executable_id: str = "autoworkspace",
 ) -> OpResult:
     """Execute a registered operation. Callers may not pass effect/argv/approval flags."""
-    params = dict(params or {})
-    # Strip insufficient consent tokens
+    raw = dict(params or {})
+    # Reject reserved keys instead of silently stripping when they indicate policy tampering
+    unknown_reserved = RESERVED_PARAM_KEYS & set(raw)
+    if unknown_reserved:
+        return OpResult(
+            operation_id,
+            "blocked",
+            None,
+            0,
+            f"reserved parameters rejected: {sorted(unknown_reserved)}",
+            "unknown",
+        )
+    params = dict(raw)
     if is_insufficient_token(str(params.get("approved", ""))):
         params.pop("approved", None)
-    for bad in ("effect", "require_approval", "argv"):
-        params.pop(bad, None)
 
     try:
         spec = get_operation(operation_id)
@@ -71,6 +84,10 @@ def run_registered(
         return OpResult(operation_id, "blocked", None, 0, "unknown operation", "unknown")
 
     argv = resolve_argv(spec, params)
+    handler = get_handler(operation_id)
+    handler_id = getattr(handler, "__name__", None) or (
+        f"{handler.__module__}.{getattr(handler, '__qualname__', 'handler')}" if handler else ""
+    )
     digest = plan_digest(
         operation_id,
         target,
@@ -80,6 +97,9 @@ def run_registered(
         cwd=cwd,
         executable_id=executable_id,
         effect=spec.effect,
+        handler_id=handler_id,
+        skill=spec.skill,
+        timeout=spec.timeout,
     )
 
     if spec.require_approval or spec.effect in {
@@ -89,7 +109,14 @@ def run_registered(
     }:
         provider = provider_from_env()
         decision = provider.decide(
-            ApprovalRequest(operation_id, target, params, (spec.effect,), digest)
+            ApprovalRequest(
+                operation_id,
+                target,
+                params,
+                (spec.effect,),
+                digest,
+                effects_detail=f"skill={spec.skill}; handler={handler_id or 'argv'}",
+            )
         )
         if not decision.allowed or decision.covers_digest != digest:
             return OpResult(
@@ -117,18 +144,48 @@ def run_registered(
     if bad:
         return OpResult(operation_id, "blocked", 2, 0, bad, spec.effect, plan_digest=digest)
 
-    handler = get_handler(operation_id)
-    start = time.monotonic()
-    run_id = _make_run_id(operation_id, digest)
+    # Re-resolve handler after approval; reject if identity changed
+    handler_after = get_handler(operation_id)
+    handler_id_after = getattr(handler_after, "__name__", None) or (
+        f"{handler_after.__module__}.{getattr(handler_after, '__qualname__', 'handler')}"
+        if handler_after
+        else ""
+    )
+    if handler_id_after != handler_id:
+        return OpResult(
+            operation_id,
+            "blocked",
+            None,
+            0,
+            "handler identity changed between approval and execution",
+            spec.effect,
+            plan_digest=digest,
+        )
 
-    if handler is not None:
+    import time
+
+    start = time.monotonic()
+    run_id = _make_run_id()
+
+    if handler_after is not None:
         try:
-            rc = handler(params)
+            rc = handler_after(params)
             if isinstance(rc, OpResult):
                 rc.run_id = rc.run_id or run_id
                 rc.plan_digest = rc.plan_digest or digest
                 return rc
-            code = int(rc) if rc is not None else 0
+            if rc is None:
+                return OpResult(
+                    operation_id,
+                    "blocked",
+                    None,
+                    int((time.monotonic() - start) * 1000),
+                    "handler returned None; not treated as success",
+                    spec.effect,
+                    run_id=run_id,
+                    plan_digest=digest,
+                )
+            code = int(rc)
             outcome = "succeeded" if code == 0 else "failed"
             return OpResult(
                 operation_id,
@@ -184,6 +241,8 @@ def _run_subprocess(
     run_id: str,
     digest: str,
 ) -> OpResult:
+    import time
+
     start = time.monotonic()
     try:
         proc = subprocess.Popen(
@@ -205,7 +264,7 @@ def _run_subprocess(
                 "cancelled",
                 124,
                 int((time.monotonic() - start) * 1000),
-                "timeout; process group killed; reconcile before retry if external effects possible",
+                "timeout; process group killed; reconciliation_required before retry",
                 effect,
                 run_id=run_id,
                 plan_digest=digest,
@@ -247,16 +306,13 @@ def run_operation(
     cwd: str | None = None,
     require_approval: bool | None = None,
 ) -> OpResult:
-    """Deprecated free-form entry. Mutators must use run_registered.
+    """Deprecated free-form entry. Always rejects caller-supplied argv/effect/approval.
 
-    If effect/argv/require_approval are supplied for a mutating effect, reject.
-    Read-only legacy tests may still pass argv with effect=read and require_approval=False.
+    Use run_registered(operation_id, params). Tests that need arbitrary subprocesses
+    must use an isolated fixture helper, not this product API.
     """
-    params = dict(params or {})
-    if effect in {"mutate-host", "communicate-external", "access-secret"} or (
-        argv is not None and effect not in (None, "read")
-    ):
-        # Free-form mutation path is closed.
+    _ = (timeout, cwd)
+    if argv is not None or effect is not None or require_approval is not None:
         return OpResult(
             operation_id,
             "blocked",
@@ -265,20 +321,6 @@ def run_operation(
             "free-form run_operation rejected; use run_registered(operation_id, params)",
             effect or "unknown",
         )
-    if effect == "read" and argv is not None and require_approval is False:
-        bad = _reject_shell_escape(argv)
-        if bad:
-            return OpResult(operation_id, "blocked", 2, 0, bad, "read")
-        return _run_subprocess(
-            operation_id,
-            argv,
-            "read",
-            timeout=timeout,
-            cwd=cwd,
-            run_id="",
-            digest="",
-        )
-    # Prefer registry path
     return run_registered(operation_id, params, target=target, cwd=cwd)
 
 

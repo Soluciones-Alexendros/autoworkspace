@@ -35,7 +35,8 @@ def test_invalid_snapshot_id_exit2(tmp_path):
     assert r.returncode == 2
 
 
-def test_error_snapshot_dir_es_fichero_exit1(tmp_path):
+def test_error_snapshot_dir_es_fichero_exit1(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     blocker = tmp_path / "blocker"
     blocker.write_text("x", encoding="utf-8")
     assert snapshot_state.main(["snap-1", "--snapshot-dir", str(blocker)]) == 1
@@ -85,7 +86,8 @@ def test_snapshot_detect_pkgmgr_none(monkeypatch):
     assert mgr == ""
 
 
-def test_snapshot_create_basic(tmp_path):
+def test_snapshot_create_basic(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     snap_dir = tmp_path / "snapshots"
     snap_dir.mkdir()
     with patch("snapshot_state.which", lambda cmd: "/usr/bin/pacman" if cmd == "pacman" else None):
@@ -93,6 +95,14 @@ def test_snapshot_create_basic(tmp_path):
             with patch("snapshot_state.run", return_value="pkg1\npkg2"):
                 rc = snapshot_state.main(["snap-test", "--snapshot-dir", str(snap_dir)])
                 assert rc == 0
+
+
+def test_snapshot_create_cli_blocked_without_approval(tmp_path, monkeypatch):
+    monkeypatch.delenv("AUTOWORKSPACE_EXECUTION_APPROVED", raising=False)
+    snap_dir = tmp_path / "snapshots"
+    snap_dir.mkdir()
+    rc = snapshot_state.main(["snap-test", "--snapshot-dir", str(snap_dir)])
+    assert rc == 3
 
 
 def test_snapshot_list(tmp_path):
@@ -136,10 +146,9 @@ def test_snapshot_rollback_execute_rejects_host_root(tmp_path):
     assert rc2 != 0
 
 
-def test_snapshot_rollback_execute_temp_root(tmp_path):
+def test_snapshot_rollback_execute_program_staging(tmp_path):
     import io
     import tarfile
-    import tempfile
 
     snap_dir = tmp_path / "snapshots"
     snap_dir.mkdir()
@@ -153,17 +162,21 @@ def test_snapshot_rollback_execute_temp_root(tmp_path):
         data = b"UUID=test / ext4 defaults 0 1\n"
         info.size = len(data)
         tf.addfile(info, io.BytesIO(data))
-    with tempfile.TemporaryDirectory(prefix="aw-restore-") as restore:
-        rc = snapshot_state.main(
-            [
-                "--rollback",
-                "snap-test",
-                "--snapshot-dir",
-                str(snap_dir),
-                "--execute",
-                "--restore-root",
-                restore,
-            ]
-        )
-        assert rc == 0
-        assert (Path(restore) / "etc" / "fstab").is_file()
+    # Caller-supplied restore-root rejected
+    rc_bad = snapshot_state.main(
+        [
+            "--rollback",
+            "snap-test",
+            "--snapshot-dir",
+            str(snap_dir),
+            "--execute",
+            "--restore-root",
+            str(tmp_path / "foreign"),
+        ]
+    )
+    assert rc_bad == 3
+    # Program-owned staging (no --restore-root)
+    rc = snapshot_state.main(
+        ["--rollback", "snap-test", "--snapshot-dir", str(snap_dir), "--execute"]
+    )
+    assert rc == 0

@@ -40,7 +40,7 @@ python tools/workspace-router/run.py --init --repo .   # scaffold once
 python tools/workspace-router/run.py --phase DEFINE --repo . --json   # read-only route
 ```
 
-Cada skill declara `execution.yaml` (extensión local). OpenCode: ver `docs/harness-integration.md` (nivel B `not_run` hasta probar un binario real).
+Cada skill declara `execution.yaml` (extensión local). Ejecución mutadora solo vía `tools/execution` (`run_registered` + aprobación). Migraciones del cierre verificable: `docs/verifiable-closure-migrations.md`. OpenCode: ver `docs/harness-integration.md` (niveles A/B/C).
 
 Plantillas de proyecto: `templates/autoworkspace/` → copiar a `<repo>/.autoworkspace/`.
 

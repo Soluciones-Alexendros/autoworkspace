@@ -15,6 +15,7 @@ class ApprovalRequest:
     params: dict[str, Any]
     effects: tuple[str, ...]
     plan_digest: str
+    effects_detail: str = ""
 
 
 @dataclass(frozen=True)
@@ -35,11 +36,14 @@ def plan_digest(
     cwd: str | None = None,
     executable_id: str = "",
     effect: str | None = None,
+    handler_id: str = "",
+    skill: str = "",
+    timeout: int | None = None,
 ) -> str:
     """SHA-256 over the full execution plan (not consent).
 
-    Includes operation_id, target, params, effect(s), argv, cwd, executable_id.
-    Changing any field invalidates a prior approval bound to this digest.
+    Includes operation_id, target, params, effect(s), argv, cwd, executable_id,
+    handler identity, skill and timeout. Changing any field invalidates approval.
     """
     eff = effect if effect is not None else (effects[0] if effects else "")
     payload = json.dumps(
@@ -52,6 +56,9 @@ def plan_digest(
             "argv": list(argv or []),
             "cwd": cwd or "",
             "executable_id": executable_id or "",
+            "handler_id": handler_id or "",
+            "skill": skill or "",
+            "timeout": timeout,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -89,11 +96,14 @@ class InteractiveProvider(ApprovalProvider):
                 "interactive",
                 request.plan_digest,
             )
+        detail = request.effects_detail or ""
         print(
             f"APPROVAL REQUIRED\n"
             f"  operation: {request.operation_id}\n"
             f"  target: {request.target}\n"
             f"  effects: {', '.join(request.effects)}\n"
+            f"  params: {json.dumps(request.params, sort_keys=True)[:400]}\n"
+            f"  detail: {detail}\n"
             f"  digest: {request.plan_digest[:16]}…\n"
             f"Type the operation id to approve:",
             flush=True,

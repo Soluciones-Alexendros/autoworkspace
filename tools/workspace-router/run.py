@@ -182,12 +182,17 @@ def main(argv: list[str] | None = None) -> int:
             print("ERROR: --complete requires --run-id of validated evidence", file=sys.stderr)
             return 2
         try:
-            skill = ""
-            try:
-                project = load_project(repo)
-                skill = handoff_for_phase(project, args.phase) or ""
-            except ProjectConfigError:
-                pass
+            project = load_project(repo)
+            skill = handoff_for_phase(project, args.phase) or ""
+            catalog = load_catalog()
+            allowed = filter_skills(catalog, project)
+            if skill and skill not in allowed:
+                print(f"ERROR: skill {skill} not in project allowlist", file=sys.stderr)
+                return 2
+            phases = project.get("phases") or list(PHASES)
+            if args.phase not in phases:
+                print(f"ERROR: phase {args.phase} not enabled in project config", file=sys.stderr)
+                return 2
             data = advance_status(
                 repo,
                 phase=args.phase,
@@ -196,6 +201,9 @@ def main(argv: list[str] | None = None) -> int:
                 evidence_ok=True,
                 run_id=args.run_id,
             )
+        except ProjectConfigError as exc:
+            print(f"ERROR: invalid project config: {exc}", file=sys.stderr)
+            return 2
         except (ValueError, FileNotFoundError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2

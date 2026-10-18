@@ -207,13 +207,37 @@ if [ "$DRY_RUN" = 1 ]; then
   exit 0
 fi
 
-# ---------- apply ----------
-CREATED=()
+# ---------- apply (journal per resource: absent|created|unchanged|replaced) ----------
+JOURNAL="$TARGET/.autoworkspace-install-journal.json"
 rollback() {
-  echo "ROLLBACK: removing ${#CREATED[@]} links created this run" >&2
-  for p in "${CREATED[@]:-}"; do
-    [ -L "$p" ] && rm -f "$p" || true
-  done
+  echo "ROLLBACK: restoring prior link state from journal" >&2
+  python3 - "$JOURNAL" <<'PY' || true
+import json, os, sys
+from pathlib import Path
+jp = Path(sys.argv[1])
+if not jp.is_file():
+    sys.exit(0)
+doc = json.loads(jp.read_text(encoding="utf-8"))
+for entry in reversed(doc.get("entries", [])):
+    dest = Path(entry["dest"])
+    action = entry.get("action")
+    prev = entry.get("previous")
+    if action == "created":
+        if dest.is_symlink() or dest.exists():
+            dest.unlink()
+    elif action == "replaced" and prev is not None:
+        if dest.is_symlink() or (dest.exists() and not dest.is_dir()):
+            try:
+                dest.unlink()
+            except OSError:
+                pass
+        if prev.get("type") == "symlink":
+            os.symlink(prev["target"], dest)
+        # absent previous → leave removed
+    # unchanged: nothing
+jp.unlink(missing_ok=True)
+print("rollback restored prior state")
+PY
   exit 1
 }
 trap rollback ERR
@@ -222,12 +246,34 @@ if [ ! -d "$TARGET" ]; then
   mkdir -p "$TARGET"
 fi
 
-for name in "${RESOURCES[@]}"; do
-  dest="$TARGET/$name"
-  s="$SRC/$name"
-  ln -sfn "$s" "$dest"
-  CREATED+=("$dest")
-done
+python3 - "$JOURNAL" "$SRC" "$TARGET" "${RESOURCES[@]}" <<'PY'
+import json, os, sys
+from pathlib import Path
+journal_path = Path(sys.argv[1])
+src = Path(sys.argv[2]).resolve()
+target = Path(sys.argv[3]).resolve()
+names = sys.argv[4:]
+entries = []
+for name in names:
+    dest = target / name
+    s = src / name
+    previous = None
+    if dest.is_symlink():
+        previous = {"type": "symlink", "target": os.readlink(dest)}
+        action = "unchanged" if os.path.realpath(dest) == os.path.realpath(s) else "replaced"
+    elif dest.exists():
+        raise SystemExit(f"conflict real path {dest}")
+    else:
+        action = "created"
+    if action != "unchanged":
+        if dest.is_symlink() or dest.exists():
+            dest.unlink()
+        os.symlink(str(s), dest)
+    entries.append({"name": name, "dest": str(dest), "action": action, "previous": previous})
+doc = {"schema_version": 1, "entries": entries}
+journal_path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+print(f"journal → {journal_path} ({len(entries)} resources)")
+PY
 
 # ---------- finalize ----------
 python3 - "$MANIFEST" "$ROOT" "${RESOURCES[@]}" <<'PY'
@@ -249,6 +295,8 @@ tmp.replace(mf)
 print(f"manifest → {mf}")
 PY
 validate_manifest_paths "$MANIFEST"
+# Manifest written successfully — drop journal (no longer needed)
+rm -f "$JOURNAL"
 trap - ERR
 
 echo "Done. AGENTS.md was not copied to any global home."

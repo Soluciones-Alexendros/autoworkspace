@@ -173,8 +173,63 @@ def diff_snapshot(base_dir: str, snapshot_id: str) -> tuple[list, list, int]:
     return changed, missing, total
 
 
+def _inspect_and_extract_tar(tarball: str, restore_root: str) -> int:
+    """Single open: inspect members then extract. Reject links/specials/escapes."""
+    import tarfile
+
+    root = os.path.realpath(restore_root)
+    max_members = 10_000
+    max_bytes = 512 * 1024 * 1024
+    try:
+        with tarfile.open(tarball, "r:*") as tf:
+            members = tf.getmembers()
+            if len(members) > max_members:
+                logger.error("tar member quota exceeded: %s", len(members))
+                return 1
+            total = 0
+            safe: list = []
+            for member in members:
+                if member.islnk() or member.issym():
+                    logger.error("symlink/hardlink rejected: %s -> %s", member.name, member.linkname)
+                    return 1
+                name = member.name.lstrip("/")
+                if name.startswith("..") or ".." in name.split("/"):
+                    logger.error("path traversal in archive: %s", member.name)
+                    return 1
+                if os.path.isabs(member.name) or member.name.startswith("/"):
+                    logger.error("absolute path in archive: %s", member.name)
+                    return 1
+                dest = os.path.realpath(os.path.join(root, name))
+                if not dest.startswith(root + os.sep) and dest != root:
+                    logger.error("escape path in archive: %s", member.name)
+                    return 1
+                if member.isdev() or member.ischr() or member.isblk() or member.isfifo():
+                    logger.error("special file rejected: %s", member.name)
+                    return 1
+                if not (member.isfile() or member.isdir()):
+                    logger.error("unsupported member type: %s", member.name)
+                    return 1
+                total += max(0, int(member.size or 0))
+                if total > max_bytes:
+                    logger.error("tar size quota exceeded")
+                    return 1
+                safe.append(member)
+            filter_kw = {}
+            if hasattr(tarfile, "data_filter"):
+                filter_kw["filter"] = _tar_data_filter
+            for member in safe:
+                if filter_kw:
+                    tf.extract(member, path=restore_root, set_attrs=False, **filter_kw)
+                else:
+                    tf.extract(member, path=restore_root, set_attrs=False)
+    except (tarfile.TarError, OSError, KeyError) as exc:
+        logger.error("tar inspect/extract failed: %s", exc)
+        return 1
+    return 0
+
+
 def _safe_tar_members(tarball: str, restore_root: str) -> list[str] | None:
-    """Return regular-file member names under restore_root; reject links/specials."""
+    """Compatibility wrapper — prefer _inspect_and_extract_tar for execute path."""
     import tarfile
 
     root = os.path.realpath(restore_root)
@@ -182,30 +237,22 @@ def _safe_tar_members(tarball: str, restore_root: str) -> list[str] | None:
     try:
         with tarfile.open(tarball, "r:*") as tf:
             for member in tf.getmembers():
-                # Reject all symlinks/hardlinks (linkname not validated → deny).
                 if member.islnk() or member.issym():
-                    logger.error("symlink/hardlink rejected: %s -> %s", member.name, member.linkname)
                     return None
                 name = member.name.lstrip("/")
                 if name.startswith("..") or ".." in name.split("/"):
-                    logger.error("path traversal in archive: %s", member.name)
                     return None
                 if os.path.isabs(member.name) or member.name.startswith("/"):
-                    logger.error("absolute path in archive: %s", member.name)
                     return None
                 dest = os.path.realpath(os.path.join(root, name))
                 if not dest.startswith(root + os.sep) and dest != root:
-                    logger.error("escape path in archive: %s", member.name)
                     return None
                 if member.isdev() or member.ischr() or member.isblk() or member.isfifo():
-                    logger.error("special file rejected: %s", member.name)
                     return None
                 if not (member.isfile() or member.isdir()):
-                    logger.error("unsupported member type: %s", member.name)
                     return None
                 safe.append(name)
-    except (tarfile.TarError, OSError) as exc:
-        logger.error("tar unreadable: %s", exc)
+    except (tarfile.TarError, OSError):
         return None
     return safe
 
@@ -267,60 +314,35 @@ def rollback_snapshot(
             print("  timeshift --restore  # alternativa (interactivo, ventana acordada)")
         return 0
 
-    # Staging: only program-created temp dirs. Reject absolute privileged roots.
-    owned_staging = False
+    # Staging: only program-created empty private dirs. Reject caller-supplied
+    # existing paths even under tempfile.gettempdir().
     if restore_root:
-        restore_root = os.path.realpath(restore_root)
-        if restore_root in ("/", "/etc", "/usr", "/var", "/home", "/boot", "/root"):
-            logger.error("restore_root too privileged: %s", restore_root)
-            return 3
-        if ".." in restore_root.split(os.sep):
-            logger.error("restore_root traversal: %s", restore_root)
-            return 3
-        # Allow only paths under system temp that we can own
-        tmp_root = os.path.realpath(tempfile.gettempdir())
-        if not restore_root.startswith(tmp_root + os.sep):
-            logger.error("restore_root must be under tempfile staging: %s", restore_root)
-            print(
-                "ERROR: --restore-root debe ser un directorio de staging bajo el temp "
-                "del sistema (creado por el programa). Host restore no autorizado.",
-                file=sys.stderr,
-            )
-            return 3
-        if not os.path.isdir(restore_root):
-            logger.error("restore_root missing: %s", restore_root)
-            return 1
-    else:
-        restore_root = tempfile.mkdtemp(prefix="aw-restore-")
-        owned_staging = True
-        log_info(f"staging creado: {restore_root}")
+        logger.error("caller-supplied --restore-root rejected; program creates staging")
+        print(
+            "ERROR: no se acepta --restore-root externo; el programa crea staging vacío propio.",
+            file=sys.stderr,
+        )
+        return 3
+
+    restore_root = tempfile.mkdtemp(prefix="aw-restore-")
+    owned_marker = os.path.join(restore_root, ".aw-owned-staging")
+    try:
+        os.chmod(restore_root, 0o700)
+        with open(owned_marker, "w", encoding="utf-8") as fh:
+            fh.write(f"pid={os.getpid()}\n")
+    except OSError as exc:
+        logger.error("cannot claim staging: %s", exc)
+        return 1
+    owned_staging = True
+    log_info(f"staging creado: {restore_root}")
 
     if not os.path.isfile(tarball):
         log_warn("sin etc-backup.tar.gz: restauracion manual con los comandos de arriba")
         return 1
-    members = _safe_tar_members(tarball, restore_root)
-    if members is None:
-        return 1
 
-    try:
-        with tarfile.open(tarball, "r:*") as tf:
-            # Single open; explicit filter when available (Py3.12+)
-            filter_kw = {}
-            if hasattr(tarfile, "data_filter"):
-                filter_kw["filter"] = _tar_data_filter
-            for name in members:
-                try:
-                    member = tf.getmember(name)
-                except KeyError:
-                    continue
-                if filter_kw:
-                    tf.extract(member, path=restore_root, set_attrs=False, **filter_kw)
-                else:
-                    # Pre-3.12: members already vetted; extract regular files/dirs only
-                    tf.extract(member, path=restore_root, set_attrs=False)
-    except (tarfile.TarError, OSError, KeyError) as exc:
-        logger.error("extract failed: %s", exc)
-        return 1
+    rc = _inspect_and_extract_tar(tarball, restore_root)
+    if rc != 0:
+        return rc
     log_info(
         f"Rollback {snapshot_id}: extracted to staging {restore_root} "
         f"(owned={owned_staging}; not host /)"
@@ -358,10 +380,18 @@ def main(argv: list[str] | None = None) -> int:
             restore_root=args.restore_root or None,
         )
     snapshot_id = args.snapshot_id or f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
-    if "/" in snapshot_id or snapshot_id in ("", ".", ".."):
+    if "/" in snapshot_id or "\\" in snapshot_id or snapshot_id in ("", ".", ".."):
         logger.error("snapshot_id inválido: %r", snapshot_id)
         print(f"snapshot_id inválido: {snapshot_id}", file=sys.stderr)
         return 2
+    # Create path: CLI must not reach backend without registry approval token.
+    if os.environ.get("AUTOWORKSPACE_EXECUTION_APPROVED") != "1":
+        logger.error("create_snapshot CLI blocked without execution approval")
+        print(
+            "ERROR: snapshot create via CLI rejected; use run_registered('create_snapshot', …)",
+            file=sys.stderr,
+        )
+        return 3
     snapshot_path = os.path.join(base_dir, snapshot_id)
 
     pkg_mgr = detect_pkg_mgr()

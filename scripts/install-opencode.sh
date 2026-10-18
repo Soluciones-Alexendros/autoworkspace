@@ -38,13 +38,20 @@ fi
 
 echo "PREFLIGHT OpenCode setup — project-local (target=$TARGET dry_run=$DRY_RUN)"
 
-# Conflict scan
+# Conflict scan: only names we are about to install; foreign non-colliding names coexist
+PLANNED=()
+for s in "$SRC"/*; do
+  [ -d "$s" ] || continue
+  [ -f "$s/SKILL.md" ] || continue
+  PLANNED+=("$(basename "$s")")
+done
+
 for dest_rel in .opencode/skills .agents/skills; do
   dest="$TARGET/$dest_rel"
   [ -d "$dest" ] || continue
-  for link in "$dest"/*; do
+  for name in "${PLANNED[@]}"; do
+    link="$dest/$name"
     [ -e "$link" ] || [ -L "$link" ] || continue
-    name=$(basename "$link")
     if [ -e "$link" ] && [ ! -L "$link" ]; then
       echo "ERROR: conflict — real file/dir at $link" >&2
       exit 1
@@ -58,14 +65,14 @@ for dest_rel in .opencode/skills .agents/skills; do
       case "$tgt" in
         "$SRC"/*) ;;
         *)
-          echo "ERROR: conflict — foreign symlink $link → $tgt" >&2
+          echo "ERROR: conflict — foreign symlink $link → $tgt (name collides with planned install)" >&2
           exit 1
           ;;
       esac
     fi
   done
 done
-echo "PREFLIGHT OK"
+echo "PREFLIGHT OK (foreign non-colliding resources preserved)"
 
 if [ "$DRY_RUN" = 1 ]; then
   for dest_rel in .opencode/skills .agents/skills; do

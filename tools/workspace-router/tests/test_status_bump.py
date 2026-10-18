@@ -4,6 +4,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,7 +17,8 @@ from execution.ops import OpResult  # noqa: E402
 from status_bump import advance_status, load_status  # noqa: E402
 
 
-def _ok_run(repo: Path, op: str = "validate_snapshot") -> str:
+def _ok_run(repo: Path, op: str = "plan_specification", phase: str = "DEFINE") -> str:
+    (repo / "keepalive.txt").write_text("x", encoding="utf-8")
     return store_result(
         repo,
         OpResult(
@@ -25,10 +27,12 @@ def _ok_run(repo: Path, op: str = "validate_snapshot") -> str:
             returncode=0,
             duration_ms=1,
             detail="",
-            effect="read",
-            run_id=f"{op}:test:{id(repo)}",
+            effect="write-workspace",
+            run_id=str(uuid.uuid4()),
             plan_digest="abc",
         ),
+        phase=phase,
+        skill="plan-specification",
     )
 
 
@@ -57,12 +61,27 @@ class TestStatusBump(unittest.TestCase):
             advance_status(
                 root, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
             )
-            rid2 = _ok_run(root, "op2")
+            # Evidence claims INTEGRATE but current phase is DEFINE → jump rejected
+            rid2 = store_result(
+                root,
+                OpResult(
+                    operation_id="local_gates",
+                    outcome="succeeded",
+                    returncode=0,
+                    duration_ms=1,
+                    detail="",
+                    effect="write-workspace",
+                    run_id=str(uuid.uuid4()),
+                    plan_digest="abc",
+                ),
+                phase="INTEGRATE",
+                skill="",
+            )
             with self.assertRaises(ValueError) as ctx:
                 advance_status(
                     root,
                     phase="INTEGRATE",
-                    skill="project-publish",
+                    skill="",
                     evidence_ok=True,
                     run_id=rid2,
                 )
@@ -83,7 +102,7 @@ class TestStatusBump(unittest.TestCase):
             self.assertEqual(s1["advance"], 1)
             self.assertEqual(s1["state_revision"], 1)
             self.assertEqual(s1["version"], "0.1.0")
-            rid2 = _ok_run(root, "op2")
+            rid2 = _ok_run(root, "plan_specification", phase="SCHEMAS")
             s2 = advance_status(
                 root,
                 phase="SCHEMAS",
@@ -106,6 +125,16 @@ class TestStatusBump(unittest.TestCase):
             )
             self.assertTrue(data.get("awaiting_agent"))
             self.assertEqual(data.get("phase", "DEFINE"), "DEFINE")  # not completed
+
+    def test_validate_snapshot_cannot_define(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".autoworkspace").mkdir()
+            rid = _ok_run(root, op="validate_snapshot", phase="DEFINE")
+            with self.assertRaises(ValueError):
+                advance_status(
+                    root, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
+                )
 
 
 if __name__ == "__main__":

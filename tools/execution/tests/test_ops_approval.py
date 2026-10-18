@@ -39,7 +39,7 @@ def test_insufficient_tokens():
     assert is_insufficient_token("CONFIRM_SEND")
 
 
-def test_shell_c_rejected():
+def test_shell_c_rejected_via_free_form():
     r = run_operation(
         operation_id="x",
         argv=["bash", "-c", "echo hi"],
@@ -48,7 +48,7 @@ def test_shell_c_rejected():
         require_approval=False,
     )
     assert r.outcome == "blocked"
-    assert "shell" in r.detail
+    assert "free-form" in r.detail
 
 
 def test_mutate_blocked_without_approval(monkeypatch):
@@ -110,7 +110,6 @@ def test_argv_or_target_change_blocks_stale_approval(monkeypatch):
             if not fixed["digest"]:
                 fixed["digest"] = request.plan_digest
                 return ApprovalDecision(True, "first", "test", request.plan_digest)
-            # Re-approve with old digest only
             return ApprovalDecision(True, "stale", "test", fixed["digest"])
 
     monkeypatch.setattr("execution.ops.provider_from_env", lambda: StaleProvider())

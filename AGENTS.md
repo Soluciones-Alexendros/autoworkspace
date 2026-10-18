@@ -54,10 +54,17 @@ SKILL.md body should stay focused (repo gate: ≤500 lines / token budget in `to
 
 - Al cerrar el modo BUILD de un plan (implementación completa): validar en local (pre-commit / que el proyecto monte) antes de sincronizar; crear el commit sin esperar a que el usuario diga «commit»; crear el PR según el plan; el verde local debe anticipar CI verde.
 - Tras abrir el PR: `gh pr merge <n> --auto --merge --delete-branch` (merge commit; nunca squash/rebase/`--admin`). Suscribir `subscribe_github_ci` (rama head) + `subscribe_github_pr` (scope pr), declarar qué se espera y terminar el turno — escuchar notificaciones de fallo o merge; no hacer polling/babysitting.
-- No crear skills de lenguajes de programación; para dudas o fallos de lenguaje usar Context7 / documentación oficial vigente.
+- Revisar o adjuntar un plan no autoriza implementación ni publicación: hace falta orden explícita del operador. Commit, push, PR, merge, tag, release y mutaciones de host requieren autorización específica; si el plan las excluye, prevalecen esos límites sobre el cierre BUILD habitual.
+- Un incremento lleva un único plan canónico (p. ej. `tasks/plan-*.md`) como fuente de verdad; no crear trackers paralelos (`SPEC.md`, `tasks/todo.md`) ni sobrescribir planes históricos. Los todos internos solo reflejan ese documento.
+- No crear skills de lenguajes de programación ni nuevas familias de skills; para dudas o fallos de lenguaje usar Context7 / documentación oficial vigente.
+- No invocar `role-front` ni `role-design` sin una superficie UI/visual real que lo requiera.
+- En puertas y aceptación: no convertir dependencia ausente, skip u omisión en PASS; usar `blocked` / `not_applicable` / `not_run` con motivo. Un `not_applicable` obligatorio debe justificarse con regla verificable.
 
 ## Learned Workspace Facts
 
 - El catálogo canónico son 16 skills en 5 dominios: `plan`, `local`, `project`, `web`, `role` (prefijo del nombre = dominio).
 - Producto: **autoworkspace** — pipeline agéntico, no vitrina de skills.
+- Fuente canónica de skills en el checkout: `skills/<nombre>/SKILL.md`; no asumir que `.agents/skills/` existe o apunta al destino correcto sin resolver el enlace.
 - Actualización de dependencias: Renovate (no Dependabot).
+- Copia desechable, venv o HOME temporal no es sandbox de seguridad para scripts `local-*` (pueden tocar rutas absolutas, credenciales del proceso o red); inspeccionar antes de ejecutar y preferir deny-by-default en entrypoints mutadores.
+- La ejecución controlada de operaciones de skill pasa por contratos `execution.yaml` y la capa `tools/execution/` (approval/ops/registry/evidence), no por invocación libre de scripts.
