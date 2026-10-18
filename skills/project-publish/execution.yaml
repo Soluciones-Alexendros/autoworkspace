@@ -1,7 +1,7 @@
 schema_version: 1
 dialect: autoworkspace.execution
 skill: project-publish
-skill_version: 4.3.0
+skill_version: 4.3.1
 execution_kind: script
 distribution: workspace-required
 shared_dependencies:
@@ -11,12 +11,12 @@ system_requirements:
   network: false
 operations:
   - id: local_gates
-    effect: read
+    effect: write-workspace
     dry_run: "yes"
     idempotency: "yes"
     approval_required: false
     recovery_required: false
-    description: project-publish:local_gates
+    description: project-publish:local_gates (may write via gate-husky.sh)
   - id: publish
     effect: communicate-external
     dry_run: "no"

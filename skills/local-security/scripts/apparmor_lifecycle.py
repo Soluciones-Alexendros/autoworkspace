@@ -113,9 +113,15 @@ def advance(state_path: str, profile: str, stage: str, days: int = 0, execute: b
             print(f"BLOQUEADO: aa-logprof no parsea /etc/apparmor.d/{profile} (ver playbook §10)")
             return 1
         if execute:
-            print(f"aa-enforce /etc/apparmor.d/{profile}  # requiere sudo; verificar flags=(unconfined) antes (playbook §1)")
+            print(
+                "BLOCKED: host AppArmor enforce is not registered in "
+                "tools/execution/registry.py; refusing silent mutation. "
+                f"Manual (operator): aa-enforce /etc/apparmor.d/{profile}",
+                file=sys.stderr,
+            )
+            return 3
         else:
-            print(f"[dry-run] aa-enforce /etc/apparmor.d/{profile} (usa --execute para mostrar comando real)")
+            print(f"[dry-run] aa-enforce /etc/apparmor.d/{profile} (host mutate blocked without registry)")
         info["stage"] = stage
     else:
         cmds = {

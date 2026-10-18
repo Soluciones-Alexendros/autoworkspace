@@ -8,7 +8,7 @@
 
 Workspace agéntico de Soluciones-Alexendros (MIT): no es una vitrina de skills, sino un pipeline preprogramado con variables por proyecto — especificación → esquemas/tests → código → validación → integración → status declarativo versionado.
 
-Versión **5.0.0**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
+Versión **5.1.0**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
 
 **Deps:** version-updates vía [Renovate](.github/renovate.json) (Dependabot Alerts de seguridad pueden quedar ON). App Renovate en la org es prerrequisito humano.
 
@@ -21,7 +21,7 @@ cp -r autoworkspace/skills/<nombre-de-la-skill> ~/.agents/skills/
 
 ## Configuración en OpenCode (harness principal)
 
-OpenCode es el harness principal: no necesita sistema de plugins, solo `AGENTS.md` + `opencode.json` (`skillDirectories`). El agente evalúa cada petición y la asigna a una skill según su descripción y palabras clave.
+OpenCode es el harness principal (versión objetivo declarada: **1.18.34**). Config nativa: `AGENTS.md` + `opencode.json` con `skills.paths` (no `skillDirectories`). El agente evalúa cada petición y la asigna a una skill según su descripción y palabras clave. Verificación: `opencode debug skill` en el checkout (sin `--auto`).
 
 ```bash
 git clone https://github.com/Soluciones-Alexendros/autoworkspace.git

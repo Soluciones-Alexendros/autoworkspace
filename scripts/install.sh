@@ -1,9 +1,9 @@
 #!/bin/bash
 # Install autoworkspace skills into an explicit target. Never touches HOME by default.
+# Phases: preflight (no writes) → apply (journal) → finalize (manifest) / rollback.
 # Usage:
 #   bash scripts/install.sh --target DIR [--dry-run] [--scope skills]
 #   bash scripts/install.sh --uninstall --target DIR
-#   bash scripts/install.sh --prune   # REJECTED: prune-by-catalog-absence removed
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -13,12 +13,13 @@ DRY_RUN=0
 UNINSTALL=0
 SCOPE="skills"
 MANIFEST_NAME=".autoworkspace-install-manifest.json"
+PHASE="all"
 
 usage() {
   cat <<EOF
 Usage: bash scripts/install.sh --target DIR [--dry-run] [--uninstall]
-  --target DIR   Required. Destination skills directory (must resolve under a confined path).
-  --dry-run      Print actions without changing the filesystem.
+  --target DIR   Required. Destination skills directory.
+  --dry-run      Preflight only — no mkdir, no links, no manifest.
   --uninstall    Remove only resources listed in the manifest under --target.
 Does not overwrite global AGENTS.md. Does not prune foreign skills.
 EOF
@@ -44,22 +45,63 @@ if [ -z "$TARGET" ]; then
   exit 2
 fi
 
-# Resolve and confine target (no path traversal via .. after resolve)
-TARGET=$(mkdir -p "$TARGET" 2>/dev/null; cd "$TARGET" && pwd)
-case "$TARGET" in
-  /|/etc|/usr|/var|/bin|/sbin)
-    echo "ERROR: target too privileged: $TARGET" >&2
-    exit 3
-    ;;
-esac
+# --- helpers ---
+is_privileged() {
+  case "$1" in
+    /|/etc|/usr|/var|/bin|/sbin|/boot|/root) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
-MANIFEST="$TARGET/$MANIFEST_NAME"
-run() {
-  if [ "$DRY_RUN" = 1 ]; then
-    echo "[dry-run] $*"
-  else
-    eval "$@"
+resolve_existing_or_parent() {
+  # Resolve target without creating it. If missing, resolve parent + basename.
+  local t="$1"
+  if [ -d "$t" ]; then
+    (cd "$t" && pwd)
+    return
   fi
+  local parent base
+  parent=$(dirname -- "$t")
+  base=$(basename -- "$t")
+  if [ ! -d "$parent" ]; then
+    echo "ERROR: parent of target does not exist: $parent" >&2
+    return 1
+  fi
+  parent=$(cd "$parent" && pwd)
+  echo "$parent/$base"
+}
+
+preflight_conflicts() {
+  local dest name s cur
+  for s in "$SRC"/*; do
+    [ -d "$s" ] || continue
+    [ -f "$s/SKILL.md" ] || continue
+    name=$(basename "$s")
+    dest="$TARGET/$name"
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+      if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+        echo "ERROR: conflict — real file/dir at $dest (foreign resource preserved)" >&2
+        return 1
+      fi
+      if [ -L "$dest" ]; then
+        cur=$(readlink -f "$dest" 2>/dev/null || true)
+        if [ -z "$cur" ]; then
+          echo "ERROR: conflict — broken symlink at $dest (foreign/broken; retained)" >&2
+          return 1
+        fi
+        if [ "$cur" != "$(readlink -f "$s")" ]; then
+          case "$cur" in
+            "$SRC"/*) ;;
+            *)
+              echo "ERROR: conflict — symlink $dest → $cur not owned by this install" >&2
+              return 1
+              ;;
+          esac
+        fi
+      fi
+    fi
+  done
+  return 0
 }
 
 validate_manifest_paths() {
@@ -74,7 +116,6 @@ for rel in data.get("resources", []):
     if ".." in Path(rel).parts or Path(rel).is_absolute():
         print(f"FAIL: traversal/absolute in manifest: {rel}", file=sys.stderr)
         sys.exit(1)
-    # Do not follow symlinks when checking confinement (owned links point at SRC).
     joined = Path(os.path.normpath(str(target / rel)))
     try:
         joined.relative_to(target)
@@ -85,16 +126,31 @@ print("manifest paths OK")
 PY
 }
 
+# Resolve without mkdir (preflight must not write)
+TARGET=$(resolve_existing_or_parent "$TARGET") || exit 1
+if is_privileged "$TARGET"; then
+  echo "ERROR: target too privileged: $TARGET" >&2
+  exit 3
+fi
+
+MANIFEST="$TARGET/$MANIFEST_NAME"
+
+# ---------- uninstall ----------
 if [ "$UNINSTALL" = 1 ]; then
+  if [ ! -d "$TARGET" ]; then
+    echo "ERROR: target missing for uninstall: $TARGET" >&2
+    exit 1
+  fi
   validate_manifest_paths "$MANIFEST"
   if [ ! -f "$MANIFEST" ]; then
     echo "ERROR: no manifest at $MANIFEST; refusing blind uninstall" >&2
     exit 1
   fi
-  python3 - "$MANIFEST" "$TARGET" "$DRY_RUN" <<'PY'
+  python3 - "$MANIFEST" "$TARGET" "$DRY_RUN" "$SRC" <<'PY'
 import json, os, sys
 from pathlib import Path
 mf, target, dry = Path(sys.argv[1]), Path(sys.argv[2]).resolve(), sys.argv[3] == "1"
+src = Path(sys.argv[4]).resolve()
 data = json.loads(mf.read_text(encoding="utf-8"))
 for rel in data.get("resources", []):
     if ".." in Path(rel).parts or Path(rel).is_absolute():
@@ -104,10 +160,26 @@ for rel in data.get("resources", []):
         p.relative_to(target)
     except ValueError:
         print("escape", rel); sys.exit(1)
-    if p.is_symlink() or p.exists():
-        print(("dry-run " if dry else "") + f"remove {p}")
-        if not dry:
-            p.unlink()
+    if not p.exists() and not p.is_symlink():
+        print(f"warn: missing {p}; skip")
+        continue
+    # Verify still owned (symlink → SRC) or retain+warn
+    if p.is_symlink():
+        cur = Path(os.path.realpath(p))
+        try:
+            cur.relative_to(src)
+            owned = True
+        except ValueError:
+            owned = False
+        if not owned:
+            print(f"WARN: retain changed resource {p} → {cur} (not owned); skip remove")
+            continue
+    elif p.is_dir() or p.is_file():
+        print(f"WARN: retain non-symlink resource {p} (type changed); skip remove")
+        continue
+    print(("dry-run " if dry else "") + f"remove {p}")
+    if not dry:
+        p.unlink()
 if not dry:
     mf.unlink(missing_ok=True)
 print("uninstall done")
@@ -115,39 +187,50 @@ PY
   exit 0
 fi
 
-echo "Installing from $SRC → $TARGET (scope=$SCOPE dry_run=$DRY_RUN)"
+# ---------- preflight (always; never writes) ----------
+echo "PREFLIGHT: $SRC → $TARGET (scope=$SCOPE dry_run=$DRY_RUN)"
+preflight_conflicts || exit 1
 RESOURCES=()
 for s in "$SRC"/*; do
   [ -d "$s" ] || continue
   [ -f "$s/SKILL.md" ] || continue
-  name=$(basename "$s")
+  RESOURCES+=("$(basename "$s")")
+done
+echo "PREFLIGHT OK: ${#RESOURCES[@]} skills planned"
+
+if [ "$DRY_RUN" = 1 ]; then
+  for name in "${RESOURCES[@]}"; do
+    echo "[dry-run] ln -sfn $SRC/$name $TARGET/$name"
+  done
+  echo "[dry-run] would write manifest $MANIFEST (not created)"
+  echo "Done (dry-run: zero filesystem writes)."
+  exit 0
+fi
+
+# ---------- apply ----------
+CREATED=()
+rollback() {
+  echo "ROLLBACK: removing ${#CREATED[@]} links created this run" >&2
+  for p in "${CREATED[@]:-}"; do
+    [ -L "$p" ] && rm -f "$p" || true
+  done
+  exit 1
+}
+trap rollback ERR
+
+if [ ! -d "$TARGET" ]; then
+  mkdir -p "$TARGET"
+fi
+
+for name in "${RESOURCES[@]}"; do
   dest="$TARGET/$name"
-  if [ -e "$dest" ] && [ ! -L "$dest" ]; then
-    echo "ERROR: conflict — real file/dir at $dest (foreign resource preserved)" >&2
-    exit 1
-  fi
-  if [ -L "$dest" ]; then
-    cur=$(readlink -f "$dest" 2>/dev/null || true)
-    if [ -n "$cur" ] && [ "$cur" != "$(readlink -f "$s")" ]; then
-      case "$cur" in
-        "$SRC"/*) ;;
-        *)
-          echo "ERROR: conflict — symlink $dest → $cur not owned by this install" >&2
-          exit 1
-          ;;
-      esac
-    fi
-  fi
-  if [ "$DRY_RUN" = 1 ]; then
-    echo "[dry-run] ln -sfn $s $dest"
-  else
-    ln -sfn "$s" "$dest"
-  fi
-  RESOURCES+=("$name")
+  s="$SRC/$name"
+  ln -sfn "$s" "$dest"
+  CREATED+=("$dest")
 done
 
-if [ "$DRY_RUN" = 0 ]; then
-  python3 - "$MANIFEST" "$ROOT" "${RESOURCES[@]}" <<'PY'
+# ---------- finalize ----------
+python3 - "$MANIFEST" "$ROOT" "${RESOURCES[@]}" <<'PY'
 import json, sys
 from pathlib import Path
 mf = Path(sys.argv[1])
@@ -159,11 +242,14 @@ doc = {
     "resources": resources,
     "installer": "scripts/install.sh",
 }
-mf.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+mf.parent.mkdir(parents=True, exist_ok=True)
+tmp = mf.with_suffix(".tmp")
+tmp.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+tmp.replace(mf)
 print(f"manifest → {mf}")
 PY
-  validate_manifest_paths "$MANIFEST"
-fi
+validate_manifest_paths "$MANIFEST"
+trap - ERR
 
 echo "Done. AGENTS.md was not copied to any global home."
 echo "OpenCode project links: use scripts/install-opencode.sh --target <repo>"

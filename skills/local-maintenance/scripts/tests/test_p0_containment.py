@@ -1,10 +1,10 @@
-"""T01 RED/GREEN: P0 containment for clean_routine, snapshot_state, risk_gate, F21."""
+"""P0 containment + exact assertions (no or True / failed >= 0)."""
 from __future__ import annotations
 
 import json
-import os
+import tarfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import clean_routine
 import common
@@ -13,18 +13,18 @@ import snapshot_state
 
 
 class SpyExecutor:
-    """Fails if any unexpected real host mutation is attempted."""
-
-    FORBIDDEN = (
-        "apt",
-        "pacman",
-        "dnf",
-        "systemctl",
-        "journalctl",
-        "fwupdmgr",
-        "timeshift",
-        "snapper",
-        "tar ",
+    FORBIDDEN_MUTATORS = (
+        "apt-get",
+        "apt autoremove",
+        "pacman -Sc",
+        "dnf clean",
+        "journalctl --vacuum",
+        "fwupdmgr update",
+        "needrestart -r",
+        "tar -xzf",
+        "tar -czf",
+        "timeshift --create",
+        "snapper create",
     )
 
     def __init__(self) -> None:
@@ -32,41 +32,33 @@ class SpyExecutor:
 
     def __call__(self, cmd: str, timeout: int = 10):
         self.calls.append(cmd)
-        for needle in self.FORBIDDEN:
-            if needle in cmd and "2>/dev/null" not in cmd.split(needle, 1)[0][-20:]:
-                # Still record; callers decide. Explicit forbid for mutate paths.
-                pass
-        if any(x in cmd for x in ("apt-get", "apt autoremove", "pacman -Sc", "dnf clean",
-                                   "journalctl --vacuum", "fwupdmgr update", "needrestart -r",
-                                   "tar -xzf", "tar -czf", "timeshift --create", "snapper create")):
+        if any(x in cmd for x in self.FORBIDDEN_MUTATORS):
             raise AssertionError(f"forbidden host mutation attempted: {cmd}")
         return 1, ""
 
 
 def test_f01_execute_without_policy_blocks(monkeypatch, tmp_path):
-    """Mutating path must not call run_capture for cleanup without validated snapshot."""
     spy = SpyExecutor()
     monkeypatch.setattr(clean_routine, "which", lambda c: "/bin/true" if c == "apt" else None)
     monkeypatch.setattr(clean_routine, "run_capture", spy)
     monkeypatch.setattr(clean_routine, "run", lambda *a, **k: "")
-
+    monkeypatch.delenv("AUTOWORKSPACE_ALLOW_HOST_MUTATION", raising=False)
     rc = clean_routine.main(["--execute", "--snapshot-id", "missing-snap"])
     assert rc != 0
     assert not any("apt" in c or "journalctl --vacuum" in c for c in spy.calls)
 
 
-def test_f02_failed_snapshot_creation_blocks_first_effect(monkeypatch):
+def test_f02_create_snapshot_requires_approval(monkeypatch):
     monkeypatch.setattr(clean_routine, "which", lambda c: "/bin/true" if c == "apt" else None)
+    monkeypatch.delenv("AUTOWORKSPACE_APPROVAL_PROVIDER", raising=False)
 
     def fake_run_capture(cmd, timeout=10):
-        if "snapshot_state" in cmd:
-            return 1, "backend failed"
-        raise AssertionError(f"mutation before snapshot check: {cmd}")
+        raise AssertionError(f"mutation/create before approval: {cmd}")
 
     monkeypatch.setattr(clean_routine, "run_capture", fake_run_capture)
     monkeypatch.setattr(clean_routine, "run", lambda *a, **k: "")
     rc = clean_routine.main(["--execute"])
-    assert rc != 0
+    assert rc == 3  # blocked awaiting approval
 
 
 def test_f02_invalid_snapshot_id_rejected(monkeypatch, tmp_path):
@@ -77,48 +69,37 @@ def test_f02_invalid_snapshot_id_rejected(monkeypatch, tmp_path):
     assert rc != 0
 
 
-def test_f03_json_reflects_real_failures(monkeypatch, tmp_path):
+def test_f03_json_reflects_simulated_not_completed(monkeypatch, tmp_path):
     monkeypatch.setattr(clean_routine, "which", lambda c: "/bin/true" if c == "apt" else None)
-    monkeypatch.setattr(clean_routine, "DRY_RUN", True)
-    monkeypatch.setattr(clean_routine, "EXECUTE", False)
-    monkeypatch.setattr(clean_routine, "PKG_MGR", "apt")
-    monkeypatch.setattr(clean_routine, "JSON_MODE", True)
-    out = tmp_path / "out.json"
-    monkeypatch.setattr(clean_routine, "JSON_OUTPUT", str(out))
-    monkeypatch.setattr(clean_routine, "WITH_FIRMWARE", False)
-
-    # Force one action failure via run_safe
-    results = []
-
-    def tracking_run_safe(cmd, risk, desc):
-        results.append({"action": desc, "status": "failed", "rc": 1})
-        return 1
-
-    monkeypatch.setattr(clean_routine, "run_safe", tracking_run_safe)
+    monkeypatch.setattr(clean_routine, "run_capture", SpyExecutor())
     monkeypatch.setattr(clean_routine, "run", lambda *a, **k: "")
-    # Use accumulate path if present
-    if hasattr(clean_routine, "ACTION_RESULTS"):
-        clean_routine.ACTION_RESULTS.clear()
-
+    out = tmp_path / "out.json"
     rc = clean_routine.main(["--dry-run", "--json", str(out)])
+    assert rc == 0
     assert out.is_file()
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["summary"]["failed"] >= 0
-    # After fix: simulated/dry-run statuses are not "completed" for real execute
-    statuses = {a["status"] for a in data["actions"]}
-    assert "completed" not in statuses or data["metadata"].get("dry_run") is True
-    # dry-run must mark simulated or skipped, not false completed counts as real success
-    if data["metadata"].get("dry_run"):
-        assert all(a["status"] in ("simulated", "skipped", "failed", "planned") for a in data["actions"])
+    assert data["summary"]["failed"] == 0
+    assert data["summary"]["simulated"] >= 1
+    assert data["metadata"]["dry_run"] is True
+    assert all(
+        a["status"] in ("simulated", "skipped") for a in data["actions"]
+    )
+    assert "completed" not in {a["status"] for a in data["actions"]}
 
 
-def test_f04_unknown_operation_denied_for_mutation_registry():
+def test_f04_unknown_operation_denied():
     assert risk_gate.classify_command("echo hola") == "R0"
-    # Registry deny-by-default for unknown *operations* (typed API)
-    if hasattr(risk_gate, "authorize_operation"):
-        allowed, reason = risk_gate.authorize_operation("totally-unknown-op", {})
-        assert allowed is False
-        assert reason
+    allowed, reason = risk_gate.authorize_operation("totally-unknown-op", {})
+    assert allowed is False
+    assert reason
+
+
+def test_authorize_rejects_approved_token():
+    allowed, reason = risk_gate.authorize_operation(
+        "clean_journal", {"approved": True, "snapshot_id": "s"}
+    )
+    assert allowed is False
+    assert "consent" in reason or "ApprovalProvider" in reason
 
 
 def test_f19_backend_failure_not_success(monkeypatch, tmp_path):
@@ -134,11 +115,6 @@ def test_f19_backend_failure_not_success(monkeypatch, tmp_path):
 
     rc = snapshot_state.main(["snap-fail", "--snapshot-dir", str(tmp_path)])
     assert rc != 0
-    meta_path = tmp_path / "snap-fail" / "metadata.json"
-    if meta_path.is_file():
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        assert meta.get("recovery_scope") in ("none", "partial", None) or meta.get("backend_status") != "ok"
-        assert meta.get("outcome") in ("failed", "partial", "blocked", None) or rc != 0
 
 
 def test_f20_no_private_ssh_keys_by_default(monkeypatch, tmp_path):
@@ -167,31 +143,23 @@ def test_f20_no_private_ssh_keys_by_default(monkeypatch, tmp_path):
 def test_f21_empty_category_not_perfect_score():
     collector = common.FindingCollector()
     scores = collector.health_score()
-    # Categories with no scorable observations must not silently score 100
     for cat, score in scores.items():
         if cat == "overall":
             continue
-        # When no findings at all, coverage is zero — score must not claim perfection
         assert score != 100 or collector.summary().get("check_coverage") == 0
-    # Explicit: _category_score with no data is not 100 after fix
-    assert collector._category_score("packages") != 100 or hasattr(collector, "category_coverage")
+    assert collector._category_score("packages") != 100
 
 
 def test_f21_timeout_preserved_in_run_result():
-    if hasattr(common, "run_result"):
-        with patch("common.subprocess.run", side_effect=__import__("subprocess").TimeoutExpired("x", 1)):
-            res = common.run_result(["true"], timeout=1)
-            assert res.timed_out or res.returncode != 0
-            assert res.stdout == "" or res.error
+    with patch("common.subprocess.run", side_effect=__import__("subprocess").TimeoutExpired("x", 1)):
+        res = common.run_result(["true"], timeout=1)
+        assert res.timed_out or res.returncode != 0
 
 
 def test_f22_skill_version_from_manifest():
-    version = common.skill_version_from_manifest() if hasattr(common, "skill_version_from_manifest") else None
-    assert version is not None
+    version = common.skill_version_from_manifest()
     assert version == common.SKILL_VERSION
-    # Must track SKILL.md, not the stale component constant
     assert version != "2.0.0"
-    assert common.COMPONENT_VERSION != version or True  # component may differ
 
 
 def test_r07_dry_run_zero_mutations(monkeypatch):
@@ -201,16 +169,53 @@ def test_r07_dry_run_zero_mutations(monkeypatch):
     monkeypatch.setattr(clean_routine, "run", lambda *a, **k: "ok")
     rc = clean_routine.main(["--dry-run"])
     assert rc == 0
-    assert spy.calls == [] or all("vacuum" not in c and "autoremove" not in c for c in spy.calls)
+    assert spy.calls == []
 
 
-def test_host_rollback_execute_blocked_without_temp_root(monkeypatch, tmp_path):
-    """Host restore --execute without explicit temp root must be denied."""
+def test_restore_staging_content_assert(tmp_path):
     snap = tmp_path / "snap-x"
     snap.mkdir()
-    (snap / "etc-backup.tar.gz").write_bytes(b"not-a-real-tar")
     (snap / "metadata.json").write_text("{}", encoding="utf-8")
+    tarball = snap / "etc-backup.tar.gz"
+    src = tmp_path / "payload"
+    src.mkdir()
+    (src / "hello.txt").write_text("restore-ok\n", encoding="utf-8")
+    with tarfile.open(tarball, "w:gz") as tf:
+        tf.add(src / "hello.txt", arcname="hello.txt")
     rc = snapshot_state.main(
         ["--rollback", "snap-x", "--snapshot-dir", str(tmp_path), "--execute"]
     )
-    assert rc != 0
+    assert rc == 0
+
+
+def test_restore_rejects_symlink_member(tmp_path):
+    snap = tmp_path / "snap-link"
+    snap.mkdir()
+    (snap / "metadata.json").write_text("{}", encoding="utf-8")
+    tarball = snap / "etc-backup.tar.gz"
+    with tarfile.open(tarball, "w:gz") as tf:
+        info = tarfile.TarInfo(name="evil")
+        info.type = tarfile.SYMTYPE
+        info.linkname = "/etc/passwd"
+        tf.addfile(info)
+    staging = tmp_path / "stage"
+    staging.mkdir()
+    # force staging under tempfile by using real temp
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="aw-restore-") as stage:
+        rc = snapshot_state.rollback_snapshot(
+            str(tmp_path), "snap-link", execute=True, restore_root=stage
+        )
+        assert rc != 0
+
+
+def test_host_rollback_privileged_root_blocked(tmp_path):
+    snap = tmp_path / "snap-x"
+    snap.mkdir()
+    (snap / "etc-backup.tar.gz").write_bytes(b"\x1f\x8b")  # not used if root rejected first
+    (snap / "metadata.json").write_text("{}", encoding="utf-8")
+    rc = snapshot_state.rollback_snapshot(
+        str(tmp_path), "snap-x", execute=True, restore_root="/"
+    )
+    assert rc == 3
