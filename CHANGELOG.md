@@ -6,6 +6,8 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `local-maintenance` 5.1.2 -> 5.1.3 (patch)
+
 - `local-maintenance` 5.1.1 -> 5.1.2 (patch)
 
 - `local-maintenance` 5.0.0 -> 5.1.0 (minor)
