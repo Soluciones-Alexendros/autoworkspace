@@ -205,25 +205,37 @@ def advance_status(
         sys.path.insert(0, str(tools))
     from execution.evidence import load_evidence
 
-    # Validate evidence outside lock first (content digest); re-check run_id under lock
-    evidence = load_evidence(
-        root,
-        run_id,
-        revalidate_content=True,
-        expected_phase=phase,
-        expected_skill=skill or None,
-        expected_target=target or None,
-    )
-    if evidence.get("outcome") != "succeeded":
-        raise ValueError("evidence outcome is not succeeded")
+    replay = {"idempotent": False, "evidence": None}
 
-    replay = {"idempotent": False}
+    def _receipt_key(ph: str, rid: str) -> str:
+        return f"{ph}:{rid}"
+
+    def _seen_completion(data: dict[str, Any], rid: str, ph: str) -> bool:
+        receipts = data.get("completion_receipts") or {}
+        if isinstance(receipts, dict) and _receipt_key(ph, rid) in receipts:
+            return True
+        # Legacy window still consulted
+        completed = list(data.get("completed_run_ids") or [])
+        return rid in completed
 
     def _advance(data: dict[str, Any]) -> dict[str, Any]:
         data = dict(data)
-        completed = list(data.get("completed_run_ids") or [])
-        if run_id in completed:
-            # Idempotent: leave state unchanged (no double advance)
+        # Revalidate evidence UNDER lock so stale content between pre-check and
+        # commit cannot complete (H19).
+        evidence = load_evidence(
+            root,
+            run_id,
+            revalidate_content=True,
+            expected_phase=phase,
+            expected_skill=skill or None,
+            expected_target=target or None,
+            for_complete=True,
+        )
+        if evidence.get("outcome") != "succeeded":
+            raise ValueError("evidence outcome is not succeeded")
+        replay["evidence"] = evidence
+
+        if _seen_completion(data, run_id, phase):
             replay["idempotent"] = True
             return data
 
@@ -270,7 +282,15 @@ def advance_status(
                 "phase": phase,
             }
         )
+        completed = list(data.get("completed_run_ids") or [])
         completed.append(run_id)
+        receipts = dict(data.get("completion_receipts") or {})
+        receipts[_receipt_key(phase, run_id)] = {
+            "at": now,
+            "state_revision": state_revision,
+            "plan_digest": evidence.get("plan_digest", ""),
+            "output_digest": evidence.get("output_digest", ""),
+        }
         data.update(
             {
                 "schema_version": 1,
@@ -283,7 +303,9 @@ def advance_status(
                 "updated_at": now,
                 "history": history[-50:],
                 "evidence_log": evidence_log,
+                # Compact window for diagnostics; durable identity is receipts.
                 "completed_run_ids": completed[-200:],
+                "completion_receipts": receipts,
                 "awaiting_agent": False,
             }
         )
@@ -302,3 +324,64 @@ def advance_status(
         result = dict(result)
         result["_idempotent_replay"] = True
     return result
+
+
+def resolve_awaiting_agent(
+    repo: Path | str,
+    *,
+    run_id: str,
+    phase: str,
+    skill: str = "",
+    target: str = "",
+    write: bool = True,
+) -> dict[str, Any]:
+    """Public API: clear awaiting_agent after validated evidence (H14/C11).
+
+    Does not advance the phase by itself — call advance_status after resolve
+    (or use complete_after_resolve). Editing status.yaml manually is not required.
+    """
+    if phase not in PHASES:
+        raise ValueError(f"unknown phase {phase!r}")
+    if not run_id:
+        raise ValueError("run_id required to resolve awaiting_agent")
+
+    root = Path(repo).resolve()
+    import sys
+
+    tools = Path(__file__).resolve().parents[1]
+    if str(tools) not in sys.path:
+        sys.path.insert(0, str(tools))
+    from execution.evidence import load_evidence
+
+    def _resolve(data: dict[str, Any]) -> dict[str, Any]:
+        data = dict(data)
+        if not data.get("awaiting_agent"):
+            data["_resolve_noop"] = True
+            return data
+        awaiting_phase = str(data.get("awaiting_phase") or phase)
+        if awaiting_phase != phase:
+            raise ValueError(
+                f"awaiting_phase mismatch: status has {awaiting_phase}, got {phase}"
+            )
+        # Validate evidence under lock
+        evidence = load_evidence(
+            root,
+            run_id,
+            revalidate_content=True,
+            expected_phase=phase,
+            expected_skill=skill or None,
+            expected_target=target or None,
+            for_complete=True,
+        )
+        if evidence.get("outcome") != "succeeded":
+            raise ValueError("evidence outcome is not succeeded")
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        data["awaiting_agent"] = False
+        data.pop("awaiting_phase", None)
+        data["updated_at"] = now
+        data["last_resolve_run_id"] = run_id
+        return data
+
+    if not write:
+        return _resolve(load_status(root))
+    return _with_status_lock(root, _resolve)

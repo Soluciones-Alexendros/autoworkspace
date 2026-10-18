@@ -211,33 +211,38 @@ fi
 JOURNAL="$TARGET/.autoworkspace-install-journal.json"
 rollback() {
   echo "ROLLBACK: restoring prior link state from journal" >&2
-  python3 - "$JOURNAL" <<'PY' || true
+  # Shared implementation — tests must call this path, not a mirror algorithm.
+  if ! python3 - "$JOURNAL" <<'PY'
 import json, os, sys
 from pathlib import Path
 jp = Path(sys.argv[1])
 if not jp.is_file():
+    print("rollback: no journal; nothing to restore", file=sys.stderr)
     sys.exit(0)
 doc = json.loads(jp.read_text(encoding="utf-8"))
 for entry in reversed(doc.get("entries", [])):
+    if not entry.get("applied"):
+        continue  # never applied — prior state intact
     dest = Path(entry["dest"])
     action = entry.get("action")
-    prev = entry.get("previous")
+    prev = entry.get("previous") or {}
     if action == "created":
-        if dest.is_symlink() or dest.exists():
-            dest.unlink()
-    elif action == "replaced" and prev is not None:
         if dest.is_symlink() or (dest.exists() and not dest.is_dir()):
-            try:
-                dest.unlink()
-            except OSError:
-                pass
+            dest.unlink()
+    elif action == "replaced":
+        if dest.is_symlink() or (dest.exists() and not dest.is_dir()):
+            dest.unlink()
         if prev.get("type") == "symlink":
             os.symlink(prev["target"], dest)
-        # absent previous → leave removed
+        # absent → leave removed
     # unchanged: nothing
 jp.unlink(missing_ok=True)
 print("rollback restored prior state")
 PY
+  then
+    echo "ROLLBACK FAILED" >&2
+    exit 1
+  fi
   exit 1
 }
 trap rollback ERR
@@ -247,13 +252,34 @@ if [ ! -d "$TARGET" ]; then
 fi
 
 python3 - "$JOURNAL" "$SRC" "$TARGET" "${RESOURCES[@]}" <<'PY'
+"""Write-ahead journal: persist prior state BEFORE each filesystem effect (H09/C13)."""
 import json, os, sys
 from pathlib import Path
+
 journal_path = Path(sys.argv[1])
 src = Path(sys.argv[2]).resolve()
 target = Path(sys.argv[3]).resolve()
 names = sys.argv[4:]
-entries = []
+
+
+def persist(doc: dict) -> None:
+    tmp = journal_path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, journal_path)
+    # Best-effort durability
+    try:
+        fd = os.open(journal_path, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
+
+
+doc = {"schema_version": 1, "run_id": os.environ.get("AW_INSTALL_RUN", ""), "entries": []}
+persist(doc)
+
 for name in names:
     dest = target / name
     s = src / name
@@ -265,14 +291,28 @@ for name in names:
         raise SystemExit(f"conflict real path {dest}")
     else:
         action = "created"
+        previous = {"type": "absent"}
+
+    # Intention recorded BEFORE mutation
+    entry = {
+        "name": name,
+        "dest": str(dest),
+        "action": action,
+        "previous": previous,
+        "applied": False,
+        "source": str(s),
+    }
+    doc["entries"].append(entry)
+    persist(doc)
+
     if action != "unchanged":
-        if dest.is_symlink() or dest.exists():
+        if dest.is_symlink() or (dest.exists() and not dest.is_dir()):
             dest.unlink()
         os.symlink(str(s), dest)
-    entries.append({"name": name, "dest": str(dest), "action": action, "previous": previous})
-doc = {"schema_version": 1, "entries": entries}
-journal_path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-print(f"journal → {journal_path} ({len(entries)} resources)")
+    entry["applied"] = True
+    persist(doc)
+
+print(f"journal → {journal_path} ({len(doc['entries'])} resources)")
 PY
 
 # ---------- finalize ----------

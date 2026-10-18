@@ -140,34 +140,87 @@ def cmd_check_repo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_readiness(args: argparse.Namespace) -> int:
+    """Strict release readiness (C20): missing/empty/YANKED notes → fail, never published."""
+    root = args.root
+    pkg = package_version(root)
+    tagged = latest_tag(root)
+    changelog_path = root / "CHANGELOG.md"
+    if not changelog_path.is_file():
+        print(f"READINESS: fail reason=missing_changelog package={pkg}")
+        write_output(tagged="false", version=pkg, status="not_ready", reason="missing_changelog")
+        return 1
+    try:
+        changelog = changelog_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"READINESS: fail reason=fs_error package={pkg} err={exc}")
+        write_output(tagged="false", version=pkg, status="error", reason="fs_error")
+        return 1
+    try:
+        notes = extract_notes(changelog, pkg)
+    except ValueError as e:
+        reason = "yanked" if "YANKED" in str(e) else "missing_or_empty_notes"
+        print(f"READINESS: fail reason={reason} package={pkg} detail={e}")
+        write_output(tagged="false", version=pkg, status="not_ready", reason=reason)
+        return 1
+    if not should_cut(pkg, tagged):
+        print(f"READINESS: fail reason=already_tagged package={pkg} latest_tag={tagged}")
+        write_output(tagged="false", version=pkg, status="not_ready", reason="already_tagged")
+        return 1
+    print(f"READINESS: ok package={pkg} notes_bytes={len(notes)} latest_tag={tagged}")
+    write_output(tagged="false", version=pkg, status="ready", reason="ok")
+    if args.notes_file:
+        Path(args.notes_file).write_text(notes, encoding="utf-8")
+    return 0
+
+
 def cmd_cut(args: argparse.Namespace) -> int:
     root = args.root
     pkg = package_version(root)
     tagged = latest_tag(root)
+    if args.strict_readiness:
+        # Explicit release path: readiness failure is an error, never skip-success.
+        rc = cmd_readiness(args)
+        if rc != 0:
+            return rc
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     try:
         notes = extract_notes(changelog, pkg)
     except ValueError as e:
-        # Missing/empty dated section → not ready to cut; do not fail main CI.
+        if args.strict_readiness:
+            print(f"CUT: fail ({e}); package={pkg}")
+            write_output(tagged="false", version=pkg, status="not_ready", reason="notes")
+            return 1
+        # Ordinary push path: skip ≠ published
         print(f"CUT: skip ({e}); package={pkg} latest_tag={tagged}")
-        write_output(tagged="false", version=pkg)
+        write_output(tagged="false", version=pkg, status="skipped", reason=str(e))
         return 0
     if not should_cut(pkg, tagged):
         print(f"CUT: skip package={pkg} latest_tag={tagged}")
-        write_output(tagged="false", version=pkg)
+        write_output(tagged="false", version=pkg, status="skipped", reason="already_tagged")
         return 0
     tag = f"v{pkg}"
     print(f"CUT: would tag {tag} (latest={tagged})")
     if args.notes_file:
         Path(args.notes_file).write_text(notes, encoding="utf-8")
     if not args.apply:
-        write_output(tagged="false", version=pkg)
+        write_output(tagged="false", version=pkg, status="dry_run", reason="ok")
         return 0
-    git(["tag", "-a", tag, "-m", tag], root)
+    try:
+        git(["tag", "-a", tag, "-m", tag], root)
+    except RuntimeError as exc:
+        print(f"CUT: fail git_error {exc}")
+        write_output(tagged="false", version=pkg, status="error", reason="git_error")
+        return 1
     if args.push:
-        git(["push", "origin", tag], root)
+        try:
+            git(["push", "origin", tag], root)
+        except RuntimeError as exc:
+            print(f"CUT: fail push_error {exc}")
+            write_output(tagged="false", version=pkg, status="error", reason="push_error")
+            return 1
     print(f"CUT: created {tag}")
-    write_output(tagged="true", version=pkg)
+    write_output(tagged="true", version=pkg, status="published", reason="ok")
     return 0
 
 
@@ -180,6 +233,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--extract-notes", default=None, metavar="VERSION")
     p.add_argument("--notes-file", default=None)
     p.add_argument("--check-repo", action="store_true")
+    p.add_argument(
+        "--check-readiness",
+        action="store_true",
+        help="Strict readiness gate: missing/empty/YANKED notes fail (never published)",
+    )
+    p.add_argument(
+        "--strict-readiness",
+        action="store_true",
+        help="On cut: treat missing notes as failure instead of skip",
+    )
     p.add_argument("--base", default="origin/main")
     return p
 
@@ -191,6 +254,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_extract(args)
     if args.check_repo:
         return cmd_check_repo(args)
+    if args.check_readiness:
+        return cmd_readiness(args)
     return cmd_cut(args)
 
 
