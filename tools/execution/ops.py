@@ -1,4 +1,4 @@
-"""Typed operation runner: argv only, shell=False, approval + timeout."""
+"""Typed operation runner: registry-only for mutators; argv never caller-supplied."""
 from __future__ import annotations
 
 import os
@@ -15,6 +15,7 @@ from execution.approval import (
     plan_digest,
     provider_from_env,
 )
+from execution.registry import get_handler, get_operation, resolve_argv
 
 
 @dataclass
@@ -25,41 +26,70 @@ class OpResult:
     duration_ms: int
     detail: str
     effect: str
+    run_id: str = ""
+    plan_digest: str = ""
 
 
 SHELL_ESCAPES = {"bash", "sh", "dash", "zsh"}
 
+# Outcomes that may never complete a pipeline phase.
+NON_TERMINAL = frozenset({"simulated", "awaiting_agent", "awaiting_approval", "blocked"})
+
 
 def _reject_shell_escape(argv: list[str]) -> str | None:
     if not argv:
-        return "empty argv"
+        return None  # handler-only ops have empty argv
     base = os.path.basename(argv[0])
     if base in SHELL_ESCAPES and len(argv) >= 2 and argv[1] in {"-c", "-lc"}:
         return "shell -c escape rejected"
     return None
 
 
-def run_operation(
-    *,
-    operation_id: str,
-    argv: list[str],
-    effect: str,
-    target: str,
-    params: dict[str, Any] | None = None,
-    timeout: int = 60,
-    cwd: str | None = None,
-    require_approval: bool = True,
-) -> OpResult:
-    params = params or {}
-    # Never accept approved=true style tokens
-    if is_insufficient_token(str(params.get("approved", ""))):
-        params = {k: v for k, v in params.items() if k != "approved"}
+def _make_run_id(operation_id: str, digest: str) -> str:
+    return f"{operation_id}:{digest[:16]}:{int(time.time())}"
 
-    digest = plan_digest(operation_id, target, params, [effect])
-    if effect in {"mutate-host", "communicate-external", "access-secret"} and require_approval:
+
+def run_registered(
+    operation_id: str,
+    params: dict[str, Any] | None = None,
+    *,
+    target: str = ".",
+    cwd: str | None = None,
+    executable_id: str = "autoworkspace",
+) -> OpResult:
+    """Execute a registered operation. Callers may not pass effect/argv/approval flags."""
+    params = dict(params or {})
+    # Strip insufficient consent tokens
+    if is_insufficient_token(str(params.get("approved", ""))):
+        params.pop("approved", None)
+    for bad in ("effect", "require_approval", "argv"):
+        params.pop(bad, None)
+
+    try:
+        spec = get_operation(operation_id)
+    except KeyError:
+        return OpResult(operation_id, "blocked", None, 0, "unknown operation", "unknown")
+
+    argv = resolve_argv(spec, params)
+    digest = plan_digest(
+        operation_id,
+        target,
+        params,
+        [spec.effect],
+        argv=argv,
+        cwd=cwd,
+        executable_id=executable_id,
+        effect=spec.effect,
+    )
+
+    if spec.require_approval or spec.effect in {
+        "mutate-host",
+        "communicate-external",
+        "access-secret",
+    }:
         provider = provider_from_env()
         decision = provider.decide(
-            ApprovalRequest(operation_id, target, params, (effect,), digest)
+            ApprovalRequest(operation_id, target, params, (spec.effect,), digest)
         )
         if not decision.allowed or decision.covers_digest != digest:
             return OpResult(
@@ -68,13 +98,92 @@ def run_operation(
                 None,
                 0,
                 decision.reason,
-                effect,
+                spec.effect,
+                plan_digest=digest,
             )
+
+    if spec.require_snapshot and not params.get("snapshot_id"):
+        return OpResult(
+            operation_id,
+            "blocked",
+            None,
+            0,
+            "snapshot_id required",
+            spec.effect,
+            plan_digest=digest,
+        )
 
     bad = _reject_shell_escape(argv)
     if bad:
-        return OpResult(operation_id, "blocked", 2, 0, bad, effect)
+        return OpResult(operation_id, "blocked", 2, 0, bad, spec.effect, plan_digest=digest)
 
+    handler = get_handler(operation_id)
+    start = time.monotonic()
+    run_id = _make_run_id(operation_id, digest)
+
+    if handler is not None:
+        try:
+            rc = handler(params)
+            if isinstance(rc, OpResult):
+                rc.run_id = rc.run_id or run_id
+                rc.plan_digest = rc.plan_digest or digest
+                return rc
+            code = int(rc) if rc is not None else 0
+            outcome = "succeeded" if code == 0 else "failed"
+            return OpResult(
+                operation_id,
+                outcome,
+                code,
+                int((time.monotonic() - start) * 1000),
+                "",
+                spec.effect,
+                run_id=run_id,
+                plan_digest=digest,
+            )
+        except Exception as exc:  # noqa: BLE001 — boundary
+            return OpResult(
+                operation_id,
+                "failed",
+                1,
+                int((time.monotonic() - start) * 1000),
+                str(exc)[:500],
+                spec.effect,
+                run_id=run_id,
+                plan_digest=digest,
+            )
+
+    if not argv:
+        return OpResult(
+            operation_id,
+            "blocked",
+            None,
+            0,
+            "no handler and no argv_template",
+            spec.effect,
+            plan_digest=digest,
+        )
+
+    return _run_subprocess(
+        operation_id,
+        argv,
+        spec.effect,
+        timeout=spec.timeout,
+        cwd=cwd,
+        run_id=run_id,
+        digest=digest,
+    )
+
+
+def _run_subprocess(
+    operation_id: str,
+    argv: list[str],
+    effect: str,
+    *,
+    timeout: int,
+    cwd: str | None,
+    run_id: str,
+    digest: str,
+) -> OpResult:
     start = time.monotonic()
     try:
         proc = subprocess.Popen(
@@ -98,6 +207,8 @@ def run_operation(
                 int((time.monotonic() - start) * 1000),
                 "timeout; process group killed; reconcile before retry if external effects possible",
                 effect,
+                run_id=run_id,
+                plan_digest=digest,
             )
         rc = proc.returncode
         outcome = "succeeded" if rc == 0 else "failed"
@@ -109,6 +220,8 @@ def run_operation(
             int((time.monotonic() - start) * 1000),
             detail,
             effect,
+            run_id=run_id,
+            plan_digest=digest,
         )
     except OSError as exc:
         return OpResult(
@@ -118,8 +231,55 @@ def run_operation(
             int((time.monotonic() - start) * 1000),
             str(exc),
             effect,
+            run_id=run_id,
+            plan_digest=digest,
         )
 
 
-# Silence unused import lint for DenyProvider re-export convenience
+def run_operation(
+    *,
+    operation_id: str,
+    argv: list[str] | None = None,
+    effect: str | None = None,
+    target: str = ".",
+    params: dict[str, Any] | None = None,
+    timeout: int = 60,
+    cwd: str | None = None,
+    require_approval: bool | None = None,
+) -> OpResult:
+    """Deprecated free-form entry. Mutators must use run_registered.
+
+    If effect/argv/require_approval are supplied for a mutating effect, reject.
+    Read-only legacy tests may still pass argv with effect=read and require_approval=False.
+    """
+    params = dict(params or {})
+    if effect in {"mutate-host", "communicate-external", "access-secret"} or (
+        argv is not None and effect not in (None, "read")
+    ):
+        # Free-form mutation path is closed.
+        return OpResult(
+            operation_id,
+            "blocked",
+            None,
+            0,
+            "free-form run_operation rejected; use run_registered(operation_id, params)",
+            effect or "unknown",
+        )
+    if effect == "read" and argv is not None and require_approval is False:
+        bad = _reject_shell_escape(argv)
+        if bad:
+            return OpResult(operation_id, "blocked", 2, 0, bad, "read")
+        return _run_subprocess(
+            operation_id,
+            argv,
+            "read",
+            timeout=timeout,
+            cwd=cwd,
+            run_id="",
+            digest="",
+        )
+    # Prefer registry path
+    return run_registered(operation_id, params, target=target, cwd=cwd)
+
+
 _ = DenyProvider

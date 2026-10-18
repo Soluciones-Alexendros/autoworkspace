@@ -45,49 +45,15 @@ if [ "$FULL" = 1 ]; then
   echo "[4] hygiene.py"
   python3 tools/validate/hygiene.py --root "$ROOT"
 
-  echo "[4b] execution contracts (if present)"
-  if [ -f tools/contracts/validate_contracts.py ]; then
-    python3 tools/contracts/validate_contracts.py --root "$ROOT"
-  fi
+  echo "[4b] execution contracts (required)"
+  python3 tools/contracts/validate_contracts.py --root "$ROOT"
 
-  echo "[5] skill-index.json check (read-only)"
-  python3 - <<'PY'
-import json, sys
-from pathlib import Path
-root = Path(".")
-skills = sorted(p.name for p in (root / "skills").iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
-index_path = root / "skill-index.json"
-if not index_path.is_file():
-    print("FAIL: skill-index.json missing (run: python3 tools/skill-router/build_index.py)")
-    sys.exit(1)
-data = json.loads(index_path.read_text(encoding="utf-8"))
-indexed = [s["name"] for s in data.get("skills", [])]
-set_skills, set_idx = set(skills), set(indexed)
-dupes = [n for n in indexed if indexed.count(n) > 1]
-if dupes:
-    print(f"FAIL: duplicate index names: {sorted(set(dupes))}"); sys.exit(1)
-missing = sorted(set_skills - set_idx)
-extra = sorted(set_idx - set_skills)
-if missing or extra:
-    print(f"FAIL: index mismatch missing={missing} extra={extra}")
-    print("Hint: python3 tools/skill-router/build_index.py  # explicit rebuild, not part of check")
-    sys.exit(1)
-print(f"Index OK: {len(skills)} skills (identity match, not count-only)")
-PY
+  echo "[5] skill-index.json check (read-only, no write)"
+  python3 tools/skill-router/build_index.py --check --root "$ROOT"
 fi
 
 if [ "$CHECK_INDEX" = 1 ] && [ "$FULL" = 0 ]; then
-  python3 tools/skill-router/build_index.py --check 2>/dev/null || {
-    # fallback check without build_index --check support
-    python3 - <<'PY'
-import json, sys
-from pathlib import Path
-skills = sorted(p.name for p in Path("skills").iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
-data = json.loads(Path("skill-index.json").read_text(encoding="utf-8"))
-indexed = [s["name"] for s in data.get("skills", [])]
-sys.exit(0 if set(skills) == set(indexed) else 1)
-PY
-  }
+  python3 tools/skill-router/build_index.py --check --root "$ROOT"
 fi
 
 if [ "$FULL" = 1 ] || [ "$ONLY_SMOKE" = 1 ]; then
@@ -98,18 +64,23 @@ if [ "$FULL" = 1 ] || [ "$ONLY_SMOKE" = 1 ]; then
 fi
 
 if [ "$FULL" = 1 ] || [ "$ONLY_PYTEST" = 1 ]; then
-  echo "[7] Pytest tools/ + safe skills surfaces"
-  # Manifest of safe test roots (effects inventoried; host mutators use doubles).
+  echo "[7] Pytest tools/ + skills (install + Proton included)"
   python3 -m pytest tools/ \
     skills/local-maintenance/scripts/tests/ \
     skills/web-compliance/tests/ \
     skills/local-security/scripts/tests/ \
     skills/local-proton/scripts/ \
-    -q --ignore=skills/local-proton/scripts/test_proton_bridge.py
+    -q
 fi
 
 if [ "$FULL" = 1 ]; then
-  echo "[8] Bash syntax (scripts/ + root wrappers)"
+  echo "[8] Install scripts matrix"
+  bash scripts/tests/test_install.sh
+
+  echo "[8b] Execution E2E mínimo"
+  bash scripts/tests/test_execution_e2e.sh
+
+  echo "[9] Bash syntax (scripts/ + root wrappers)"
   while IFS= read -r -d '' f; do
     bash -n "$f"
   done < <(find scripts skills tools -name '*.sh' -print0 2>/dev/null; printf '%s\0' run-validation.sh)

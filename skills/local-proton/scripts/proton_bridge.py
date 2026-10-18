@@ -216,32 +216,44 @@ def cmd_mark(args):
 
 
 def cmd_send(args):
-    """Send requires explicit approval bound to exact recipient and body digest."""
-    import hashlib
+    """Send requires ApprovalProvider via execution registry (no CONFIRM_SEND/env)."""
+    from pathlib import Path
 
-    approve = getattr(args, "approve_send", None) or os.environ.get("PROTON_APPROVE_SEND", "")
-    digest = hashlib.sha256(
-        f"{args.to}\n{args.subject}\n{args.body}".encode("utf-8")
-    ).hexdigest()
-    expected = getattr(args, "approve_digest", None) or os.environ.get("PROTON_APPROVE_DIGEST", "")
-    if approve != "CONFIRM_SEND" or expected != digest:
+    tools = Path(__file__).resolve().parents[3] / "tools"
+    if str(tools) not in sys.path:
+        sys.path.insert(0, str(tools))
+    from execution.ops import run_registered
+    from execution.registry import register_handler
+
+    params = {
+        "to": args.to,
+        "subject": args.subject,
+        "body": args.body,
+    }
+
+    def _do_send(p: dict) -> int:
+        _, _, _, _, user, _ = get_config()
+        require_creds()
+        msg = EmailMessage()
+        msg["From"] = user
+        msg["To"] = p["to"]
+        msg["Subject"] = p["subject"]
+        msg.set_content(p["body"])
+        with connect_smtp() as s:
+            s.send_message(msg)
+        print(f"Enviado a {p['to']}")
+        return 0
+
+    register_handler("proton_send", _do_send)
+    result = run_registered("proton_send", params, target=args.to)
+    if result.outcome != "succeeded":
         print(
-            "BLOCKED: send requires --approve-send CONFIRM_SEND and "
-            f"--approve-digest {digest} matching exact to/subject/body. "
-            "Read/search never send. approved=true is not accepted.",
+            f"BLOCKED: proton_send requires trusted ApprovalProvider "
+            f"(digest={result.plan_digest[:16]}…). "
+            "CONFIRM_SEND / PROTON_APPROVE_* / approved=true are not consent.",
             file=sys.stderr,
         )
-        raise ProtonBridgeError("send blocked: approval missing or digest mismatch")
-    _, _, _, _, user, _ = get_config()
-    require_creds()
-    msg = EmailMessage()
-    msg["From"] = user
-    msg["To"] = args.to
-    msg["Subject"] = args.subject
-    msg.set_content(args.body)
-    with connect_smtp() as s:
-        s.send_message(msg)
-    print(f"Enviado a {args.to}")
+        raise ProtonBridgeError(f"send blocked: {result.detail or result.outcome}")
 
 
 def build_parser():
@@ -271,12 +283,12 @@ def build_parser():
     sp.add_argument(
         "--approve-send",
         default="",
-        help="Must be CONFIRM_SEND; env PROTON_APPROVE_SEND also accepted",
+        help="Ignored (legacy). Approval goes through ApprovalProvider only.",
     )
     sp.add_argument(
         "--approve-digest",
         default="",
-        help="SHA-256 hex of to\\nsubject\\nbody; must match exactly",
+        help="Ignored (legacy). Plan digest is computed by the registry.",
     )
     sp.set_defaults(fn=cmd_send)
     return p

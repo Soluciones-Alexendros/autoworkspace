@@ -2,13 +2,19 @@
 
 Esta guía explica cómo usar Autoworkspace con OpenCode de forma agent-driven (sin slash commands).
 
+## Harness verificado
+
+- **OpenCode objetivo:** `1.18.34` (`opencode --version`)
+- **Config nativa:** `opencode.json` usa `skills.paths` (OpenCode ≥1.18). La clave legacy `skillDirectories` no es válida.
+- **Smoke:** `opencode debug skill` desde el checkout debe listar las 16 skills del catálogo (sin `--auto`).
+
 ## Overview
 
 OpenCode no tiene plugin system nativo. Logramos paridad con:
 
 - System prompt fuerte (`AGENTS.md`)
 - Built-in `skill` tool
-- Descubrimiento consistente desde `/skills` + `skill-index.json`
+- Descubrimiento consistente desde `skills.paths` + `skill-index.json`
 
 ## Instalación
 

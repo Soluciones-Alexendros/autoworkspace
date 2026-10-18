@@ -40,7 +40,7 @@ OpenCode searches in this order:
 - .agents/skills/<name>/SKILL.md
 - ./skills/<name>/SKILL.md (project fallback)
 
-The agent must load `opencode.json` for skillDirectories.
+The agent must load `opencode.json` for `skills.paths` (OpenCode ≥1.18; not the obsolete `skillDirectories` key).
 
 ## Language
 

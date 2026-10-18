@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """clean_routine.py - Limpieza aprobada (cache, journal, huérfanos, temporales).
 
-Port Python de clean_routine.sh. Soporta --dry-run y --execute con snapshot
-previo.
+Single path: operation_id → validate → approve → handler → record.
 """
 
 from __future__ import annotations
@@ -12,6 +11,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 from common import (
     BLUE,
@@ -32,6 +32,11 @@ try:
 except ImportError:  # pragma: no cover
     risk_gate = None  # type: ignore
 
+# Ensure tools/ is importable for execution registry
+_TOOLS = Path(__file__).resolve().parents[3] / "tools"
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+
 DRY_RUN = True
 EXECUTE = False
 SNAPSHOT_ID = ""
@@ -45,10 +50,17 @@ JSON_MODE = False
 WITH_FIRMWARE = False
 ACTION_RESULTS: list[dict[str, object]] = []
 
-# Host mutations stay blocked unless the typed executor / explicit allow is set.
-_HOST_MUTATION_ENV = "AUTOWORKSPACE_ALLOW_HOST_MUTATION"
-
 logger = logging.getLogger("mantenimiento.clean")
+
+CLEAN_OPS = (
+    "clean_package_cache",
+    "clean_journal",
+    "clean_orphans",
+    "clean_temp",
+    "clean_needrestart",
+    "update_firmware",
+    "clean_userspace_caches",
+)
 
 
 def _setup_logging(verbose: bool = False) -> None:
@@ -157,43 +169,78 @@ def validate_snapshot(snapshot_id: str) -> tuple[bool, str]:
     return True, path
 
 
-def host_mutations_allowed() -> bool:
-    return os.environ.get(_HOST_MUTATION_ENV, "") == "1"
+def _register_handlers() -> None:
+    from execution.registry import register_handler
+
+    def _wrap(fn):
+        def handler(params: dict) -> int:
+            fn()
+            return 0
+
+        return handler
+
+    register_handler("clean_package_cache", _wrap(clean_package_cache))
+    register_handler("clean_journal", _wrap(clean_journal))
+    register_handler("clean_orphans", _wrap(clean_orphans))
+    register_handler("clean_temp", _wrap(clean_temp))
+    register_handler("clean_needrestart", _wrap(clean_needrestart))
+    register_handler("update_firmware", _wrap(update_firmware))
+    register_handler("clean_userspace_caches", _wrap(clean_userspace_caches))
+    register_handler("create_snapshot", _handle_create_snapshot)
+    register_handler("validate_snapshot", _handle_validate_snapshot)
 
 
-def run_safe(cmd: str, risk_level: str, description: str) -> int:
-    action = description
+def _handle_create_snapshot(params: dict) -> int:
+    global SNAPSHOT_ID
+    sid = params.get("snapshot_id") or SNAPSHOT_ID
+    if not sid:
+        sid = f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
+        SNAPSHOT_ID = sid
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.join(script_dir, "snapshot_state.py")
+    rc, out = run_capture(f"{sys.executable} '{script}' '{sid}'", timeout=600)
+    if rc != 0:
+        log_error(f"Creación de snapshot falló (rc={rc})")
+        return rc
+    SNAPSHOT_ID = sid
+    log_info(f"Snapshot ID: {SNAPSHOT_ID}")
+    return 0
+
+
+def _handle_validate_snapshot(params: dict) -> int:
+    sid = str(params.get("snapshot_id") or SNAPSHOT_ID)
+    ok, detail = validate_snapshot(sid)
+    if not ok:
+        log_error(f"Snapshot inválido: {detail}")
+        return 1
+    return 0
+
+
+def dispatch_operation(operation_id: str) -> int:
+    """Single path: dry-run simulates; execute goes through registry approval + handler."""
+    if operation_id == "update_firmware" and not WITH_FIRMWARE:
+        _record(operation_id, "skipped", 0, "requires --firmware")
+        return 0
+
     if DRY_RUN:
-        log_info(f"[DRY-RUN] {description}")
-        log_info(f"  Comando: {cmd}")
-        log_info(f"  Riesgo: {risk_level}")
-        _record(action, "simulated", 0, cmd)
+        log_info(f"[DRY-RUN] {operation_id}")
+        _record(operation_id, "simulated", 0, "dry-run")
         return 0
 
-    if not host_mutations_allowed():
-        log_error(
-            f"Mutación bloqueada ({description}): set {_HOST_MUTATION_ENV}=1 "
-            "only after typed executor approval (T10)."
-        )
-        _record(action, "blocked", 3, "host mutations disabled")
+    from execution.ops import run_registered
+
+    params = {"snapshot_id": SNAPSHOT_ID, "pkg_mgr": PKG_MGR}
+    result = run_registered(operation_id, params, target=hostname() or ".")
+    if result.outcome == "blocked":
+        log_error(f"blocked {operation_id}: {result.detail}")
+        _record(operation_id, "blocked", result.returncode or 3, result.detail)
         return 3
-
-    if risk_gate is not None:
-        gate_rc = risk_gate.validate(cmd, snapshot_id=SNAPSHOT_ID, approved=False)
-        if gate_rc != 0:
-            log_error(f"risk_gate DENY: {description}")
-            _record(action, "blocked", gate_rc, "risk_gate")
-            return gate_rc
-
-    log_info(f"Ejecutando: {description}")
-    log_info(f"  Comando: {cmd}")
-    rc, _ = run_capture(cmd, timeout=600)
-    if rc == 0:
-        log_success(f"  OK: {description}")
-        _record(action, "succeeded", 0, cmd)
+    if result.outcome == "succeeded":
+        log_success(f"OK: {operation_id}")
+        _record(operation_id, "succeeded", 0, result.run_id)
         return 0
-    log_error(f"  FALLÓ: {description}")
-    _record(action, "failed", rc, cmd)
+    log_error(f"FALLÓ: {operation_id}: {result.detail}")
+    _record(operation_id, "failed", result.returncode or 1, result.detail)
     return 1
 
 
@@ -202,45 +249,37 @@ def clean_package_cache() -> None:
     if PKG_MGR == "pacman":
         cache_size = run("du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1", timeout=30).strip()
         log_info(f"Tamaño actual: {cache_size}")
-        if DRY_RUN:
-            run_safe(f"paccache -r -k {KEEP_VERSIONS} -d", "R1", "paccache dry-run")
-        else:
-            rc, _ = run_capture(f"paccache -r -k {KEEP_VERSIONS} 2>/dev/null", timeout=600)
-            if rc != 0:
-                log_warn("paccache falló")
+        rc, _ = run_capture(f"paccache -r -k {KEEP_VERSIONS} 2>/dev/null", timeout=600)
+        if rc != 0:
+            log_warn("paccache falló")
+            raise RuntimeError("paccache failed")
     elif PKG_MGR == "apt":
         cache_size = run("du -sh /var/cache/apt/archives 2>/dev/null | cut -f1", timeout=30).strip()
         log_info(f"Tamaño actual: {cache_size}")
-        if DRY_RUN:
-            log_info("apt autoclean eliminaría paquetes antiguos")
-        else:
-            rc, _ = run_capture("apt-get autoclean 2>/dev/null", timeout=600)
-            if rc != 0:
-                log_warn("apt-get autoclean falló")
+        rc, _ = run_capture("apt-get autoclean 2>/dev/null", timeout=600)
+        if rc != 0:
+            log_warn("apt-get autoclean falló")
+            raise RuntimeError("apt autoclean failed")
     elif PKG_MGR == "dnf":
         cache_size = run("du -sh /var/cache/dnf 2>/dev/null | cut -f1", timeout=30).strip()
         log_info(f"Tamaño actual: {cache_size}")
-        if DRY_RUN:
-            log_info("dnf clean packages eliminaría caché")
-        else:
-            rc, _ = run_capture("dnf clean packages -y 2>/dev/null", timeout=600)
-            if rc != 0:
-                log_warn("dnf clean falló")
+        rc, _ = run_capture("dnf clean packages -y 2>/dev/null", timeout=600)
+        if rc != 0:
+            log_warn("dnf clean falló")
+            raise RuntimeError("dnf clean failed")
 
 
 def clean_journal() -> None:
     log_info("=== Limpieza de journal ===")
     journal_size = run("journalctl --disk-usage 2>/dev/null", timeout=15).strip()
     log_info(f"Tamaño actual: {journal_size}")
-    if DRY_RUN:
-        log_info(f"journalctl --vacuum-time={JOURNAL_VACUUM_TIME} --vacuum-size={JOURNAL_VACUUM_SIZE}")
-    else:
-        rc, _ = run_capture(
-            f"journalctl --vacuum-time={JOURNAL_VACUUM_TIME} --vacuum-size={JOURNAL_VACUUM_SIZE} 2>/dev/null",
-            timeout=600,
-        )
-        if rc != 0:
-            log_warn("journal vacuum falló")
+    rc, _ = run_capture(
+        f"journalctl --vacuum-time={JOURNAL_VACUUM_TIME} --vacuum-size={JOURNAL_VACUUM_SIZE} 2>/dev/null",
+        timeout=600,
+    )
+    if rc != 0:
+        log_warn("journal vacuum falló")
+        raise RuntimeError("journal vacuum failed")
 
 
 def clean_orphans() -> None:
@@ -253,71 +292,44 @@ def clean_orphans() -> None:
             return
         log_info(f"Huérfanos detectados: {len(orphan_list)}")
         for pkg in orphan_list:
-            if DRY_RUN:
-                log_info(f"  - {pkg}")
-            else:
-                log_info(f"Eliminando: {pkg}")
-                rc, _ = run_capture(f"pacman -Rns {pkg} --noconfirm 2>/dev/null", timeout=600)
-                if rc != 0:
-                    log_warn(f"No se pudo eliminar {pkg}")
+            log_info(f"Eliminando: {pkg}")
+            rc, _ = run_capture(f"pacman -Rns {pkg} --noconfirm 2>/dev/null", timeout=600)
+            if rc != 0:
+                log_warn(f"No se pudo eliminar {pkg}")
     elif PKG_MGR == "apt":
-        if DRY_RUN:
-            run("apt autoremove --dry-run 2>/dev/null", timeout=120)
-        else:
-            rc, _ = run_capture("apt autoremove --purge -y 2>/dev/null", timeout=600)
-            if rc != 0:
-                log_warn("apt autoremove falló")
+        rc, _ = run_capture("apt autoremove --purge -y 2>/dev/null", timeout=600)
+        if rc != 0:
+            log_warn("apt autoremove falló")
+            raise RuntimeError("apt autoremove failed")
     elif PKG_MGR == "dnf":
-        if DRY_RUN:
-            run("dnf autoremove --assumeno 2>/dev/null", timeout=120)
-        else:
-            rc, _ = run_capture("dnf autoremove -y 2>/dev/null", timeout=600)
-            if rc != 0:
-                log_warn("dnf autoremove falló")
+        rc, _ = run_capture("dnf autoremove -y 2>/dev/null", timeout=600)
+        if rc != 0:
+            log_warn("dnf autoremove falló")
+            raise RuntimeError("dnf autoremove failed")
 
 
 def clean_temp() -> None:
     log_info("=== Limpieza de archivos temporales ===")
-    if DRY_RUN:
-        log_info("rm -rf /tmp/* /var/tmp/* (archivos > 7 días)")
-    else:
-        run("find /tmp -type f -atime +7 -delete 2>/dev/null", timeout=300)
-        run("find /var/tmp -type f -atime +7 -delete 2>/dev/null", timeout=300)
-        log_success("Temporales limpiados")
+    run("find /tmp -type f -atime +7 -delete 2>/dev/null", timeout=300)
+    run("find /var/tmp -type f -atime +7 -delete 2>/dev/null", timeout=300)
+    log_success("Temporales limpiados")
 
 
 def clean_needrestart() -> None:
-    """needrestart: lista servicios que piden reinicio (R1); reinicia solo en --execute."""
     log_info("=== Servicios que piden reinicio (needrestart) ===")
     if which("needrestart") is None:
         log_info("needrestart no instalado (instalar para detectar reinicios pendientes)")
         return
-    pending = run("needrestart -r l 2>/dev/null | head -20", timeout=120).strip()
-    if DRY_RUN:
-        log_info("needrestart -r l (solo lista):")
-        for line in pending.splitlines()[:20]:
-            if line.strip():
-                log_info(f"  {line.strip()}")
-        run_safe("needrestart -r a", "R1", "Reiniciar servicios obsoletos tras actualizacion")
-    else:
-        rc, _ = run_capture("needrestart -r a 2>/dev/null", timeout=600)
-        if rc != 0:
-            log_warn("needrestart -r a fallo o requirio intervencion")
+    rc, _ = run_capture("needrestart -r a 2>/dev/null", timeout=600)
+    if rc != 0:
+        log_warn("needrestart -r a fallo o requirio intervencion")
+        raise RuntimeError("needrestart failed")
 
 
 def update_firmware() -> None:
-    """fwupdmgr update (R2): solo con --firmware + --execute + snapshot previo."""
     log_info("=== Firmware (fwupdmgr, R2) ===")
     if which("fwupdmgr") is None:
         log_info("fwupd no instalado")
-        return
-    if DRY_RUN:
-        pending = run("fwupdmgr get-updates 2>/dev/null | grep '^Device:' | head -10", timeout=120).strip()
-        if pending:
-            log_info("Dispositivos con updates:")
-            for line in pending.splitlines():
-                log_info(f"  {line.strip()}")
-        run_safe("fwupdmgr update", "R2", "Actualizar firmware de dispositivos")
         return
     if not WITH_FIRMWARE:
         log_info("Omitido: requiere --firmware explicito (R2)")
@@ -325,25 +337,25 @@ def update_firmware() -> None:
     rc, _ = run_capture("fwupdmgr update 2>/dev/null", timeout=900)
     if rc != 0:
         log_warn("fwupdmgr update fallo")
+        raise RuntimeError("fwupdmgr failed")
 
 
 def clean_userspace_caches() -> None:
-    """Caches userspace seguras: thumbnails + ficheros >30 dias (excluye navegadores)."""
     import os as _os
+
     log_info("=== Caches userspace ===")
     home = _os.path.expanduser("~")
     cache_dir = _os.path.join(home, ".cache")
     size = run(f"du -sh {cache_dir} 2>/dev/null | cut -f1", timeout=60).strip()
     log_info(f"Tamano ~/.cache: {size or '?'}")
     thumb = _os.path.join(cache_dir, "thumbnails")
-    if DRY_RUN:
-        run_safe(f"rm -rf {thumb}/* + find {cache_dir} -type f -atime +30 "
-                 "(excluye *mozilla* *chromium* *Proton*)", "R1", "Limpiar caches userspace")
-    else:
-        run(f"rm -rf {thumb}/* 2>/dev/null", timeout=120)
-        run(f"find {cache_dir} -type f -atime +30 ! -path '*mozilla*' ! -path '*chromium*' "
-            "! -path '*Chromium*' ! -path '*Proton*' -delete 2>/dev/null", timeout=300)
-        log_success("Caches userspace limpiadas")
+    run(f"rm -rf {thumb}/* 2>/dev/null", timeout=120)
+    run(
+        f"find {cache_dir} -type f -atime +30 ! -path '*mozilla*' ! -path '*chromium*' "
+        "! -path '*Chromium*' ! -path '*Proton*' -delete 2>/dev/null",
+        timeout=300,
+    )
+    log_success("Caches userspace limpiadas")
 
 
 def verify_clean() -> None:
@@ -367,17 +379,7 @@ def generate_json_output() -> None:
     json_file = JSON_OUTPUT or f"clean-routine-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}.json"
     actions = list(ACTION_RESULTS)
     if not actions:
-        # Ensure dry-run always emits explicit simulated rows, never fake completed.
-        defaults = [
-            "clean_package_cache",
-            "clean_journal",
-            "clean_orphans",
-            "clean_temp",
-            "clean_needrestart",
-            "update_firmware",
-            "clean_userspace_caches",
-        ]
-        for name in defaults:
+        for name in CLEAN_OPS:
             if name == "update_firmware" and not WITH_FIRMWARE:
                 actions.append({"action": name, "status": "skipped", "rc": 0, "detail": ""})
             elif DRY_RUN:
@@ -417,25 +419,38 @@ def generate_json_output() -> None:
 
 
 def _ensure_snapshot_for_execute() -> int:
-    """Create or validate snapshot before any host effect. Returns process rc."""
+    """Authorize snapshot create/validate before any host effect."""
     global SNAPSHOT_ID
+    from execution.ops import run_registered
+
     if not SNAPSHOT_ID:
-        log_warn("No se especificó --snapshot-id. Creando snapshot...")
-        SNAPSHOT_ID = f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        script = os.path.join(script_dir, "snapshot_state.py")
-        rc, out = run_capture(f"{sys.executable} '{script}' '{SNAPSHOT_ID}'", timeout=600)
-        if rc != 0:
-            log_error(f"Creación de snapshot falló (rc={rc})")
-            _record("create_snapshot", "failed", rc, out[:200] if out else "")
+        log_warn("No se especificó --snapshot-id. Creando snapshot (requiere aprobación)...")
+        result = run_registered("create_snapshot", {}, target=hostname() or ".")
+        if result.outcome != "succeeded":
+            _record("create_snapshot", result.outcome, result.returncode or 1, result.detail)
+            return 3 if result.outcome == "blocked" else 1
+        _record("create_snapshot", "succeeded", 0, result.run_id)
+    else:
+        result = run_registered(
+            "validate_snapshot",
+            {"snapshot_id": SNAPSHOT_ID},
+            target=hostname() or ".",
+        )
+        # validate_snapshot is read — still go through registry
+        if result.outcome == "blocked":
+            # read ops shouldn't block on approval; treat handler failure
+            pass
+        if result.outcome not in ("succeeded",) and result.outcome != "blocked":
+            ok, detail = validate_snapshot(SNAPSHOT_ID)
+            if not ok:
+                _record("validate_snapshot", "failed", 1, detail)
+                return 1
+        ok, detail = validate_snapshot(SNAPSHOT_ID)
+        if not ok:
+            log_error(f"Snapshot inválido: {detail}")
+            _record("validate_snapshot", "failed", 1, detail)
             return 1
-        log_info(f"Snapshot ID: {SNAPSHOT_ID}")
-    ok, detail = validate_snapshot(SNAPSHOT_ID)
-    if not ok:
-        log_error(f"Snapshot inválido: {detail}")
-        _record("validate_snapshot", "failed", 1, detail)
-        return 1
-    _record("validate_snapshot", "succeeded", 0, detail)
+        _record("validate_snapshot", "succeeded", 0, detail)
     return 0
 
 
@@ -446,6 +461,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     _setup_logging(args.verbose)
     apply_args(args)
+    _register_handlers()
 
     PKG_MGR = detect_pkg_mgr()
     if not PKG_MGR:
@@ -466,41 +482,16 @@ def main(argv: list[str] | None = None) -> int:
                 except (OSError, TypeError, ValueError):
                     pass
             return snap_rc
-        if not host_mutations_allowed():
-            log_error(
-                f"Ejecución real bloqueada: {_HOST_MUTATION_ENV}=1 requerido "
-                "tras aprobación del ejecutor tipado."
-            )
-            _record("host_mutation_gate", "blocked", 3, _HOST_MUTATION_ENV)
-            if JSON_MODE:
-                try:
-                    generate_json_output()
-                except (OSError, TypeError, ValueError):
-                    pass
-            return 3
 
-    # Route cleanup through run_safe so dry-run records simulated and execute is gated.
-    run_safe(f"clean_package_cache:{PKG_MGR}", "R1", "clean_package_cache")
-    run_safe("clean_journal", "R1", "clean_journal")
-    run_safe(f"clean_orphans:{PKG_MGR}", "R1", "clean_orphans")
-    run_safe("clean_temp", "R1", "clean_temp")
-    run_safe("needrestart", "R1", "clean_needrestart")
-    if WITH_FIRMWARE:
-        run_safe("fwupdmgr update", "R2", "update_firmware")
-    else:
-        _record("update_firmware", "skipped", 0, "requires --firmware")
-    run_safe("clean_userspace_caches", "R1", "clean_userspace_caches")
+    for op_id in CLEAN_OPS:
+        dispatch_operation(op_id)
 
-    if EXECUTE and host_mutations_allowed():
-        # Legacy detailed cleaners only when host mutation explicitly allowed.
-        clean_package_cache()
-        clean_journal()
-        clean_orphans()
-        clean_temp()
-        clean_needrestart()
-        update_firmware()
-        clean_userspace_caches()
-        verify_clean()
+    if EXECUTE and not any(a.get("status") == "blocked" for a in ACTION_RESULTS):
+        # Post-clean verify is read-only
+        try:
+            verify_clean()
+        except Exception as exc:  # noqa: BLE001
+            log_warn(f"verify_clean: {exc}")
 
     failed = sum(1 for a in ACTION_RESULTS if a.get("status") in ("failed", "blocked"))
     if failed:

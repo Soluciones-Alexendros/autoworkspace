@@ -140,29 +140,35 @@ class ProtonBridgeCli(unittest.TestCase):
         self.assertEqual(rc, 1)
 
     def test_send_ok_con_mock(self):
-        import hashlib
+        import sys
+        from pathlib import Path
+        from unittest.mock import patch
+
+        tools = Path(__file__).resolve().parents[3] / "tools"
+        sys.path.insert(0, str(tools))
+        from execution.approval import ApprovalDecision, ApprovalProvider, ApprovalRequest
+
+        class Allow(ApprovalProvider):
+            def decide(self, request: ApprovalRequest) -> ApprovalDecision:
+                return ApprovalDecision(True, "test", "test", request.plan_digest)
 
         _with_creds(self)
         old_c, old_s = proton_bridge.connect, proton_bridge.connect_smtp
         proton_bridge.connect = lambda *a, **k: FakeIMAP()
         proton_bridge.connect_smtp = lambda *a, **k: FakeSMTP()
-        digest = hashlib.sha256(b"a@b.com\ns\nb").hexdigest()
         try:
-            rc = proton_bridge.main(
-                [
-                    "send",
-                    "--to",
-                    "a@b.com",
-                    "--subject",
-                    "s",
-                    "--body",
-                    "b",
-                    "--approve-send",
-                    "CONFIRM_SEND",
-                    "--approve-digest",
-                    digest,
-                ]
-            )
+            with patch("execution.ops.provider_from_env", lambda: Allow()):
+                rc = proton_bridge.main(
+                    [
+                        "send",
+                        "--to",
+                        "a@b.com",
+                        "--subject",
+                        "s",
+                        "--body",
+                        "b",
+                    ]
+                )
             self.assertEqual(rc, 0)
             self.assertIsNotNone(FakeSMTP.sent)
         finally:

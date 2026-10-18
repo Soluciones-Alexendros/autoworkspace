@@ -117,6 +117,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="(disabled) legacy status bump — rejected",
     )
+    ap.add_argument(
+        "--complete",
+        action="store_true",
+        help="Complete phase with validated evidence (requires --run-id)",
+    )
+    ap.add_argument("--run-id", default="", help="Evidence run_id for --complete")
+    ap.add_argument(
+        "--awaiting-agent",
+        action="store_true",
+        help="Mark phase awaiting_agent without completing",
+    )
     ap.add_argument("--note", default="", help="Optional status history note")
     ap.add_argument("--json", action="store_true", help="JSON output")
     args = ap.parse_args(argv)
@@ -154,6 +165,42 @@ def main(argv: list[str] | None = None) -> int:
     if not args.phase:
         print("ERROR: --phase required unless --init/--list/--status", file=sys.stderr)
         return 2
+
+    if args.awaiting_agent:
+        try:
+            data = advance_status(
+                repo, phase=args.phase, note=args.note, evidence_ok=False, allow_awaiting=True
+            )
+        except ValueError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(data, ensure_ascii=False, indent=2) if args.json else f"awaiting_agent phase={args.phase}")
+        return 0
+
+    if args.complete:
+        if not args.run_id:
+            print("ERROR: --complete requires --run-id of validated evidence", file=sys.stderr)
+            return 2
+        try:
+            skill = ""
+            try:
+                project = load_project(repo)
+                skill = handoff_for_phase(project, args.phase) or ""
+            except ProjectConfigError:
+                pass
+            data = advance_status(
+                repo,
+                phase=args.phase,
+                skill=skill,
+                note=args.note,
+                evidence_ok=True,
+                run_id=args.run_id,
+            )
+        except (ValueError, FileNotFoundError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(data, ensure_ascii=False, indent=2) if args.json else f"completed phase={args.phase} rev={data.get('state_revision')}")
+        return 0
 
     try:
         out = route(repo, args.phase, bump=args.bump, note=args.note, init=args.init)

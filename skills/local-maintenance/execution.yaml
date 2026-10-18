@@ -1,7 +1,7 @@
 schema_version: 1
 dialect: autoworkspace.execution
 skill: local-maintenance
-skill_version: 5.1.0
+skill_version: 5.1.1
 execution_kind: script
 distribution: standalone
 shared_dependencies: []

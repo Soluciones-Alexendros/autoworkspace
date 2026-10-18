@@ -2,6 +2,7 @@
 import hashlib
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import snapshot_state
@@ -115,7 +116,7 @@ def test_snapshot_rollback_dry_run(tmp_path):
     assert rc == 0  # dry-run by default
 
 
-def test_snapshot_rollback_execute_requires_restore_root(tmp_path):
+def test_snapshot_rollback_execute_rejects_host_root(tmp_path):
     snap_dir = tmp_path / "snapshots"
     snap_dir.mkdir()
     meta = snap_dir / "snap-test" / "metadata.json"
@@ -123,14 +124,22 @@ def test_snapshot_rollback_execute_requires_restore_root(tmp_path):
     meta.write_text('{"id": "snap-test", "packages": ["pkg1"]}', encoding="utf-8")
     (meta.parent / "etc-checksums.txt").write_text("abc123  /etc/fstab\n", encoding="utf-8")
     (meta.parent / "etc-backup.tar.gz").write_bytes(b"dummy")
-    rc = snapshot_state.main(
-        ["--rollback", "snap-test", "--snapshot-dir", str(snap_dir), "--execute"]
+    # Privileged host root must remain blocked
+    rc = snapshot_state.rollback_snapshot(
+        str(snap_dir), "snap-test", execute=True, restore_root="/"
     )
     assert rc == 3
+    # Without --restore-root, program creates staging (bad tar → extract fail, not host write)
+    rc2 = snapshot_state.main(
+        ["--rollback", "snap-test", "--snapshot-dir", str(snap_dir), "--execute"]
+    )
+    assert rc2 != 0
 
 
 def test_snapshot_rollback_execute_temp_root(tmp_path):
+    import io
     import tarfile
+    import tempfile
 
     snap_dir = tmp_path / "snapshots"
     snap_dir.mkdir()
@@ -139,24 +148,22 @@ def test_snapshot_rollback_execute_temp_root(tmp_path):
     meta.write_text('{"id": "snap-test"}', encoding="utf-8")
     (meta.parent / "etc-checksums.txt").write_text("abc123  /etc/fstab\n", encoding="utf-8")
     tarball = meta.parent / "etc-backup.tar.gz"
-    restore = tmp_path / "restore-root"
-    restore.mkdir()
     with tarfile.open(tarball, "w:gz") as tf:
         info = tarfile.TarInfo(name="etc/fstab")
         data = b"UUID=test / ext4 defaults 0 1\n"
         info.size = len(data)
-        import io
-
         tf.addfile(info, io.BytesIO(data))
-    rc = snapshot_state.main(
-        [
-            "--rollback",
-            "snap-test",
-            "--snapshot-dir",
-            str(snap_dir),
-            "--execute",
-            "--restore-root",
-            str(restore),
-        ]
-    )
-    assert rc == 0
+    with tempfile.TemporaryDirectory(prefix="aw-restore-") as restore:
+        rc = snapshot_state.main(
+            [
+                "--rollback",
+                "snap-test",
+                "--snapshot-dir",
+                str(snap_dir),
+                "--execute",
+                "--restore-root",
+                restore,
+            ]
+        )
+        assert rc == 0
+        assert (Path(restore) / "etc" / "fstab").is_file()

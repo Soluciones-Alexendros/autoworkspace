@@ -25,9 +25,34 @@ class ApprovalDecision:
     covers_digest: str
 
 
-def plan_digest(operation_id: str, target: str, params: dict[str, Any], effects: list[str]) -> str:
+def plan_digest(
+    operation_id: str,
+    target: str,
+    params: dict[str, Any],
+    effects: list[str],
+    *,
+    argv: list[str] | None = None,
+    cwd: str | None = None,
+    executable_id: str = "",
+    effect: str | None = None,
+) -> str:
+    """SHA-256 over the full execution plan (not consent).
+
+    Includes operation_id, target, params, effect(s), argv, cwd, executable_id.
+    Changing any field invalidates a prior approval bound to this digest.
+    """
+    eff = effect if effect is not None else (effects[0] if effects else "")
     payload = json.dumps(
-        {"operation_id": operation_id, "target": target, "params": params, "effects": effects},
+        {
+            "operation_id": operation_id,
+            "target": target,
+            "params": params,
+            "effect": eff,
+            "effects": effects,
+            "argv": list(argv or []),
+            "cwd": cwd or "",
+            "executable_id": executable_id or "",
+        },
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -78,8 +103,12 @@ class InteractiveProvider(ApprovalProvider):
         except EOFError:
             return ApprovalDecision(False, "EOF", "interactive", request.plan_digest)
         if line == request.operation_id:
-            return ApprovalDecision(True, "operator typed operation id", "interactive", request.plan_digest)
-        return ApprovalDecision(False, "mismatched confirmation", "interactive", request.plan_digest)
+            return ApprovalDecision(
+                True, "operator typed operation id", "interactive", request.plan_digest
+            )
+        return ApprovalDecision(
+            False, "mismatched confirmation", "interactive", request.plan_digest
+        )
 
 
 def sys_stdin_isatty() -> bool:
@@ -100,4 +129,12 @@ def is_insufficient_token(token: str | None) -> bool:
     if not token:
         return True
     lowered = token.strip().lower()
-    return lowered in {"true", "1", "yes", "approved", "approved=true"}
+    return lowered in {
+        "true",
+        "1",
+        "yes",
+        "approved",
+        "approved=true",
+        "confirm_send",
+        "confirm-send",
+    }

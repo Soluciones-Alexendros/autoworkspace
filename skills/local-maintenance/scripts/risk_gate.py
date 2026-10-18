@@ -213,16 +213,23 @@ KNOWN_OPERATIONS = {
 
 
 def authorize_operation(operation_id: str, params: dict | None = None) -> tuple[bool, str]:
-    """Deny-by-default for typed operations. Unknown ids are never allowed."""
+    """Deny-by-default for typed operations. Unknown ids are never allowed.
+
+    ``approved`` / env tokens are never consent. Mutators must go through
+    ``execution.ops.run_registered`` + ApprovalProvider.
+    """
     params = params or {}
     if operation_id not in KNOWN_OPERATIONS:
         return False, f"unknown operation: {operation_id}"
     spec = KNOWN_OPERATIONS[operation_id]
-    if spec["effect"] == "mutate-host" and not params.get("approved"):
-        if spec["min_risk"] in ("R2", "R3") and not params.get("approved"):
-            return False, "approval required"
-        if not params.get("snapshot_id") and spec["min_risk"] != "R0":
-            return False, "snapshot_id required"
+    if params.get("approved") in (True, "true", "1", "yes", "approved"):
+        return False, "approved token is not consent; use ApprovalProvider"
+    if spec["effect"] in ("mutate-host", "communicate-external", "access-secret"):
+        return False, "use run_registered + ApprovalProvider for mutating ops"
+    if spec["effect"] == "write-workspace" and operation_id == "create_snapshot":
+        return False, "create_snapshot requires run_registered + ApprovalProvider"
+    if spec["min_risk"] != "R0" and not params.get("snapshot_id") and spec["effect"] != "read":
+        return False, "snapshot_id required"
     return True, "ok"
 
 
