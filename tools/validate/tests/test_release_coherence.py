@@ -51,3 +51,24 @@ def test_should_cut():
     assert cut.should_cut("2.2.0", "2.0.0")
     assert not cut.should_cut("2.0.0", "2.0.0")
     assert not cut.should_cut("1.9.0", "2.0.0")
+
+
+def test_cmd_cut_apply_skips_when_notes_missing(tmp_path, monkeypatch):
+    """Main release job must not fail red when CHANGELOG lacks [package.version]."""
+    import argparse
+    import json
+
+    cut = load(CUT, "cut_tag")
+    (tmp_path / "package.json").write_text(
+        json.dumps({"name": "t", "version": "5.1.0"}), encoding="utf-8"
+    )
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [Unreleased]\n\n- pending\n\n## [5.0.0] - 2026-10-17\n\n- old\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cut, "latest_tag", lambda root: "5.0.0")
+    monkeypatch.setattr(cut, "write_output", lambda **kwargs: None)
+    args = argparse.Namespace(
+        root=tmp_path, apply=True, push=False, notes_file=None, dry_run=False
+    )
+    assert cut.cmd_cut(args) == 0

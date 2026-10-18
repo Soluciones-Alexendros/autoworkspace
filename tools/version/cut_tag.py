@@ -5,9 +5,10 @@ Uso:
   python3 tools/version/cut_tag.py [--root DIR] [--dry-run] [--apply] [--push]
   python3 tools/version/cut_tag.py --extract-notes 2.2.0 --notes-file notes.md
 
-Exit 0 si no hay nada que cortar o si el tag se creó.
-Exit 1 en error de entorno o de notas.
-Exit 3 si --require-cut y no toca cortar.
+Exit 0 si no hay nada que cortar (sin sección/notas, ya etiquetado) o si el tag se creó.
+Exit 1 en error de entorno git/FS.
+Notas ausentes con --apply no fallan el job de release en main: se omite el corte
+hasta que CHANGELOG tenga la sección fechada de package.json.
 """
 from __future__ import annotations
 
@@ -147,9 +148,10 @@ def cmd_cut(args: argparse.Namespace) -> int:
     try:
         notes = extract_notes(changelog, pkg)
     except ValueError as e:
-        print(f"CUT: no ({e})")
-        write_output(tagged="false")
-        return 1 if args.apply else 0
+        # Missing/empty dated section → not ready to cut; do not fail main CI.
+        print(f"CUT: skip ({e}); package={pkg} latest_tag={tagged}")
+        write_output(tagged="false", version=pkg)
+        return 0
     if not should_cut(pkg, tagged):
         print(f"CUT: skip package={pkg} latest_tag={tagged}")
         write_output(tagged="false", version=pkg)
