@@ -148,7 +148,7 @@ def _snapshot_dir() -> str:
 
 
 def validate_snapshot(snapshot_id: str) -> tuple[bool, str]:
-    """Validate snapshot id, directory, and recovery metadata before mutation."""
+    """Validate snapshot id, directory, coverage and integrity before mutation."""
     if not snapshot_id or "/" in snapshot_id or snapshot_id in (".", ".."):
         return False, "invalid snapshot_id"
     path = os.path.join(_snapshot_dir(), snapshot_id)
@@ -162,10 +162,37 @@ def validate_snapshot(snapshot_id: str) -> tuple[bool, str]:
             meta = json.load(fh)
     except (OSError, json.JSONDecodeError) as exc:
         return False, f"metadata unreadable: {exc}"
+    if not isinstance(meta, dict):
+        return False, "metadata must be an object"
+    # Require explicit identity and scope — incomplete metadata is insufficient (H08)
+    for key in ("id", "target_host", "backend", "coverage", "content_hash"):
+        val = meta.get(key)
+        if val is None or (isinstance(val, str) and not str(val).strip()):
+            return False, f"metadata missing required field: {key}"
+    if meta.get("id") != snapshot_id:
+        return False, "metadata id does not match snapshot_id"
     if meta.get("backend_status") == "failed":
         return False, "snapshot backend_status=failed"
-    if meta.get("recovery_scope") == "none" and meta.get("backend_required"):
-        return False, "recovery_scope=none with required backend"
+    if meta.get("recovery_scope") in (None, "", "none") and meta.get("backend_required"):
+        return False, "recovery_scope insufficient with required backend"
+    # Recompute content hash over inventory files (exclude metadata.json itself)
+    import hashlib
+
+    h = hashlib.sha256()
+    for dirpath, _, filenames in os.walk(path):
+        for name in sorted(filenames):
+            if name == "metadata.json":
+                continue
+            fp = os.path.join(dirpath, name)
+            if os.path.islink(fp):
+                h.update(os.readlink(fp).encode())
+            elif os.path.isfile(fp):
+                with open(fp, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(65536), b""):
+                        h.update(chunk)
+    digest = h.hexdigest()
+    if digest != str(meta.get("content_hash")):
+        return False, "snapshot content_hash mismatch"
     return True, path
 
 
@@ -205,13 +232,10 @@ def _register_handlers() -> None:
     def _wrap(fn):
         def handler(params: dict) -> int:
             apply_operation_params(params or {})
-            try:
-                result = fn()
-            except Exception:
-                raise
-            # Propagate explicit failure; never treat bare None from broken cleaners as OK.
+            result = fn()
+            # None is never success — let run_registered treat it as blocked.
             if result is None:
-                return 0
+                return None  # type: ignore[return-value]
             return int(result)
 
         return handler
@@ -228,6 +252,7 @@ def _register_handlers() -> None:
 
 
 def _handle_create_snapshot(params: dict) -> int:
+    """Invoke snapshot backend in-process after registry approval (no env consent)."""
     global SNAPSHOT_ID
     apply_operation_params(params or {})
     sid = params.get("snapshot_id") or SNAPSHOT_ID
@@ -235,13 +260,12 @@ def _handle_create_snapshot(params: dict) -> int:
         sid = f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
         SNAPSHOT_ID = sid
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    script = os.path.join(script_dir, "snapshot_state.py")
-    # Token proves this subprocess was launched after run_registered approval.
-    env_prefix = "AUTOWORKSPACE_EXECUTION_APPROVED=1"
-    rc, out = run_capture(
-        f"{env_prefix} {sys.executable} '{script}' '{sid}'",
-        timeout=600,
-    )
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
+    import snapshot_state as snap  # noqa: WPS433
+
+    base_dir = params.get("snapshot_dir") or _snapshot_dir()
+    rc = snap.create_snapshot_backend(sid, base_dir)
     if rc != 0:
         log_error(f"Creación de snapshot falló (rc={rc})")
         return rc
@@ -288,7 +312,7 @@ def dispatch_operation(operation_id: str) -> int:
     return 1
 
 
-def clean_package_cache() -> None:
+def clean_package_cache() -> int:
     log_info("=== Limpieza de caché de paquetes ===")
     if PKG_MGR == "pacman":
         cache_size = run("du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1", timeout=30).strip()
@@ -311,9 +335,10 @@ def clean_package_cache() -> None:
         if rc != 0:
             log_warn("dnf clean falló")
             raise RuntimeError("dnf clean failed")
+    return 0
 
 
-def clean_journal() -> None:
+def clean_journal() -> int:
     log_info("=== Limpieza de journal ===")
     journal_size = run("journalctl --disk-usage 2>/dev/null", timeout=15).strip()
     log_info(f"Tamaño actual: {journal_size}")
@@ -324,16 +349,17 @@ def clean_journal() -> None:
     if rc != 0:
         log_warn("journal vacuum falló")
         raise RuntimeError("journal vacuum failed")
+    return 0
 
 
-def clean_orphans() -> None:
+def clean_orphans() -> int:
     log_info("=== Limpieza de paquetes huérfanos ===")
     if PKG_MGR == "pacman":
         orphans = run("pacman -Qtdq 2>/dev/null", timeout=60).strip()
         orphan_list = [p for p in orphans.splitlines() if p.strip()]
         if not orphan_list:
             log_info("Sin paquetes huérfanos")
-            return
+            return 0
         log_info(f"Huérfanos detectados: {len(orphan_list)}")
         for pkg in orphan_list:
             log_info(f"Eliminando: {pkg}")
@@ -350,41 +376,45 @@ def clean_orphans() -> None:
         if rc != 0:
             log_warn("dnf autoremove falló")
             raise RuntimeError("dnf autoremove failed")
+    return 0
 
 
-def clean_temp() -> None:
+def clean_temp() -> int:
     log_info("=== Limpieza de archivos temporales ===")
     run("find /tmp -type f -atime +7 -delete 2>/dev/null", timeout=300)
     run("find /var/tmp -type f -atime +7 -delete 2>/dev/null", timeout=300)
     log_success("Temporales limpiados")
+    return 0
 
 
-def clean_needrestart() -> None:
+def clean_needrestart() -> int:
     log_info("=== Servicios que piden reinicio (needrestart) ===")
     if which("needrestart") is None:
         log_info("needrestart no instalado (instalar para detectar reinicios pendientes)")
-        return
+        return 0
     rc, _ = run_capture("needrestart -r a 2>/dev/null", timeout=600)
     if rc != 0:
         log_warn("needrestart -r a fallo o requirio intervencion")
         raise RuntimeError("needrestart failed")
+    return 0
 
 
-def update_firmware() -> None:
+def update_firmware() -> int:
     log_info("=== Firmware (fwupdmgr, R2) ===")
     if which("fwupdmgr") is None:
         log_info("fwupd no instalado")
-        return
+        return 0
     if not WITH_FIRMWARE:
         log_info("Omitido: requiere --firmware explicito (R2)")
-        return
+        return 0
     rc, _ = run_capture("fwupdmgr update 2>/dev/null", timeout=900)
     if rc != 0:
         log_warn("fwupdmgr update fallo")
         raise RuntimeError("fwupdmgr failed")
+    return 0
 
 
-def clean_userspace_caches() -> None:
+def clean_userspace_caches() -> int:
     import os as _os
 
     log_info("=== Caches userspace ===")
@@ -400,6 +430,7 @@ def clean_userspace_caches() -> None:
         timeout=300,
     )
     log_success("Caches userspace limpiadas")
+    return 0
 
 
 def verify_clean() -> None:

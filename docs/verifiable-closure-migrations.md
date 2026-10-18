@@ -4,17 +4,17 @@ Increment: `autoworkspace-verifiable-closure-v2` (see `tasks/plan-verifiable-clo
 
 ## CLI / API
 
-| Before                                                                  | After                                                                              |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `run_operation(..., effect="read", argv=[...], require_approval=False)` | Rejected. Use `run_registered(operation_id, params)` with a registered op.         |
-| Caller-supplied `effect` / `argv` / `require_approval` in params        | Rejected as reserved parameters.                                                   |
-| `snapshot_state.py <id>` create without registry                        | Exit 3 unless `AUTOWORKSPACE_EXECUTION_APPROVED=1` (set only by approved handler). |
-| `--restore-root` existing temp dir                                      | Rejected. Program creates empty private staging.                                   |
-| Evidence `work_digest` from path/size/mtime                             | Content manifest (SHA-256 of bytes); admin paths excluded.                         |
-| Free-form `run_id` with `:`                                             | UUID only; path separators rejected.                                               |
-| `--complete` ignoring invalid `project.yaml`                            | `ProjectConfigError` fails complete; allowlist/phases enforced.                    |
-| STATUS→DEFINE via inequality                                            | Rejected unless explicit `allow_restart`.                                          |
-| Same `run_id` complete twice                                            | Idempotent; no second advance.                                                     |
+| Before                                                                  | After                                                                                                   |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `run_operation(..., effect="read", argv=[...], require_approval=False)` | Rejected. Use `run_registered(operation_id, params)` with a registered op.                              |
+| Caller-supplied `effect` / `argv` / `require_approval` in params        | Rejected as reserved parameters.                                                                        |
+| `snapshot_state.py <id>` create via CLI                                 | Always exit 3. Backend only via `create_snapshot_backend` after `run_registered`. Env is never consent. |
+| `--restore-root` existing temp dir                                      | Rejected. Program creates empty private staging.                                                        |
+| Evidence `work_digest` from path/size/mtime                             | Content manifest (SHA-256 of bytes); admin paths excluded.                                              |
+| Free-form `run_id` with `:`                                             | UUID only; path separators rejected.                                                                    |
+| `--complete` ignoring invalid `project.yaml`                            | `ProjectConfigError` fails complete; allowlist/phases enforced.                                         |
+| STATUS→DEFINE via inequality                                            | Rejected unless explicit `allow_restart`.                                                               |
+| Same `run_id` complete twice                                            | Idempotent; no second advance.                                                                          |
 
 ## Installers
 

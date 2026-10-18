@@ -69,6 +69,11 @@ def test_cmd_cut_apply_skips_when_notes_missing(tmp_path, monkeypatch):
     monkeypatch.setattr(cut, "latest_tag", lambda root: "5.0.0")
     monkeypatch.setattr(cut, "write_output", lambda **kwargs: None)
     args = argparse.Namespace(
-        root=tmp_path, apply=True, push=False, notes_file=None, dry_run=False
+        root=tmp_path,
+        apply=True,
+        push=False,
+        notes_file=None,
+        dry_run=False,
+        strict_readiness=False,
     )
     assert cut.cmd_cut(args) == 0

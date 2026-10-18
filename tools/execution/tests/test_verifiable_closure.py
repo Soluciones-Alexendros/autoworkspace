@@ -173,6 +173,9 @@ def test_a19_evidence_excluded(tmp_path):
 # --- A20–A27: evidence store / stale / phase ---
 
 
+_DIG = "a" * 64
+
+
 def _ok_result(op="local_gates", run_id=None):
     import uuid
 
@@ -184,7 +187,47 @@ def _ok_result(op="local_gates", run_id=None):
         detail="",
         effect="write-workspace",
         run_id=run_id or str(uuid.uuid4()),
-        plan_digest="pd",
+        plan_digest=_DIG,
+    )
+
+
+def _phase_meta(phase: str, op: str = "local_gates"):
+    """Bindings + verifications required for phase completion."""
+    kind = {
+        "DEFINE": "spec_deliverable",
+        "SCHEMAS": "schema_deliverable",
+        "IMPLEMENT": "implementation_deliverable",
+        "VALIDATE": "gate_result",
+        "INTEGRATE": "integrate_result",
+        "STATUS": "status_result",
+    }[phase]
+    skill = {
+        "DEFINE": "plan-specification",
+        "SCHEMAS": "plan-specification",
+        "IMPLEMENT": "role-back",
+        "VALIDATE": "project-publish",
+        "INTEGRATE": "project-publish",
+        "STATUS": "plan-continue",
+    }[phase]
+    return {
+        "phase": phase,
+        "skill": skill,
+        "target": "/fixture",
+        "verifications": [{"kind": kind, "ok": True}],
+    }
+
+
+def _store_ok(tmp_path, op="local_gates", phase="VALIDATE", **kwargs):
+    meta = _phase_meta(phase, op)
+    meta.update(kwargs)
+    art = tmp_path / "artifact.txt"
+    if not art.exists():
+        art.write_text("ok")
+    return store_result(
+        tmp_path,
+        _ok_result(op),
+        artifacts=[str(art)],
+        **meta,
     )
 
 
@@ -193,15 +236,27 @@ def test_a20_run_id_traversal_rejected(tmp_path):
     with pytest.raises(ValueError, match="UUID|traversal|run_id"):
         store_result(
             tmp_path,
-            OpResult("local_gates", "succeeded", 0, 1, "", "read", run_id="../escape"),
+            OpResult(
+                "local_gates",
+                "succeeded",
+                0,
+                1,
+                "",
+                "read",
+                run_id="../escape",
+                plan_digest=_DIG,
+            ),
+            phase="VALIDATE",
+            skill="project-publish",
+            target="/t",
         )
 
 
 def test_a21_uuid_unique(tmp_path):
     (tmp_path / "f.txt").write_text("x")
     (tmp_path / ".autoworkspace").mkdir()
-    r1 = store_result(tmp_path, _ok_result(), phase="VALIDATE")
-    r2 = store_result(tmp_path, _ok_result(), phase="VALIDATE")
+    r1 = _store_ok(tmp_path, phase="VALIDATE")
+    r2 = _store_ok(tmp_path, phase="VALIDATE")
     assert r1 != r2
 
 
@@ -217,10 +272,12 @@ def test_a22_failed_action_not_succeeded(tmp_path):
                 1,
                 "ACTION_FAILED:x",
                 "read",
-                run_id=__import__("uuid").uuid4().hex
-                if False
-                else str(__import__("uuid").uuid4()),
+                run_id=str(__import__("uuid").uuid4()),
+                plan_digest=_DIG,
             ),
+            phase="VALIDATE",
+            skill="project-publish",
+            target="/t",
         )
 
 
@@ -234,6 +291,9 @@ def test_a23_artifact_content_mismatch(tmp_path):
             _ok_result(),
             artifacts=[{"path": "out.bin", "sha256": "0" * 64}],
             phase="VALIDATE",
+            skill="project-publish",
+            target="/t",
+            verifications=[{"kind": "gate_result", "ok": True}],
         )
 
 
@@ -241,13 +301,13 @@ def test_a24_stale_content_blocks_complete(tmp_path):
     code = tmp_path / "app.py"
     code.write_text("v1")
     (tmp_path / ".autoworkspace").mkdir()
-    rid = store_result(tmp_path, _ok_result("local_gates"), phase="VALIDATE", skill="plan-validators")
+    rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", skill="project-publish")
     code.write_text("v2")
     with pytest.raises(ValueError, match="stale"):
         advance_status(
             tmp_path,
             phase="VALIDATE",
-            skill="plan-validators",
+            skill="project-publish",
             evidence_ok=True,
             run_id=rid,
         )
@@ -257,7 +317,7 @@ def test_a25_admin_only_ok(tmp_path):
     code = tmp_path / "app.py"
     code.write_text("stable")
     (tmp_path / ".autoworkspace").mkdir()
-    rid = store_result(tmp_path, _ok_result("local_gates"), phase="VALIDATE")
+    rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE")
     (tmp_path / ".autoworkspace" / "status.yaml").write_text("phase: DEFINE\n")
     data = load_evidence(tmp_path, rid, revalidate_content=True, expected_phase="VALIDATE")
     assert data["outcome"] == "succeeded"
@@ -266,11 +326,17 @@ def test_a25_admin_only_ok(tmp_path):
 def test_a26_validate_snapshot_cannot_complete_define(tmp_path):
     (tmp_path / "x").write_text("1")
     (tmp_path / ".autoworkspace").mkdir()
+    # Store with DEFINE bindings but wrong op — load/complete must reject
+    art = tmp_path / "artifact.txt"
+    art.write_text("ok")
     rid = store_result(
         tmp_path,
         _ok_result("validate_snapshot"),
         phase="DEFINE",
         skill="plan-specification",
+        target="/fixture",
+        artifacts=[str(art)],
+        verifications=[{"kind": "spec_deliverable", "ok": True}],
     )
     with pytest.raises(ValueError, match="operation|phase"):
         advance_status(
@@ -285,12 +351,7 @@ def test_a26_validate_snapshot_cannot_complete_define(tmp_path):
 def test_a27_wrong_target_rejected(tmp_path):
     (tmp_path / "x").write_text("1")
     (tmp_path / ".autoworkspace").mkdir()
-    rid = store_result(
-        tmp_path,
-        _ok_result("local_gates"),
-        phase="VALIDATE",
-        target="/a",
-    )
+    rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", target="/a")
     with pytest.raises(ValueError, match="target"):
         load_evidence(tmp_path, rid, expected_target="/b", revalidate_content=True)
 
@@ -320,17 +381,18 @@ def test_a28_concurrent_writers(tmp_path):
             errors.append(str(exc))
 
     # Sequential unique run_ids under lock — both should serialize without lost update
-    rids = [
-        store_result(tmp_path, _ok_result("plan_specification"), phase="DEFINE")
-        for _ in range(2)
-    ]
+    rids = [_store_ok(tmp_path, op="plan_specification", phase="DEFINE") for _ in range(2)]
     barrier = threading.Barrier(2)
 
     def w(rid):
         barrier.wait()
         try:
             s = advance_status(
-                tmp_path, phase="DEFINE", skill="", evidence_ok=True, run_id=rid
+                tmp_path,
+                phase="DEFINE",
+                skill="plan-specification",
+                evidence_ok=True,
+                run_id=rid,
             )
             results.append(int(s.get("state_revision") or 0))
         except Exception as exc:  # noqa: BLE001
@@ -365,17 +427,27 @@ def test_a30_status_to_define_rejected(tmp_path):
             }
         )
     )
-    rid = store_result(tmp_path, _ok_result("plan_specification"), phase="DEFINE")
+    rid = _store_ok(tmp_path, op="plan_specification", phase="DEFINE")
     with pytest.raises(ValueError, match="regress|restart|invalid"):
-        advance_status(tmp_path, phase="DEFINE", evidence_ok=True, run_id=rid)
+        advance_status(
+            tmp_path,
+            phase="DEFINE",
+            skill="plan-specification",
+            evidence_ok=True,
+            run_id=rid,
+        )
 
 
 def test_a32_idempotent_complete(tmp_path):
     (tmp_path / "c").write_text("z")
     (tmp_path / ".autoworkspace").mkdir()
-    rid = store_result(tmp_path, _ok_result("plan_specification"), phase="DEFINE")
-    s1 = advance_status(tmp_path, phase="DEFINE", evidence_ok=True, run_id=rid)
-    s2 = advance_status(tmp_path, phase="DEFINE", evidence_ok=True, run_id=rid)
+    rid = _store_ok(tmp_path, op="plan_specification", phase="DEFINE")
+    s1 = advance_status(
+        tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
+    )
+    s2 = advance_status(
+        tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
+    )
     assert s1["state_revision"] == 1
     assert s2["state_revision"] == 1
     assert s2.get("_idempotent_replay") is True

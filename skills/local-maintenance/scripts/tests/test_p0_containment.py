@@ -103,7 +103,6 @@ def test_authorize_rejects_approved_token():
 
 
 def test_f19_backend_failure_not_success(monkeypatch, tmp_path):
-    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     monkeypatch.setattr(snapshot_state, "which", lambda c: "/usr/bin/timeshift" if c == "timeshift" else None)
     monkeypatch.setattr(snapshot_state, "detect_pkg_mgr", lambda: "apt")
     monkeypatch.setattr(snapshot_state, "run", lambda *a, **k: "5.0.0\n")
@@ -114,12 +113,11 @@ def test_f19_backend_failure_not_success(monkeypatch, tmp_path):
     monkeypatch.setattr(snapshot_state, "write_text", lambda *a, **k: None)
     monkeypatch.setattr(snapshot_state, "md5_file", lambda p: "abc")
 
-    rc = snapshot_state.main(["snap-fail", "--snapshot-dir", str(tmp_path)])
+    rc = snapshot_state.create_snapshot_backend("snap-fail", str(tmp_path))
     assert rc != 0
 
 
 def test_f20_no_private_ssh_keys_by_default(monkeypatch, tmp_path):
-    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     monkeypatch.setattr(snapshot_state, "which", lambda c: None)
     monkeypatch.setattr(snapshot_state, "detect_pkg_mgr", lambda: "apt")
     monkeypatch.setattr(snapshot_state, "run", lambda *a, **k: "")
@@ -136,7 +134,7 @@ def test_f20_no_private_ssh_keys_by_default(monkeypatch, tmp_path):
     monkeypatch.setattr(snapshot_state, "write_text", lambda *a, **k: None)
     monkeypatch.setattr(snapshot_state, "md5_file", lambda p: "d" * 32)
 
-    snapshot_state.main(["snap-ssh", "--snapshot-dir", str(tmp_path)])
+    snapshot_state.create_snapshot_backend("snap-ssh", str(tmp_path))
     cmd = captured.get("cmd", "")
     assert "ssh_host_" not in cmd
     assert "id_rsa" not in cmd

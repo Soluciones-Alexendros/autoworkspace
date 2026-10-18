@@ -85,9 +85,15 @@ def run_registered(
 
     argv = resolve_argv(spec, params)
     handler = get_handler(operation_id)
-    handler_id = getattr(handler, "__name__", None) or (
-        f"{handler.__module__}.{getattr(handler, '__qualname__', 'handler')}" if handler else ""
-    )
+    # Identity must not rely on __name__ alone (wrappers can collide) — H06/C06.
+    if handler is None:
+        handler_id = ""
+    else:
+        handler_id = (
+            f"{getattr(handler, '__module__', '?')}."
+            f"{getattr(handler, '__qualname__', getattr(handler, '__name__', 'handler'))}"
+            f"#{id(handler)}"
+        )
     digest = plan_digest(
         operation_id,
         target,
@@ -146,11 +152,14 @@ def run_registered(
 
     # Re-resolve handler after approval; reject if identity changed
     handler_after = get_handler(operation_id)
-    handler_id_after = getattr(handler_after, "__name__", None) or (
-        f"{handler_after.__module__}.{getattr(handler_after, '__qualname__', 'handler')}"
-        if handler_after
-        else ""
-    )
+    if handler_after is None:
+        handler_id_after = ""
+    else:
+        handler_id_after = (
+            f"{getattr(handler_after, '__module__', '?')}."
+            f"{getattr(handler_after, '__qualname__', getattr(handler_after, '__name__', 'handler'))}"
+            f"#{id(handler_after)}"
+        )
     if handler_id_after != handler_id:
         return OpResult(
             operation_id,

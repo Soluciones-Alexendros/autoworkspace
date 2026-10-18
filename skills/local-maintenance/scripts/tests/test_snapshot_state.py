@@ -1,5 +1,6 @@
 """Tests snapshot_state.py: --help, inválidos, error dir -> 1, doradas puras."""
 import hashlib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -36,10 +37,10 @@ def test_invalid_snapshot_id_exit2(tmp_path):
 
 
 def test_error_snapshot_dir_es_fichero_exit1(tmp_path, monkeypatch):
-    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     blocker = tmp_path / "blocker"
     blocker.write_text("x", encoding="utf-8")
-    assert snapshot_state.main(["snap-1", "--snapshot-dir", str(blocker)]) == 1
+    # Backend callable after approval; CLI itself always rejects create.
+    assert snapshot_state.create_snapshot_backend("snap-1", str(blocker)) == 1
 
 
 def test_md5_file_golden(tmp_path):
@@ -87,22 +88,27 @@ def test_snapshot_detect_pkgmgr_none(monkeypatch):
 
 
 def test_snapshot_create_basic(tmp_path, monkeypatch):
-    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     snap_dir = tmp_path / "snapshots"
     snap_dir.mkdir()
     with patch("snapshot_state.which", lambda cmd: "/usr/bin/pacman" if cmd == "pacman" else None):
         with patch("snapshot_state.run_capture", return_value=(0, "pkg1\npkg2")):
             with patch("snapshot_state.run", return_value="pkg1\npkg2"):
-                rc = snapshot_state.main(["snap-test", "--snapshot-dir", str(snap_dir)])
+                rc = snapshot_state.create_snapshot_backend("snap-test", str(snap_dir))
                 assert rc == 0
+                meta = json.loads((snap_dir / "snap-test" / "metadata.json").read_text())
+                assert meta["id"] == "snap-test"
+                assert meta["content_hash"]
+                assert meta["coverage"]
 
 
-def test_snapshot_create_cli_blocked_without_approval(tmp_path, monkeypatch):
-    monkeypatch.delenv("AUTOWORKSPACE_EXECUTION_APPROVED", raising=False)
+def test_snapshot_create_cli_always_blocked(tmp_path, monkeypatch):
+    """Env/flag never authorizes CLI create (V13/C05)."""
+    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
     snap_dir = tmp_path / "snapshots"
     snap_dir.mkdir()
     rc = snapshot_state.main(["snap-test", "--snapshot-dir", str(snap_dir)])
     assert rc == 3
+    assert not (snap_dir / "snap-test").exists()
 
 
 def test_snapshot_list(tmp_path):

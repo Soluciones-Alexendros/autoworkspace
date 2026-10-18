@@ -12,13 +12,26 @@ TOOLS = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(TOOLS))
 
-from execution.evidence import store_result  # noqa: E402
+from execution.evidence import store_result, work_digest  # noqa: E402
 from execution.ops import OpResult  # noqa: E402
 from status_bump import advance_status, load_status  # noqa: E402
+
+DIG = "e" * 64
 
 
 def _ok_run(repo: Path, op: str = "plan_specification", phase: str = "DEFINE") -> str:
     (repo / "keepalive.txt").write_text("x", encoding="utf-8")
+    art = repo / "artifact.txt"
+    art.write_text("ok")
+    kind = {
+        "DEFINE": "spec_deliverable",
+        "SCHEMAS": "schema_deliverable",
+        "IMPLEMENT": "implementation_deliverable",
+        "VALIDATE": "gate_result",
+        "INTEGRATE": "integrate_result",
+        "STATUS": "status_result",
+    }[phase]
+    digest = work_digest(repo)
     return store_result(
         repo,
         OpResult(
@@ -29,10 +42,15 @@ def _ok_run(repo: Path, op: str = "plan_specification", phase: str = "DEFINE") -
             detail="",
             effect="write-workspace",
             run_id=str(uuid.uuid4()),
-            plan_digest="abc",
+            plan_digest=DIG,
         ),
         phase=phase,
         skill="plan-specification",
+        target="/fixture",
+        artifacts=[str(art)],
+        verifications=[{"kind": kind, "ok": True}],
+        input_digest=digest,
+        output_digest=digest,
     )
 
 
@@ -59,9 +77,16 @@ class TestStatusBump(unittest.TestCase):
             (root / ".autoworkspace").mkdir()
             rid = _ok_run(root)
             advance_status(
-                root, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
+                root,
+                phase="DEFINE",
+                skill="plan-specification",
+                evidence_ok=True,
+                run_id=rid,
+                target="/fixture",
             )
             # Evidence claims INTEGRATE but current phase is DEFINE → jump rejected
+            art = root / "artifact.txt"
+            digest = work_digest(root)
             rid2 = store_result(
                 root,
                 OpResult(
@@ -72,18 +97,24 @@ class TestStatusBump(unittest.TestCase):
                     detail="",
                     effect="write-workspace",
                     run_id=str(uuid.uuid4()),
-                    plan_digest="abc",
+                    plan_digest=DIG,
                 ),
                 phase="INTEGRATE",
-                skill="",
+                skill="project-publish",
+                target="/fixture",
+                artifacts=[str(art)],
+                verifications=[{"kind": "integrate_result", "ok": True}],
+                input_digest=digest,
+                output_digest=digest,
             )
             with self.assertRaises(ValueError) as ctx:
                 advance_status(
                     root,
                     phase="INTEGRATE",
-                    skill="",
+                    skill="project-publish",
                     evidence_ok=True,
                     run_id=rid2,
+                    target="/fixture",
                 )
             self.assertIn("invalid phase jump", str(ctx.exception))
 
@@ -98,6 +129,7 @@ class TestStatusBump(unittest.TestCase):
                 skill="plan-specification",
                 evidence_ok=True,
                 run_id=rid,
+                target="/fixture",
             )
             self.assertEqual(s1["advance"], 1)
             self.assertEqual(s1["state_revision"], 1)
@@ -110,6 +142,7 @@ class TestStatusBump(unittest.TestCase):
                 evidence_ok=True,
                 run_id=rid2,
                 bump_product_version=True,
+                target="/fixture",
             )
             self.assertEqual(s2["version"], "0.1.1")
             loaded = load_status(root)
@@ -133,7 +166,12 @@ class TestStatusBump(unittest.TestCase):
             rid = _ok_run(root, op="validate_snapshot", phase="DEFINE")
             with self.assertRaises(ValueError):
                 advance_status(
-                    root, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
+                    root,
+                    phase="DEFINE",
+                    skill="plan-specification",
+                    evidence_ok=True,
+                    run_id=rid,
+                    target="/fixture",
                 )
 
 

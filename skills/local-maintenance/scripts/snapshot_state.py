@@ -384,14 +384,39 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("snapshot_id inválido: %r", snapshot_id)
         print(f"snapshot_id inválido: {snapshot_id}", file=sys.stderr)
         return 2
-    # Create path: CLI must not reach backend without registry approval token.
-    if os.environ.get("AUTOWORKSPACE_EXECUTION_APPROVED") != "1":
-        logger.error("create_snapshot CLI blocked without execution approval")
-        print(
-            "ERROR: snapshot create via CLI rejected; use run_registered('create_snapshot', …)",
-            file=sys.stderr,
-        )
-        return 3
+    # CLI create is never consent. Env/flag/hash cannot authorize (H05/C05).
+    # Backend is reachable only via create_snapshot_backend after run_registered.
+    _ = os.environ.pop("AUTOWORKSPACE_EXECUTION_APPROVED", None)
+    logger.error("create_snapshot CLI blocked; use run_registered('create_snapshot', …)")
+    print(
+        "ERROR: snapshot create via CLI rejected; use run_registered('create_snapshot', …)",
+        file=sys.stderr,
+    )
+    return 3
+
+
+def _content_hash_of_snapshot(snapshot_path: str) -> str:
+    """SHA-256 over inventory files excluding metadata.json (written last)."""
+    h = hashlib.sha256()
+    for root, _dirs, files in os.walk(snapshot_path):
+        for name in sorted(files):
+            if name == "metadata.json":
+                continue
+            full = os.path.join(root, name)
+            if os.path.islink(full):
+                h.update(os.readlink(full).encode())
+            elif os.path.isfile(full):
+                with open(full, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(65536), b""):
+                        h.update(chunk)
+    return h.hexdigest()
+
+
+def create_snapshot_backend(snapshot_id: str, base_dir: str) -> int:
+    """Create snapshot inventory/backup. Callable only from approved handlers."""
+    if "/" in snapshot_id or "\\" in snapshot_id or snapshot_id in ("", ".", ".."):
+        logger.error("snapshot_id inválido: %r", snapshot_id)
+        return 2
     snapshot_path = os.path.join(base_dir, snapshot_id)
 
     pkg_mgr = detect_pkg_mgr()
@@ -411,9 +436,15 @@ def main(argv: list[str] | None = None) -> int:
     backend_status = "not_run"
     backup_status = "not_run"
     recovery_scope = "none"
+    coverage = "inventory-only"
 
     metadata = {
+        "id": snapshot_id,
         "snapshot_id": snapshot_id,
+        "target_host": hostname(),
+        "backend": backend_name,
+        "coverage": coverage,
+        "content_hash": "",
         "timestamp": utcnow_iso(),
         "hostname": hostname(),
         "user": _current_user(),
@@ -427,6 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         "recovery_scope": recovery_scope,
         "integrity_status": "pending",
     }
+    # Write placeholder metadata without content_hash; finalize after files exist.
     try:
         with open(f"{snapshot_path}/metadata.json", "w", encoding="utf-8") as fh:
             json.dump(metadata, fh, indent=2)
@@ -477,8 +509,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         backend_status = "ok" if rc == 0 else "failed"
         backup_status = backend_status
-        # Code zero alone is not full recovery — evidence of id/scope still required.
         recovery_scope = "partial" if rc == 0 else "none"
+        coverage = "timeshift-partial" if rc == 0 else "inventory-only"
     elif which("snapper"):
         backend_name = "snapper"
         log_info("Creando snapshot snapper...")
@@ -489,13 +521,13 @@ def main(argv: list[str] | None = None) -> int:
         backend_status = "ok" if rc == 0 else "failed"
         backup_status = backend_status
         recovery_scope = "partial" if rc == 0 else "none"
+        coverage = "snapper-partial" if rc == 0 else "inventory-only"
     else:
         backend_name = "tar-config"
         log_warn(
             "No hay timeshift/snapper. Backup tar de configs públicas (sin claves privadas)..."
         )
         family = detect_pkg_mgr()
-        # Never include ssh_host_* private keys by default.
         etc_files = ["/etc/ssh/sshd_config", "/etc/fstab"]
         if family == "pacman":
             etc_files.extend(["/etc/pacman.conf", "/etc/pacman.d"])
@@ -511,15 +543,18 @@ def main(argv: list[str] | None = None) -> int:
         backend_status = "ok" if rc == 0 else "failed"
         backup_status = "ok" if rc == 0 else "failed"
         recovery_scope = "partial" if rc == 0 else "none"
+        coverage = "tar-config-partial" if rc == 0 else "inventory-only"
         if rc != 0:
             log_warn("Backup parcial de configs falló")
 
     metadata.update(
         {
+            "backend": backend_name,
             "backend_name": backend_name,
             "backend_status": backend_status,
             "backup_status": backup_status,
             "recovery_scope": recovery_scope,
+            "coverage": coverage,
             "backend_required": True,
         }
     )
@@ -546,6 +581,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         for root, _dirs, files in os.walk(snapshot_path):
             for name in files:
+                if name == "metadata.json":
+                    continue
                 full = os.path.join(root, name)
                 digest = md5_file(full)
                 if digest:
@@ -561,8 +598,11 @@ def main(argv: list[str] | None = None) -> int:
                 hashes_digest.update(chunk)
         snapshot_hash = hashes_digest.hexdigest()
         write_text(f"{snapshot_path}/SNAPSHOT-HASH.txt", snapshot_hash + "\n")
+        # content_hash AFTER all inventory files; metadata written last (H08)
+        content_hash = _content_hash_of_snapshot(snapshot_path)
         metadata["integrity_status"] = "ok"
         metadata["snapshot_hash"] = snapshot_hash
+        metadata["content_hash"] = content_hash
         metadata["outcome"] = "partial" if recovery_scope == "partial" else "succeeded"
     except OSError as exc:
         logger.error("no se pudo calcular hash del snapshot: %s", exc)
@@ -597,6 +637,7 @@ def main(argv: list[str] | None = None) -> int:
             "snapshot_id": snapshot_id,
             "snapshot_path": snapshot_path,
             "snapshot_hash": snapshot_hash,
+            "content_hash": content_hash,
             "timestamp": utcnow_iso(),
             "package_manager": pkg_mgr,
             "files_captured": files_captured,
