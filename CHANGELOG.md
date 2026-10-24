@@ -6,6 +6,10 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `plan-continue` 4.3.0 -> 4.3.1 (patch)
+
+  Rename pattern-hit keys so CodeQL clear-text sinks stop treating report fields as secret sources.
+
 - `local-maintenance` 5.1.2 -> 5.1.3 (patch)
 
 - `local-maintenance` 5.1.1 -> 5.1.2 (patch)

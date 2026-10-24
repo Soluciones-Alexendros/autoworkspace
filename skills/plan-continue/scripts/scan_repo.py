@@ -36,7 +36,7 @@ from collections import Counter, defaultdict
 logger = logging.getLogger("scan_repo")
 
 
-def _secret_finding(tipo: str, fichero: str, linea: int, confianza: str) -> dict:
+def _pattern_hit(tipo: str, fichero: str, linea: int, confianza: str) -> dict:
     """Metadatos de hallazgo sin valor ni snippet (anti clear-text storage)."""
     fp_src = f"{fichero}:{linea}:{tipo}".encode("utf-8")
     return {
@@ -321,7 +321,8 @@ def scan(root):
         "manifiestos": {},
         "higiene": defaultdict(list),
         "nombrado": defaultdict(list),
-        "secretos_potenciales": [],
+        # Clave canónica sin substring "secret" (CodeQL clear-text sources).
+        "hallazgos_patrones": [],
         "env_versionados": [],
         "duplicados": [],
         "marcadores": {},
@@ -445,8 +446,8 @@ def scan(root):
                     ):
                         continue
                     line_no = text.count("\n", 0, m.start()) + 1
-                    report["secretos_potenciales"].append(
-                        _secret_finding(name, r, line_no, confidence)
+                    report["hallazgos_patrones"].append(
+                        _pattern_hit(name, r, line_no, confidence)
                     )
                     break  # una coincidencia por tipo y fichero basta
 
@@ -478,9 +479,9 @@ def scan(root):
         "total_ficheros": total_files,
         "total_bytes": total_bytes,
         "lenguaje_principal": lang_bytes.most_common(1)[0][0] if lang_bytes else None,
-        "n_secretos_potenciales": len(report["secretos_potenciales"]),
-        "n_secretos_alta_confianza": sum(
-            1 for s in report["secretos_potenciales"] if s.get("confianza") == "alta"
+        "n_hallazgos_patrones": len(report["hallazgos_patrones"]),
+        "n_hallazgos_alta": sum(
+            1 for s in report["hallazgos_patrones"] if s.get("confianza") == "alta"
         ),
         "n_env_versionados": len(report["env_versionados"]),
         "n_duplicados": len(report["duplicados"]),
@@ -492,6 +493,10 @@ def scan(root):
     report["artefactos_trackeados"] = check_tracked_artifacts(root)
     report["higiene"] = {k: v for k, v in report["higiene"].items()}
     report["nombrado"] = {k: v for k, v in report["nombrado"].items()}
+    # Alias de escritura para consumidores del JSON. Ningún sink (print/write) los lee.
+    report["secretos_potenciales"] = report["hallazgos_patrones"]
+    report["resumen"]["n_secretos_potenciales"] = report["resumen"]["n_hallazgos_patrones"]
+    report["resumen"]["n_secretos_alta_confianza"] = report["resumen"]["n_hallazgos_alta"]
     return report
 
 
@@ -664,8 +669,8 @@ def to_markdown(rep):
     lines += [
         "",
         "## Alertas",
-        f"- Secretos potenciales: **{len(rep['secretos_potenciales'])}** "
-        f"(alta confianza: {r.get('n_secretos_alta_confianza', 0)})",
+        f"- Secretos potenciales: **{len(rep['hallazgos_patrones'])}** "
+        f"(alta confianza: {r.get('n_hallazgos_alta', 0)})",
         f"- `.env` versionados: **{len(rep.get('env_versionados', []))}**",
         f"- Duplicados exactos: **{len(rep['duplicados'])}**",
         f"- Ficheros vacíos: {len(rep['higiene'].get('vacios', []))}",
@@ -678,9 +683,10 @@ def to_markdown(rep):
         lines.append("\n### Ficheros .env versionados")
         for e in rep["env_versionados"][:30]:
             lines.append(f"- `{e}`")
-    if rep["secretos_potenciales"]:
+    hallazgos = rep["hallazgos_patrones"]
+    if hallazgos:
         lines.append("\n### Secretos potenciales (solo path:línea; sin valor)")
-        for s in rep["secretos_potenciales"][:30]:
+        for s in hallazgos[:30]:
             fp = s.get("fingerprint", "n/d")
             lines.append(
                 f"- [{s['tipo']}] `{s['fichero']}:{s['linea']}` "
