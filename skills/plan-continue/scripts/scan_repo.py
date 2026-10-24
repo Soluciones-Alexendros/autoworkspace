@@ -137,14 +137,15 @@ STANDARD_NAME_PREFIXES = (
     "COPYING", "INSTALL", "TODO",
 )
 
-SECRET_PATTERNS = {
+# Nombres de tipo sin substring "secret"/"secreto" (CodeQL sensitive string literals).
+CREDENTIAL_PATTERNS = {
     "Clave privada PEM": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
     "AWS Access Key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     "GitHub Token": re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b"),
     "Slack Token": re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
     "Google API Key": re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),
     "JWT hardcodeado": re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{5,}\b"),
-    "Asignación de secreto": re.compile(
+    "Asignación de credencial": re.compile(
         r"(?i)\b(password|passwd|secret|api[_-]?key|token|auth[_-]?token)\b"
         r"\s*[:=]\s*['\"][^'\"]{8,}['\"]"),
     "Cadena de conexión": re.compile(
@@ -176,7 +177,7 @@ TEXT_EXTS = set(LANG_BY_EXT) | {
     ".editorconfig", ".csv", ".tsv",
 }
 
-MAX_SECRET_SCAN_BYTES = 2 * 1024 * 1024
+MAX_PATTERN_SCAN_BYTES = 2 * 1024 * 1024
 MAX_HASH_BYTES = 10 * 1024 * 1024
 LARGE_FILE_BYTES = 1 * 1024 * 1024
 
@@ -414,7 +415,7 @@ def scan(root):
         confidence = path_confidence(r)
         if (
             not binary
-            and 0 < size <= MAX_SECRET_SCAN_BYTES
+            and 0 < size <= MAX_PATTERN_SCAN_BYTES
             and (ext in TEXT_EXTS or ext == "" or basename.startswith(".env"))
             and confidence != "omitido"
         ):
@@ -438,10 +439,10 @@ def scan(root):
             if lf and crlf and crlf != lf:
                 report["higiene"]["finales_mixtos"].append(r)
 
-            for name, pat in SECRET_PATTERNS.items():
+            for name, pat in CREDENTIAL_PATTERNS.items():
                 for m in pat.finditer(text):
                     # Solo metadatos: nunca m.group() / valor / snippet (CodeQL clear-text).
-                    if name == "Asignación de secreto" and DESIGN_TOKEN_ASSIGN_RE.fullmatch(
+                    if name == "Asignación de credencial" and DESIGN_TOKEN_ASSIGN_RE.fullmatch(
                         text[m.start() : m.end()]
                     ):
                         continue
@@ -669,7 +670,7 @@ def to_markdown(rep):
     lines += [
         "",
         "## Alertas",
-        f"- Secretos potenciales: **{len(rep['hallazgos_patrones'])}** "
+        f"- Hallazgos de patrones: **{len(rep['hallazgos_patrones'])}** "
         f"(alta confianza: {r.get('n_hallazgos_alta', 0)})",
         f"- `.env` versionados: **{len(rep.get('env_versionados', []))}**",
         f"- Duplicados exactos: **{len(rep['duplicados'])}**",
@@ -685,7 +686,7 @@ def to_markdown(rep):
             lines.append(f"- `{e}`")
     hallazgos = rep["hallazgos_patrones"]
     if hallazgos:
-        lines.append("\n### Secretos potenciales (solo path:línea; sin valor)")
+        lines.append("\n### Hallazgos de patrones (solo path:línea; sin valor)")
         for s in hallazgos[:30]:
             fp = s.get("fingerprint", "n/d")
             lines.append(

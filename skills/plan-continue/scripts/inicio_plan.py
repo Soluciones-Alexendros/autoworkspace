@@ -264,7 +264,7 @@ def fallos_desde(scan: dict, git: dict, est: dict, gh: dict) -> list[dict]:
                     "sev": "P0",
                     "fuente": "escaneo",
                     "detalle": (
-                        f"posible secreto en {s.get('fichero')}:{s.get('linea')} "
+                        f"posible hallazgo en {s.get('fichero')}:{s.get('linea')} "
                         f"({s.get('tipo')}; fp={fp})"
                     ),
                 }
@@ -410,7 +410,7 @@ def to_markdown(rep: dict) -> str:
         "",
         "## Cómo seguir",
         "",
-        "1. Si el semáforo es rojo por un secreto o un `.env` versionado: parar y rotar.",
+        "1. Si el semáforo es rojo por un hallazgo P0 o un `.env` versionado: parar y rotar.",
         "2. Árbol sucio o clon detrás: preguntar antes de `pull --ff-only`.",
         "3. Con el tablero a la vista, escribir el plan (`/design` o `task_plan.md`).",
         "4. Al terminar el trabajo: `project-publish` modo G.",

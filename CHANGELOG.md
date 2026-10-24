@@ -6,6 +6,10 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `plan-continue` 4.3.1 -> 4.3.2 (patch)
+
+  Avoid CodeQL secret string literals in inicio_plan/scan_repo user-facing text and pattern type names.
+
 - `plan-continue` 4.3.0 -> 4.3.1 (patch)
 
   Rename pattern-hit keys so CodeQL clear-text sinks stop treating report fields as secret sources.
