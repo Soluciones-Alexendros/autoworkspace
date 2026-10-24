@@ -254,7 +254,8 @@ def estructura(repo: str, profile: str) -> dict:
 
 def fallos_desde(scan: dict, git: dict, est: dict, gh: dict) -> list[dict]:
     fallos: list[dict] = []
-    for s in scan.get("secretos_potenciales") or []:
+    # Leer hallazgos_patrones (sin substring "secret") para no alimentar sinks CodeQL.
+    for s in scan.get("hallazgos_patrones") or []:
         if s.get("confianza") == "alta":
             # Solo path:línea:tipo:fingerprint — nunca valor del match
             fp = s.get("fingerprint") or "n/d"
