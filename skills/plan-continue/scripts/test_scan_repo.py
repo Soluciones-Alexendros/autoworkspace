@@ -98,14 +98,25 @@ class ScanRepoTests(unittest.TestCase):
                 'password = "supersecreto123"\n',
             )
             rep = scan_repo.scan(str(root))
-            secrets = rep["secretos_potenciales"]
-            self.assertTrue(secrets)
+            hallazgos = rep["hallazgos_patrones"]
+            self.assertTrue(hallazgos)
+            self.assertEqual(hallazgos, rep["secretos_potenciales"])
+            self.assertEqual(
+                rep["resumen"]["n_hallazgos_patrones"],
+                rep["resumen"]["n_secretos_potenciales"],
+            )
+            self.assertEqual(
+                rep["resumen"]["n_hallazgos_alta"],
+                rep["resumen"]["n_secretos_alta_confianza"],
+            )
             dumped = json.dumps(rep)
             self.assertNotIn("supersecreto123", dumped)
-            by_file = {s["fichero"]: s for s in secrets}
+            md = scan_repo.to_markdown(rep)
+            self.assertNotIn("supersecreto123", md)
+            by_file = {s["fichero"]: s for s in hallazgos}
             self.assertEqual(by_file["docs/ejemplo.md"]["confianza"], "baja")
             self.assertEqual(by_file["src/config.py"]["confianza"], "alta")
-            for s in secrets:
+            for s in hallazgos:
                 self.assertNotIn("valor", s)
                 self.assertNotIn("value", s)
                 self.assertNotIn("snippet", s)
