@@ -2,11 +2,11 @@
 
 ### Propósito de este documento
 
-- **Objetivos:** Referencia de nombres de script y snippets CI para repos Node (Next/SaaS/CLI). No aplastar el runtime.
+- **Objetivos:** Referencia de nombres de script y caller CI para repos Node (Next/SaaS/CLI). No aplastar el runtime.
 - **Estructura:** Esta meta-sección → scripts `package.json` → Makefile → Coverage → e2e → archivos del directorio.
-- **Contenido a integrar según contexto:** Copia los YAML a `.github/workflows/ci.yml` y cambia herramientas (Vitest vs Jest, Next vs otro). Astro+Vercel tendrá snippet propio ([ADR-0008](../../docs/architecture/decisions/ADR-0008-snippets-reales-post-oleada.md)). No uses el `ci.yml` de este canon tal cual. `has_artifact: true` ⇒ declara job `build`.
+- **Contenido a integrar según contexto:** Copia `ci.yml` a `.github/workflows/ci.yml` y pineá el SHA de `reusable-node`. Cambia herramientas (Vitest vs Jest, Next vs otro). No uses el `ci.yml` de este canon tal cual. `run-build: true` si hay artefacto.
 
-Referencia para repos web/SaaS/CLI en Node. Copia los snippets a `.github/workflows/ci.yml`; no uses el `ci.yml` de este canon tal cual.
+Referencia para repos web/SaaS/CLI en Node.
 
 ## Scripts canónicos (`package.json`)
 
@@ -45,14 +45,13 @@ validate:
 
 ## Coverage
 
-- Gate del job `test`: ≥70% líneas cuando la suite es estable ([ADR-0007](../../docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
+- Default del reusable: **80%** (`coverage-threshold`). Gate opcional ≥70% hasta suite estable ([ADR-0007](../../docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
 - Paquetes críticos (auth, billing, crypto): 80% documentado en `docs/guides/testing.md` del producto.
 
 ## e2e (opcional)
 
-Job `e2e` con Playwright Chromium, `needs: [build]`. Required en `main` para webs P1. No sustituye a `smoke`.
+Input `e2e: true` en el caller. No sustituye a `smoke`. El check required sigue siendo solo `ci-gate`.
 
 ## Archivos de este directorio
 
-- `ci.quality.snippet.yml` — steps de format/lint/typecheck
-- `ci.smoke.snippet.yml` — job smoke post-build
+- `ci.yml` — caller `pipeline` + `ci-gate` → `reusable-node.yml@SHA`

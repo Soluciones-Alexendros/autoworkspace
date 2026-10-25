@@ -15,10 +15,10 @@ Canon de plataforma de **Iniciativas-Alexendros**: el contrato P0/P1 que el rest
 
 **Hace**
 
-- Fija el esqueleto de docs, CI (`quality` → `test` → `build` → `smoke`), Renovate, CODEOWNERS y plantillas.
+- Fija el esqueleto de docs, CI (fases `quality` → `test` → `build` → `smoke`; check required `ci-gate`), Renovate, CODEOWNERS y plantillas.
 - Define perfiles **P0 Base**, **P1 Producto** y **P2 Público**.
 - Explica cómo aplicar el estándar a un **repo ya existente** (`docs/REUTILIZACION.md`).
-- Ofrece snippets por stack (`stacks/typescript`, `stacks/rust`, `stacks/infra`) sin aplastar el runtime.
+- Ofrece workflows reutilizables y callers por stack (`stacks/typescript`, `stacks/rust`, `stacks/python`, `stacks/infra`) sin aplastar el runtime.
 
 **No hace**
 
@@ -45,7 +45,7 @@ Para **alinear un repo existente**: no hace falta clonar este árbol entero. Sig
 3. Clona, crea una rama `feat/…` y ajusta:
    - `README.md` (qué es el producto)
    - `.env.example` (keys reales del runtime, siguen siendo placeholders)
-   - `stacks/` → copia el snippet de CI de tu stack a `.github/workflows/ci.yml`
+   - `stacks/` → copia `stacks/<stack>/ci.yml` a `.github/workflows/ci.yml` (pin SHA del reusable)
    - `docs/architecture/overview.md` (límites del sistema)
 4. En local:
 
@@ -55,7 +55,7 @@ Para **alinear un repo existente**: no hace falta clonar este árbol entero. Sig
    make smoke
    ```
 
-5. Abre un PR a `main`. Los checks required de **este** canon son `quality`, `test` y `smoke` (no hay job `build`: no hay artefacto; [ADR-0003](docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md)). En producto, añade `build`/`e2e` a required **solo** si esos jobs existen.
+5. Abre un PR a `main`. El único check required es **`ci-gate`** ([ADR-0013](docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)). Auto-merge squash sin revisión ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
 
 ### B. Alinear un repo que ya existe
 
@@ -88,8 +88,8 @@ No copies a ciegas. Checklist y orden: **[`docs/REUTILIZACION.md`](docs/REUTILIZ
 - **Renovate** es el único bot de version-updates. No hay `dependabot.yml` de bump de versiones. Las Dependabot Alerts de seguridad pueden quedar ON.
 - Docs en **español**.
 - Coverage por defecto **≥70%**; documenta **80%** en módulos críticos.
-- Automerge humano/agente **solo** con label `automerge` (más CI verde y review).
-- Orden de gates: quality → test → build → smoke (`e2e` opcional en webs). El job `build` **solo existe si hay artefacto**; si no, no se declara ([ADR-0003](docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md)).
+- Auto-merge squash humano/agente con `ci-gate` verde; 0 approvals; etiqueta opcional `hold` ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+- Fases: quality → test → build → smoke (`e2e` opcional). Required check: solo `ci-gate`. `build` solo si hay artefacto ([ADR-0013](docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)).
 - Prerrequisito org: GitHub App **Renovate** instalada ([ADR-0004](docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)). Dependabot Alerts ON; sin version-updates de Dependabot.
 - Secret scanning + push protection ON a nivel org ([ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
 - Ampliaciones P0/P1: índice en [`docs/architecture/decisions/`](docs/architecture/decisions/).

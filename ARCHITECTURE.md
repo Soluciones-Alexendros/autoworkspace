@@ -15,28 +15,28 @@ Detalle: [`docs/architecture/overview.md`](docs/architecture/overview.md). Decis
 ```
 contrato de flota (docs + AGENTS + CI names)
         │
-        ├── stacks/     fragmentos de quality/smoke por runtime
+        ├── stacks/     callers ci.yml por runtime (pin SHA)
         ├── scripts/    smoke + validador de estructura de este canon
-        └── .github/    workflows, Renovate, plantillas, CODEOWNERS
+        └── .github/    reusable-*, ci.yml (ci-gate), Renovate, plantillas
 ```
 
 Tres perfiles, un esqueleto:
 
 | Perfil | Para quién | Extra sobre el anterior |
 |--------|------------|-------------------------|
-| **P0 Base** | Todo repo activo | README, LICENSE, SECURITY, CONTRIBUTING, CHANGELOG, CI `quality`+`test`, CODEOWNERS, metadatos |
+| **P0 Base** | Todo repo activo | README, LICENSE, SECURITY, CONTRIBUTING, CHANGELOG, CI `pipeline`+`ci-gate`, CODEOWNERS, metadatos |
 | **P1 Producto** | Webs, SaaS, apps, CLIs | `docs/`, AGENTS, ARCHITECTURE, `.env.example`, `smoke`, Renovate, issue/PR templates |
 | **P2 Público** | Contribución externa | CoC, SUPPORT, topics ricos, `security.yml` / audit, coverage publicado |
 
 ## Gates
 
-Orden fijo en la flota:
+Orden de fases en la flota:
 
 `quality` → `test` (unit/function + coverage) → `build` → `smoke` → (`e2e` opcional)
 
-`build` solo existe si hay artefacto; si no, el job no se declara ([ADR-0003](docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md)). Required checks = `quality` + `test` + `smoke` (+ `build`/`e2e` si aplican).
+`build` solo existe si hay artefacto. El único check **required** es `ci-gate` ([ADR-0013](docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)). Auto-merge squash sin revisión ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
 
-En **este** repo no hay artefacto de aplicación: `quality` valida el árbol canónico, `test` documenta el hook, `smoke` demuestra el contrato del script.
+En **este** repo no hay artefacto de aplicación: `reusable-static` corre actionlint + `check-structure`, el hook `test` y `smoke`; el caller emite `ci-gate`.
 
 ## Qué no unifica este canon
 

@@ -28,8 +28,8 @@ Hacía falta un **único contrato** (perfiles P0/P1/P2) que no aplastara el stac
 2. **Renovate** es el único bot de version-updates. No se añade `dependabot.yml` de bumps. Dependabot Alerts (seguridad) pueden permanecer ON.
 3. Documentación del estándar en **español**.
 4. Coverage por defecto **≥70%** de líneas; los módulos críticos documentan **80%** (techo aspiracional tipo zedazo).
-5. Automerge de PRs humanos/agentes **solo** con label `automerge` (más CI verde y review). Renovate sí automergea `patch` y `minor`.
-6. Gates: `quality` → `test` → `build` → `smoke`; `e2e` opcional en webs.
+5. Automerge de PRs humanos/agentes: **sin** label `automerge`; 0 approvals + `ci-gate` verde + squash ([ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md)). Renovate sí automergea `patch` y `minor` por su config.
+6. Gates (fases): `quality` → `test` → `build` → `smoke`; `e2e` opcional en webs. El único check required es `ci-gate` ([ADR-0013](./ADR-0013-check-unico-ci-gate.md)).
 7. Este repo es **producto de plataforma**: esqueleto + docs + snippets. No incluye una app de referencia ejecutable.
 
 ## Consecuencias
@@ -37,7 +37,7 @@ Hacía falta un **único contrato** (perfiles P0/P1/P2) que no aplastara el stac
 - Los repos nuevos pueden nacer desde GitHub Template o copiar el árbol.
 - Los existentes se alinean con [REUTILIZACION.md](../../REUTILIZACION.md), un PR por repo.
 - `website-landingpage-template` no se degrada; se le pedirá (oleada 3) cerrar gaps (Renovate vs Dependabot, SECURITY unificado).
-- Quien abra un major de deps o un cambio de workflow no tiene automerge.
+- Quien necesite pausar el auto-merge usa la etiqueta `hold` ([ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md)).
 
 ## Alternativas
 

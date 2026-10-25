@@ -1,0 +1,147 @@
+name: Reusable Python (uv)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        required: false
+        default: "3.12"
+      coverage-threshold:
+        type: string
+        required: false
+        default: "80"
+      working-directory:
+        type: string
+        required: false
+        default: "."
+
+permissions: {}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Setup uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Sync
+        run: uv sync --frozen
+      - name: Validar título Conventional Commits
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style)(\([a-z0-9._/-]+\))?!?: .{1,100}$'
+          if ! printf '%s\n' "$PR_TITLE" | grep -Eq "$pattern"; then
+            echo "::error::Título de PR inválido: «${PR_TITLE}»"
+            echo "Esperado: tipo(alcance)?: descripción (1–100 caracteres tras «: »)"
+            echo "Tipos: feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style"
+            exit 1
+          fi
+        working-directory: .
+      - name: Ruff format
+        run: uv run ruff format --check .
+      - name: Ruff check
+        run: |
+          set -euo pipefail
+          uv run ruff check . \
+            --select E,F,W,I,B,UP,SIM,C90,N,PL,RUF \
+            --config 'lint.mccabe.max-complexity = 10'
+      - name: Mypy strict
+        run: uv run mypy --strict .
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Setup uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Sync
+        run: uv sync --frozen
+      - name: Pytest + coverage
+        env:
+          COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
+        run: |
+          set -euo pipefail
+          uv run pytest --cov --cov-fail-under="${COVERAGE_THRESHOLD}"
+
+  build:
+    needs: [quality, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Setup uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Sync
+        run: uv sync --frozen
+      - name: uv build
+        run: uv build
+
+  smoke:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Smoke
+        run: |
+          set -euo pipefail
+          if [[ -f Makefile ]] && grep -Eq '^smoke:' Makefile; then
+            make smoke
+          elif [[ -f scripts/smoke.sh ]]; then
+            bash scripts/smoke.sh
+          else
+            echo "::error::No hay make smoke ni scripts/smoke.sh"
+            exit 1
+          fi

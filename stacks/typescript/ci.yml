@@ -1,0 +1,59 @@
+# Plantilla caller — TypeScript / Node (reusable-node).
+# Copia a .github/workflows/ci.yml del producto y ajusta inputs.
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pipeline:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: Soluciones-Alexendros/repo-standard/.github/workflows/reusable-node.yml@edf4145316d35fd58d3d1b98d631ca9d726a95e2 # v2.0.0
+    with:
+      node-version: "22"
+      package-manager: auto
+      coverage-threshold: "80"
+      run-build: true
+      run-smoke: true
+      e2e: false
+
+  ci-gate:
+    name: ci-gate
+    needs: [pipeline]
+    if: always()
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluar needs y hold
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          ALLOWED_SKIPS: ""
+          HOLD: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hold') }}
+        run: |
+          set -euo pipefail
+          if [[ "${HOLD}" == "true" ]]; then
+            echo "::error::PR con etiqueta hold: ci-gate falla a propósito (quita hold para auto-merge)."
+            exit 1
+          fi
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          fi
+          echo "$NEEDS_JSON" | jq -e --argjson skips "$(printf '%s\n' "${ALLOWED_SKIPS}" | jq -R 'split(" ") | map(select(length>0))')" '
+            to_entries
+            | map(select(.value.result != "success" and ((.key as $k | $skips | index($k)) | not)))
+            | if length == 0 then true else
+                error("ci-gate: jobs no success: " + (map(.key + "=" + .value.result) | join(", ")))
+              end
+          ' >/dev/null

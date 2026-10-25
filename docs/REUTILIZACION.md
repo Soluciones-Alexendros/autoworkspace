@@ -21,7 +21,7 @@ Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
 
 1. Archivos de raíz P0 (`README`, `LICENSE`, `SECURITY`, `CONTRIBUTING`, `CHANGELOG`).
 2. `.github/CODEOWNERS`, plantillas de issue/PR.
-3. CI: renombra jobs a `quality`, `test`, `smoke`. Añade `build` **solo si hay artefacto**; si no, el job no existe ([ADR-0003](./architecture/decisions/ADR-0003-job-build-y-required-checks.md)). Reutiliza snippets de `stacks/`.
+3. CI: copia `stacks/<stack>/ci.yml` a `.github/workflows/ci.yml` y pineá el SHA del reusable ([ADR-0014](./architecture/decisions/ADR-0014-release-please-y-packaging-por-stack.md)). El único check required es `ci-gate` ([ADR-0013](./architecture/decisions/ADR-0013-check-unico-ci-gate.md)).
 4. Quita version-updates de Dependabot si existen; deja o añade `.github/renovate.json` (copia el de este canon y recorta `packageRules` al stack). La App Renovate a nivel org es prerrequisito ([ADR-0004](./architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)).
 5. Árbol `docs/` P1 + `AGENTS.md` + `ARCHITECTURE.md` + `.env.example`. Cada markdown contractual lleva la meta-sección (abajo).
 6. Runbooks: adapta deploy/rollback/secretos al hosting real (Vercel, Docker, Cargo release…).
@@ -36,7 +36,7 @@ Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
 | `docs/architecture/decisions/template.md` | Copiar |
 | `docs/guides/*` | Adaptar comandos al stack |
 | `docs/runbooks/*` | Adaptar a hosting / secretos reales (sigue sin commitear valores) |
-| `.github/workflows/ci.yml` | **No** copies el de este canon tal cual: usa `stacks/<stack>/ci.*.snippet.yml` |
+| `.github/workflows/ci.yml` | **No** copies el de este canon tal cual: usa `stacks/<stack>/ci.yml` (pin SHA del reusable) |
 | `.github/renovate.json` | Copiar base; quita reglas que no apliquen |
 | `scripts/check-structure.sh` | Opcional en producto. Si lo usas, cambia la lista de archivos a los del producto |
 | `scripts/smoke.sh` | Sustituye el demo por health/rutas/`--help` |
@@ -62,7 +62,7 @@ Aplica a: raíz (`README`, `AGENTS`, `ARCHITECTURE`, `SECURITY`, `CONTRIBUTING`,
 
 **Excepción:** `CHANGELOG.md` sigue Keep a Changelog. No insertes una sección larga: un párrafo breve al inicio o ninguna. Documenta la excepción en el PR si omites el párrafo.
 
-La meta-sección es de **plantilla usable**: corta, accionable. Si el doc ya tenía intro, fusiónala aquí. No copies el texto de este canon: rellena objetivos/estructura/placeholders del *producto* (web vs CLI vs skills vs infra). Qué no copiar tal cual: snippets de CI del canon, runbooks de «este repo no se despliega», §9 de AGENTS ajeno.
+La meta-sección es de **plantilla usable**: corta, accionable. Si el doc ya tenía intro, fusiónala aquí. No copies el texto de este canon: rellena objetivos/estructura/placeholders del *producto* (web vs CLI vs skills vs infra). Qué no copiar tal cual: el `ci.yml` estático de este canon, runbooks de «este repo no se despliega», §9 de AGENTS ajeno.
 
 ## Dependabot → Renovate
 
@@ -75,17 +75,17 @@ La meta-sección es de **plantilla usable**: corta, accionable. Si el doc ya ten
 
 El agente **no** cambia rulesets de org ni de otros repos. El contrato versionado (runbook + script `gh` / org rulesets) está en [ADR-0002](./architecture/decisions/ADR-0002-proteccion-metadatos-como-codigo.md). Hasta que exista, el Mantenedor deja:
 
-- PR obligatorio. Reviews: canon/solo-owner → 0 approvals + checks; producto con equipo → ≥1 o code owners ([ADR-0006](./architecture/decisions/ADR-0006-reviews-por-perfil.md))
-- Checks required: `quality`, `test`, `smoke` (+ `build` si el job existe; + `e2e` si es web P1). **No** marques `build` required si el workflow no lo define ([ADR-0003](./architecture/decisions/ADR-0003-job-build-y-required-checks.md))
-- Conversaciones resueltas, historia lineal, sin bypass, sin force-push
+- PR obligatorio. **0 approvals**. Sin bypass (ni admin). Squash-merge ([ADR-0012](./architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md))
+- Check required: solo **`ci-gate`** (GitHub Actions, `integration_id` 15368) ([ADR-0013](./architecture/decisions/ADR-0013-check-unico-ci-gate.md))
+- Conversaciones resueltas, historia lineal, sin force-push
 - Allow auto-merge ON; auto-delete head branches ON
-- Automerge humano solo con label `automerge` (documentado; Renovate no usa ese label)
+- Etiqueta opcional `hold` para excluir un PR del auto-merge
 - No desactives secret scanning / push protection de org ([ADR-0005](./architecture/decisions/ADR-0005-secret-scanning-org.md))
 
 ## Checklist §8 — P0
 
 - [ ] README + LICENSE + CHANGELOG + SECURITY + CONTRIBUTING
-- [ ] `.github/workflows/ci.yml` con `quality` + `test`
+- [ ] `.github/workflows/ci.yml` con `pipeline` + `ci-gate`
 - [ ] CODEOWNERS (`* @Alexendros` como mínimo)
 - [ ] Description no vacía (`[tipo] — [qué hace] — [stack]`)
 - [ ] ≥4 topics (tipo + stack + hosting o dominio + estado)

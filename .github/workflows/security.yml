@@ -10,8 +10,7 @@ on:
     paths:
       - ".github/**"
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
@@ -21,13 +20,22 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
       - name: Instalar actionlint y lintar workflows
         run: |
-          curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
-          ./actionlint -color
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          (
+            cd "$tmpdir"
+            curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
+          )
+          "$tmpdir/actionlint" -color
         shell: bash

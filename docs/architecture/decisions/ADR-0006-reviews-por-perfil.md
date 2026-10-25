@@ -1,7 +1,7 @@
 ---
 version: "1.0.0"
 date: "2026-09-24"
-status: "Proposed"
+status: "Superseded"
 adr_id: "ADR-0006"
 priority: "P1"
 ---
@@ -9,7 +9,7 @@ priority: "P1"
 # ADR-0006: Reviews por perfil y label `automerge`
 
 **Fecha:** 2026-09-24  
-**Estado:** Proposed  
+**Estado:** Superseded by [ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md)  
 **Prioridad:** P1
 
 ### Propósito de este documento

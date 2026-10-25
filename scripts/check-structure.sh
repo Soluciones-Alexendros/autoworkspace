@@ -59,6 +59,9 @@ require_file "docs/architecture/decisions/ADR-0008-snippets-reales-post-oleada.m
 require_file "docs/architecture/decisions/ADR-0009-scorecard-cumplimiento-p0.md"
 require_file "docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md"
 require_file "docs/architecture/decisions/ADR-0011-bootstrap-desde-plantilla.md"
+require_file "docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md"
+require_file "docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md"
+require_file "docs/architecture/decisions/ADR-0014-release-please-y-packaging-por-stack.md"
 require_file "docs/guides/local-setup.md"
 require_file "docs/guides/coding-standards.md"
 require_file "docs/guides/testing.md"
@@ -68,18 +71,23 @@ require_file "docs/runbooks/rotate-secrets.md"
 require_file "scripts/smoke.sh"
 require_file "scripts/check-structure.sh"
 require_file "stacks/typescript/README.md"
-require_file "stacks/typescript/ci.quality.snippet.yml"
-require_file "stacks/typescript/ci.smoke.snippet.yml"
+require_file "stacks/typescript/ci.yml"
 require_file "stacks/rust/README.md"
-require_file "stacks/rust/ci.quality.snippet.yml"
+require_file "stacks/rust/ci.yml"
 require_file "stacks/infra/README.md"
-require_file "stacks/infra/ci.quality.snippet.yml"
+require_file "stacks/infra/ci.yml"
+require_file "stacks/python/README.md"
+require_file "stacks/python/ci.yml"
 require_file ".github/renovate.json"
 require_file ".github/PULL_REQUEST_TEMPLATE.md"
 require_file ".github/ISSUE_TEMPLATE/bug.yml"
 require_file ".github/ISSUE_TEMPLATE/feature.yml"
 require_file ".github/ISSUE_TEMPLATE/config.yml"
 require_file ".github/workflows/security.yml"
+require_file ".github/workflows/reusable-node.yml"
+require_file ".github/workflows/reusable-rust.yml"
+require_file ".github/workflows/reusable-python.yml"
+require_file ".github/workflows/reusable-static.yml"
 
 require_dir "docs"
 require_dir "docs/architecture"
@@ -90,14 +98,18 @@ require_dir "stacks"
 require_dir ".github/workflows"
 require_dir ".github/ISSUE_TEMPLATE"
 
-# Jobs canónicos en ci.yml (este canon no declara `build`: no hay artefacto)
+# Caller canónico: pipeline + ci-gate (fases viven en el reusable)
 ci=".github/workflows/ci.yml"
-for job in quality test smoke; do
+for job in pipeline ci-gate; do
   if ! grep -Eq "^[[:space:]]*${job}:" "$ci"; then
     echo "FALTA job '${job}' en $ci"
     errors=$((errors + 1))
   fi
 done
+if ! grep -Eq "name:[[:space:]]*ci-gate" "$ci"; then
+  echo "FALTA name: ci-gate en $ci (el check required debe llamarse exactamente ci-gate)"
+  errors=$((errors + 1))
+fi
 
 # Meta-sección contractual (excepto CHANGELOG: Keep a Changelog)
 purpose_heading="### Propósito de este documento"
@@ -124,6 +136,9 @@ purpose_files=(
   "docs/architecture/decisions/ADR-0009-scorecard-cumplimiento-p0.md"
   "docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md"
   "docs/architecture/decisions/ADR-0011-bootstrap-desde-plantilla.md"
+  "docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md"
+  "docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md"
+  "docs/architecture/decisions/ADR-0014-release-please-y-packaging-por-stack.md"
   "docs/guides/local-setup.md"
   "docs/guides/coding-standards.md"
   "docs/guides/testing.md"
@@ -133,6 +148,7 @@ purpose_files=(
   "stacks/typescript/README.md"
   "stacks/rust/README.md"
   "stacks/infra/README.md"
+  "stacks/python/README.md"
   ".github/PULL_REQUEST_TEMPLATE.md"
 )
 for path in "${purpose_files[@]}"; do

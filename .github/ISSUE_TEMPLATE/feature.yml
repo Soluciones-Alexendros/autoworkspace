@@ -30,5 +30,5 @@ body:
       description: No reabrir estos puntos salvo un ADR nuevo que las sustituya.
       options:
         - label: Entiendo que Renovate es el único bot de version-updates
-        - label: Entiendo que el automerge humano exige el label automerge
-        - label: Entiendo que la cobertura por defecto es ≥70% (80% en críticos)
+        - label: Entiendo que el único check required es ci-gate (auto-merge squash, 0 approvals)
+        - label: Entiendo que la cobertura por defecto es ≥70% (80% en críticos / reusable)

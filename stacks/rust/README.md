@@ -2,18 +2,20 @@
 
 ### Propósito de este documento
 
-- **Objetivos:** Nombres de comandos Cargo y fachada Makefile para CLIs/workspaces de la flota.
-- **Estructura:** Esta meta-sección → comandos → Makefile típico → Coverage → extra P1 → Smoke.
-- **Contenido a integrar según contexto:** Sustituye `APP` por el binario real. Ajusta `--workspace` si es crate único. Coverage con `cargo llvm-cov` cuando la suite sea estable. No pegues `CARGO_HOME` ni tokens.
+- **Objetivos:** Nombres de comandos Cargo y caller CI para CLIs/workspaces de la flota.
+- **Estructura:** Esta meta-sección → comandos → Makefile típico → Coverage → Extra → Smoke → archivos.
+- **Contenido a integrar según contexto:** Copia `ci.yml` y pineá el SHA de `reusable-rust`. Sustituye el binario real. Ajusta `msrv` y `clippy-pedantic`. Coverage con `cargo llvm-cov` (default 80%).
 
 Referencia para CLIs y workspaces Cargo (patrón zedazo, recortado a los nombres de la flota).
 
 ## Comandos canónicos
 
 ```bash
-cargo fmt --check
-cargo clippy --workspace -- -D warnings
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic
 cargo test --workspace
+cargo llvm-cov --workspace --fail-under-lines 80
+cargo build --release --locked
 ```
 
 Makefile típico:
@@ -26,7 +28,7 @@ test:
 	cargo test --workspace
 
 smoke:
-	./target/debug/APP --help
+	./target/release/APP --help
 
 validate:
 	cargo check --workspace
@@ -34,14 +36,18 @@ validate:
 
 ## Coverage
 
-- Por defecto ≥70% (`cargo llvm-cov` u equivalente).
-- Críticos (parsers, crypto, dominio puro): 80%.
+- Default del reusable: **80%**.
+- Críticos (parsers, crypto, dominio puro): 80% documentado.
 
-## Extra P1 (no obligatorio en el primer PR de alineación)
+## Extra
 
-- `cargo audit` / `cargo deny` en `security.yml` semanal.
-- MSRV job si el crate se publica.
+- `cargo deny` si existe `deny.toml`; si no, `cargo audit` (job `security` del reusable).
+- Input `msrv` opcional.
 
 ## Smoke
 
-Binario `--help` o `version` / `doctor` con exit 0. Sin red de producción. Fixtures sintéticos.
+Binario en `target/release` con `--version` o `--help`, exit 0.
+
+## Archivos de este directorio
+
+- `ci.yml` — caller `pipeline` + `ci-gate` → `reusable-rust.yml@SHA`

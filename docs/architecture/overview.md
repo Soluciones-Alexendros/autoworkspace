@@ -12,12 +12,12 @@
           ┌───────────────┼───────────────┐
           ▼               ▼               ▼
     contratos docs    nombres CI     metadata GitHub
-    (P0/P1/P2)     quality/test/     CODEOWNERS,
-                    build/smoke      Renovate, templates
+    (P0/P1/P2)     fases + ci-gate   CODEOWNERS,
+                     (15368)         Renovate, templates
                           │
                           ▼
-              stacks/ (TS · Rust · infra)
-                    solo snippets
+              stacks/ (TS · Rust · Python · infra)
+                    callers + reusable workflows
 ```
 
 ## Límites del sistema
@@ -28,7 +28,7 @@
 - Arquitectura de documentación (`docs/`)
 - Contrato de agentes (`AGENTS.md`)
 - Fachada `Makefile` (`lint` `test` `smoke` `validate`)
-- Política de deps (Renovate) y automerge
+- Política de deps (Renovate) y auto-merge squash vía `ci-gate`
 - Perfiles P0 / P1 / P2
 
 **Fuera**

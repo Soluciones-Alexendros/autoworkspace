@@ -29,7 +29,7 @@ Restricción: el escáner no cambia settings de org ni de otros repos; solo **le
 1. Este canon publica un **scorecard P0** (script o workflow `workflow_dispatch`) que, para cada repo activo de la org, pinta **rojo / ámbar / verde**.
 2. Señales P0 (mínimo):
    - Archivos: README, LICENSE, CHANGELOG, SECURITY, CONTRIBUTING, CODEOWNERS, `ci.yml` con jobs `quality` + `test`
-   - CI: existen los jobs required reales (ADR-0003); no se exige `build` si no está en el YAML
+   - CI: existe el check required `ci-gate` ([ADR-0013](./ADR-0013-check-unico-ci-gate.md)); las fases viven en el reusable
    - Deps: hay `renovate.json` y **no** hay `dependabot.yml` de version-updates
    - Metadatos: description no vacía, ≥4 topics
    - Protección: `main` exige PR; checks required ⊆ jobs que existen
