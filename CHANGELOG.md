@@ -6,6 +6,11 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `local-maintenance` 5.1.3 -> 5.1.4 (patch)
+- `local-proton` 5.1.1 -> 5.1.2 (patch)
+
+  P11 T4: redact local paths / PROTON_USER example
+
 - `plan-continue` 4.3.3 -> 4.3.4 (patch)
 - `project-publish` 4.3.1 -> 4.3.2 (patch)
 - `web-compliance` 4.1.0 -> 4.1.1 (patch)

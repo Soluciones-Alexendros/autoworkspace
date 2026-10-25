@@ -26,6 +26,29 @@ Each `SKILL.md` is self-contained and readable: its `references/` expand by leve
 - By family: see the table in [README](../README.md) and [TAXONOMY.md](TAXONOMY.md).
 - `description` fields declare explicit limits (`Not for X → other-skill`); on overlap, follow that pointer.
 
+## Variables de entorno (`.env`)
+
+Plantilla versionada: [`.env.example`](../.env.example). El fichero `.env` (y `.env.*` salvo `.env.example`) está en `.gitignore` y `hygiene.py` falla si se versiona un `.env` real.
+
+Carga en el shell (sin python-dotenv):
+
+```bash
+set -a
+. ./.env
+set +a
+```
+
+O con Make (si existe `.env`):
+
+```bash
+make validate   # el Makefile carga `.env` cuando está presente
+```
+
+Variables obligatorias para una operación concreta deben fallar con
+`Falta la variable X: <ayuda>; ver .env.example` (`tools/contracts/env.py:require_env`).
+Patrones privados locales: `AUTOWORKSPACE_PRIVATE_PATTERNS`. En CI, el secreto
+`HYGIENE_DENYLIST` (si no existe → paso `not_run` con aviso, nunca verde falso).
+
 ## Versioning
 
 Each skill declares `metadata.version` in its frontmatter. When changing instructions, bump by magnitude:
