@@ -14,7 +14,7 @@ Prioridad: **P0** (hacer pronto) · **P1** (después de P0). Un ADR puede estar 
 
 | ID | Título | Estado | Prioridad |
 |----|--------|--------|-----------|
-| [ADR-0001](./ADR-0001-canon-repo-standard.md) | Este repo es el canon de flota | Accepted | — |
+| [ADR-0001](./ADR-0001-canon-repo-standard.md) | Este repo es el canon de flota | Superseded in part by ADR-0016 | — |
 | [ADR-0002](./ADR-0002-proteccion-metadatos-como-codigo.md) | Protección y metadatos como código | Accepted | P0 |
 | [ADR-0003](./ADR-0003-job-build-y-required-checks.md) | Cuándo el job `build` es required | Superseded by ADR-0013 | P0 |
 | [ADR-0004](./ADR-0004-renovate-org-y-dependabot.md) | Renovate org y política Dependabot | Accepted | P0 |
@@ -24,10 +24,11 @@ Prioridad: **P0** (hacer pronto) · **P1** (después de P0). Un ADR puede estar 
 | [ADR-0008](./ADR-0008-snippets-reales-post-oleada.md) | Snippets Astro y Python skills | Proposed | P1 |
 | [ADR-0009](./ADR-0009-scorecard-cumplimiento-p0.md) | Scorecard P0 rojo/ámbar/verde | Proposed | P1 |
 | [ADR-0010](./ADR-0010-semver-contrato-estandar.md) | SemVer del contrato del estándar | Proposed | P1 |
-| [ADR-0011](./ADR-0011-bootstrap-desde-plantilla.md) | Bootstrap al usar la plantilla | Proposed | P1 |
+| [ADR-0011](./ADR-0011-bootstrap-desde-plantilla.md) | Bootstrap al usar la plantilla | Superseded by templates/repo (ADR-0016) | P1 |
 | [ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md) | Solo-dev con IA: auto-merge sin revisión | Accepted | P0 |
 | [ADR-0013](./ADR-0013-check-unico-ci-gate.md) | Check único `ci-gate` | Accepted | P0 |
 | [ADR-0014](./ADR-0014-release-please-y-packaging-por-stack.md) | Versionado release-please + packaging por stack | Accepted | P1 |
+| [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md) | autoworkspace es el host del canon | Accepted | P0 |
 
 ## Cómo añadir una
 

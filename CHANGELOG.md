@@ -6,6 +6,10 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `plan-continue` 4.3.2 -> 4.3.3 (patch)
+
+  P11 T2: inicio-plan apunta a REUTILIZACION (sin docs/repo-standard)
+
 ### Changed
 
 - **BREAKING:** autoworkspace es el host público del canon de flota (absorbe `repo-standard@e518eb1`). Callers pasan a `Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-<stack>.yml@<SHA>`. Método de merge de la flota: `gh pr merge --auto --squash` (prohibidos `--merge` / `--rebase` / `--admin`). Plantilla de producto en `templates/repo/`.
@@ -193,7 +197,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
   | —                     | `web-fullaudit`     | nueva (orquestador de auditoría web)  |
   | `web-playwright`      | —                   | suprimida                             |
   | `webapp-testing`      | —                   | suprimida                             |
-- Canon `docs/repo-standard/` (solo lectura): `structure.md`, `ci-cd.md`, `release.md`, `security.md`, `templates/` (PR, issues, commitlint)
+- Canon `docs/architecture/ + docs/REUTILIZACION.md (P11) ` (solo lectura): `structure.md`, `ci-cd.md`, `release.md`, `security.md`, `templates/` (PR, issues, commitlint)
 - Autoversionado semver por magnitud: `tools/version/bump.py`.
 
 ## [0.1.0] - 2026-09-26

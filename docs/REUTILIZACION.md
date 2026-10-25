@@ -4,11 +4,13 @@
 
 - **Objetivos:** Cómo **alinear** un repo que ya existe (un PR, sin clonar a ciegas): orden, qué copiar, Dependabot→Renovate, protection, checklist §8.
 - **Estructura:** Esta meta-sección → Antes de tocar nada → Orden → Copiar vs adaptar → Meta-sección obligatoria → Dependabot → Protección → Checklists P0/P1/P2 → Oleadas → Verificación.
-- **Contenido a integrar según contexto:** En un producto ya alineado puedes dejar este archivo como «cumple `repo-standard ≥x.y`» + checklist marcado, o conservarlo entero. No ejecutes oleadas desde el PR del producto. No cambies settings de org.
+- **Contenido a integrar según contexto:** En un producto ya alineado puedes dejar este archivo como «cumple el canon en `autoworkspace` ≥6.0.0 (ADR-0016)» + checklist marcado, o conservarlo entero. No ejecutes oleadas desde el PR del producto. No cambies settings de org.
 
 Objetivo: **alinear**, no clonar a ciegas. El repo de producto conserva su stack, historial y nombre. Este canon aporta contratos (archivos, nombres de jobs, docs, Renovate).
 
 Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
+
+Repo nuevo desde esqueleto: `gh repo create Soluciones-Alexendros/<n> --private --clone && cp -a templates/repo/. <n>/` ([ADR-0016](./architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)). Merge de flota: `gh pr merge --auto --squash`; required check: `ci-gate` (sin etiqueta `automerge`).
 
 ## Antes de tocar nada
 
@@ -21,7 +23,7 @@ Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
 
 1. Archivos de raíz P0 (`README`, `LICENSE`, `SECURITY`, `CONTRIBUTING`, `CHANGELOG`).
 2. `.github/CODEOWNERS`, plantillas de issue/PR.
-3. CI: copia `stacks/<stack>/ci.yml` a `.github/workflows/ci.yml` y pineá el SHA del reusable ([ADR-0014](./architecture/decisions/ADR-0014-release-please-y-packaging-por-stack.md)). El único check required es `ci-gate` ([ADR-0013](./architecture/decisions/ADR-0013-check-unico-ci-gate.md)).
+3. CI: copia `stacks/<stack>/ci.yml` a `.github/workflows/ci.yml` y pineá el SHA del reusable en `Soluciones-Alexendros/autoworkspace` ([ADR-0014](./architecture/decisions/ADR-0014-release-please-y-packaging-por-stack.md)). El único check required es `ci-gate` ([ADR-0013](./architecture/decisions/ADR-0013-check-unico-ci-gate.md)).
 4. Quita version-updates de Dependabot si existen; deja o añade `.github/renovate.json` (copia el de este canon y recorta `packageRules` al stack). La App Renovate a nivel org es prerrequisito ([ADR-0004](./architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)).
 5. Árbol `docs/` P1 + `AGENTS.md` + `ARCHITECTURE.md` + `.env.example`. Cada markdown contractual lleva la meta-sección (abajo).
 6. Runbooks: adapta deploy/rollback/secretos al hosting real (Vercel, Docker, Cargo release…).
