@@ -26,10 +26,10 @@ El CHANGELOG ya cita Keep a Changelog y SemVer, pero no hay tag ni regla de *qu�
 
 1. Este repo publica **SemVer del contrato** (tags `vX.Y.Z`). El CHANGELOG de raíz es la fuente (Keep a Changelog). El esqueleto inicial ([#1](https://github.com/Iniciativas-Alexendros/repo-standard/pull/1)) es la línea base **1.0.0** cuando se etiquete.
 2. **Breaking (MAJOR):**
-   - Renombrar o eliminar un job **required** (`quality`, `test`, `smoke`; `build`/`e2e` cuando aplican)
+   - Renombrar o eliminar el job **required** `ci-gate` ([ADR-0013](./ADR-0013-check-unico-ci-gate.md))
    - Quitar un archivo P0 del árbol contractual o cambiar su nombre canónico
    - Cambiar el bot de deps (p. ej. volver a Dependabot version-updates)
-   - Cambiar el idioma contractual o el label `automerge`
+   - Cambiar el idioma contractual o reintroducir la etiqueta `automerge` como requisito de merge ([ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md))
 3. **MINOR:** nuevas piezas opt-in (snippets, scorecard, runbook de settings, meta-sección, ADRs de ampliación, gate de coverage opcional).
 4. **PATCH:** correcciones de redacción, typos, pins de actions, stubs que no cambian nombres.
 5. Cada repo de producto **declara** en README (o badge/texto) `repo-standard ≥x.y` de la versión con la que se alineó. Alinear a un major nuevo = PR propio.
@@ -63,5 +63,7 @@ El CHANGELOG ya cita Keep a Changelog y SemVer, pero no hay tag ni regla de *qu�
 ## Relacionados
 
 - [ADR-0001](./ADR-0001-canon-repo-standard.md)
-- [ADR-0003](./ADR-0003-job-build-y-required-checks.md)
+- [ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md)
+- [ADR-0013](./ADR-0013-check-unico-ci-gate.md)
+- [ADR-0014](./ADR-0014-release-please-y-packaging-por-stack.md)
 - [CHANGELOG.md](../../../CHANGELOG.md)

@@ -15,9 +15,9 @@ Copia este archivo a la raíz de cada repo de producto y ajusta solo la sección
 
 ## 1. Rol
 
-- El humano dirige, revisa diffs y fusiona. El agente implementa una unidad cohesiva por sesión.
-- Una sesión = un PR pequeño. CI verde antes de pedir revisión.
-- No reabras decisiones cerradas del estándar (Renovate único, cobertura por defecto, automerge humano, idioma de docs, orden de gates).
+- El humano dirige y el agente implementa una unidad cohesiva por sesión.
+- Una sesión = un PR pequeño. CI verde (`ci-gate`) + squash auto-merge ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+- No reabras decisiones cerradas del estándar (Renovate único, cobertura por defecto, idioma de docs, orden de fases, check único `ci-gate`).
 
 ## 2. Fuentes de verdad (orden)
 
@@ -38,7 +38,7 @@ Traza: <ADR / issue / sección de docs>
 Alcance: <archivos>
 Exclusiones: <qué no harás>
 Pruebas: make validate && make test && make smoke
-Criterio de cierre: CI verde + Definition of Done
+Criterio de cierre: ci-gate verde + Definition of Done + auto-merge squash
 ```
 
 ## 4. Autonomía
@@ -49,6 +49,7 @@ Criterio de cierre: CI verde + Definition of Done
 - Tests que fijan comportamiento aceptado
 - Corregir lint/format/CI causados por tu cambio
 - Refactors locales que no cambien el contrato público
+- Activar `gh pr merge --auto --squash` al abrir el PR (salvo etiqueta `hold`)
 
 **Requiere confirmación**
 
@@ -56,18 +57,18 @@ Criterio de cierre: CI verde + Definition of Done
 - Cambiar workflows, CODEOWNERS, Renovate o protección de `main`
 - Alterar un ADR Accepted (abre uno nuevo que lo sustituya)
 - Secretos, credenciales, deploy a producción
-- Automerge: nunca en PRs humanos/agentes sin label `automerge`
+- Break-glass (desactivar ruleset): solo el humano
 
 ## 5. Working agreement de la flota
 
-- `main` solo recibe PR verde + revisión. Sin push directo.
-- Gates CI en este orden: `quality` → `test` → `build` → `smoke` (`e2e` opcional en webs). `build` **no se declara** si no hay artefacto ([ADR-0003](docs/architecture/decisions/ADR-0003-job-build-y-required-checks.md)).
-- En **este** canon no hay runtime: `quality` valida estructura, `test` es el hook documentado, `smoke` ejecuta `scripts/smoke.sh`.
-- En repos de producto, `test` incluye unit/function. Coverage **≥70%** (80% en críticos) es gate **opcional** cuando la suite es estable ([ADR-0007](docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
-- Bot de deps: **solo Renovate** (GitHub App a nivel org, [ADR-0004](docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)). No añadas `.github/dependabot.yml` de version-updates. Dependabot Alerts ON.
-- Secret scanning + push protection: prerrequisito org ([ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)). No los desactives.
+- `main` solo recibe PR con `ci-gate` verde y squash-merge. Sin push directo. 0 approvals. Sin bypass admin ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+- Fases CI: `quality` → `test` → `build` → `smoke` (`e2e` opcional). El único check **required** es `ci-gate` ([ADR-0013](docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)). `build` solo si hay artefacto.
+- En **este** canon: `pipeline` llama a `reusable-static`; `ci-gate` agrega el resultado.
+- En repos de producto, `test` incluye unit/function. Coverage default del reusable **80%**; el gate ≥70% sigue siendo opcional hasta suite estable ([ADR-0007](docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
+- Bot de deps: **solo Renovate** ([ADR-0004](docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)). No añadas `.github/dependabot.yml` de version-updates. Dependabot Alerts ON.
+- Secret scanning + push protection: prerrequisito org ([ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
 - `.env` nunca se commitea. `.env.example` solo con placeholders documentados.
-- Homogeneiza **nombres** de jobs y la carpeta `.github/`; no aplastes el stack (TS/pnpm, Rust/Cargo, infra/Makefile).
+- Callers pinean reusable por SHA (`stacks/<stack>/ci.yml`); no aplastes el stack.
 
 ## 6. Comandos
 
@@ -78,7 +79,7 @@ make test       # unit + coverage
 make smoke      # pocas comprobaciones post-build, sin prod real
 ```
 
-Snippets por stack: `stacks/typescript`, `stacks/rust`, `stacks/infra`.
+Plantillas caller: `stacks/typescript`, `stacks/rust`, `stacks/python`, `stacks/infra`.
 
 ## 7. Zonas que no se tocan a ciegas
 
@@ -91,11 +92,12 @@ Snippets por stack: `stacks/typescript`, `stacks/rust`, `stacks/infra`.
 ## 8. Definition of Done
 
 - Criterios de la traza cumplidos
-- `make validate` + `make test` + `make smoke` en verde (y `build`/`e2e` si aplican)
+- `make validate` + `make test` + `make smoke` en verde (y fases del reusable)
+- Check `ci-gate` verde en el PR
 - Docs canónicas actualizadas si cambia el contrato
 - `CHANGELOG.md` `[Unreleased]` si el cambio es visible para consumidores
 - Sin secretos en el diff
-- PR en español, checklist de la plantilla marcado
+- PR en español, checklist de la plantilla marcado; auto-merge squash activado (salvo `hold`)
 
 ## 9. Hechos de este workspace (repo-standard)
 

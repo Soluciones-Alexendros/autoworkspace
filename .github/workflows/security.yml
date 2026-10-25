@@ -31,6 +31,11 @@ jobs:
           ref: ${{ github.sha }}
       - name: Instalar actionlint y lintar workflows
         run: |
-          curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
-          ./actionlint -color
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          (
+            cd "$tmpdir"
+            curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
+          )
+          "$tmpdir/actionlint" -color
         shell: bash

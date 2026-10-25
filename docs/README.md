@@ -46,4 +46,4 @@ docs/
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — ramas, commits, checklist de PR
 - [SECURITY.md](../SECURITY.md) — canal de vulnerabilidades
 - [CHANGELOG.md](../CHANGELOG.md) — solo cambios de release
-- [stacks/](../stacks/) — snippets CI por runtime
+- [stacks/](../stacks/) — callers CI por runtime (pin SHA del reusable)

@@ -30,7 +30,7 @@ El agente **no** debe mutar settings de org ni de otros repos desde un PR de ali
    - `description` (formato `[tipo] — [qué hace] — [stack]`, ≤120)
    - `topics` (≥4 en P0; ≥6 en P2)
    - protección de `main`: PR obligatorio, historia lineal, conversaciones resueltas, sin force-push, sin bypass
-   - checks required según [ADR-0003](./ADR-0003-job-build-y-required-checks.md)
+   - checks required: solo `ci-gate` (app 15368) según [ADR-0013](./ADR-0013-check-unico-ci-gate.md)
    - Allow auto-merge ON
    - auto-delete de ramas head ON
 2. Preferencia: **org rulesets** de GitHub para lo que sea común a la flota (protección de `main`, required checks de nombres canónicos). El script `gh` cubre lo que el ruleset no puede (description, topics, flags de auto-merge/auto-delete del repo).
@@ -40,7 +40,7 @@ El agente **no** debe mutar settings de org ni de otros repos desde un PR de ali
 ## Consecuencias
 
 - La deriva de metadatos deja de ser «memoria del Mantenedor»: el contrato vive junto al canon y se alinea en la oleada.
-- Un ruleset de org mal nombrado (p. ej. exigir `build` en un repo sin artefacto) crea checks fantasma; por eso el ruleset debe respetar ADR-0003.
+- Un ruleset de org que exija nombres de fase (`quality`, `build`, …) en lugar de `ci-gate` crea checks fantasma; el ruleset debe respetar [ADR-0013](./ADR-0013-check-unico-ci-gate.md).
 - El script necesita `gh` autenticado con scopes `repo` / `admin:org` (rulesets). Esos tokens no se commitean.
 
 ## Prioridad
@@ -65,7 +65,8 @@ El agente **no** debe mutar settings de org ni de otros repos desde un PR de ali
 ## Relacionados
 
 - [ADR-0001](./ADR-0001-canon-repo-standard.md)
-- [ADR-0003](./ADR-0003-job-build-y-required-checks.md)
+- [ADR-0003](./ADR-0003-job-build-y-required-checks.md) (superseded)
+- [ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md)
+- [ADR-0013](./ADR-0013-check-unico-ci-gate.md)
 - [ADR-0005](./ADR-0005-secret-scanning-org.md)
-- [ADR-0006](./ADR-0006-reviews-por-perfil.md)
 - [REUTILIZACION.md](../../REUTILIZACION.md)
