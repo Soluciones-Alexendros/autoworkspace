@@ -86,5 +86,35 @@ rsync -a --delete \
   "$SRC_EXEC/" "$DEST_EXEC/"
 # Ensure importable as execution when vendor parent is on PYTHONPATH
 : > "$DEST_SKILL/vendor/__init__.py"
+
+# P11 T3: include canon files the skill cites (relative links into docs/ or templates/repo/)
+CANON_VENDOR="$DEST_SKILL/vendor/canon"
+mkdir -p "$CANON_VENDOR"
+while IFS= read -r -d '' md; do
+  rel_md="${md#"$SKILL_SRC"/}"
+  dir_md=$(dirname "$rel_md")
+  while IFS= read -r target; do
+    [ -z "$target" ] && continue
+    case "$target" in
+      http://*|https://*|mailto:*|\#*) continue ;;
+    esac
+    target="${target%%\#*}"
+    resolved=$(python3 -c "from pathlib import Path; print((Path('$SKILL_SRC')/'$dir_md'/'$target').resolve())" 2>/dev/null || true)
+    [ -z "$resolved" ] && continue
+    case "$resolved" in
+      "$ROOT"/docs/*|"$ROOT"/templates/repo/*) ;;
+      *) continue ;;
+    esac
+    [ -f "$resolved" ] || continue
+    rel_canon="${resolved#"$ROOT"/}"
+    dest_file="$CANON_VENDOR/$rel_canon"
+    mkdir -p "$(dirname "$dest_file")"
+    cp -a "$resolved" "$dest_file"
+  done < <(grep -oE '\[[^]]+\]\([^)]+\)' "$md" | sed -E 's/^\[[^]]+\]\(([^)]+)\)$/\1/' || true)
+done < <(find "$SKILL_SRC" -name '*.md' -print0)
+
 echo "Packaged. Standalone: PYTHONPATH=$DEST_SKILL/vendor (no repo tools/ required)"
 echo "Preflight resolves vendor/execution for shared_dependencies: tools/execution"
+if [ -d "$CANON_VENDOR" ] && [ "$(find "$CANON_VENDOR" -type f | wc -l)" -gt 0 ]; then
+  echo "Canon files vendored under $CANON_VENDOR"
+fi
