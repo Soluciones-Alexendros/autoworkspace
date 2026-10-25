@@ -105,9 +105,9 @@ require_dir "docs/runbooks"
 require_dir "stacks"
 require_dir ".github/workflows"
 
-# Caller canónico: pipeline + ci-gate (fases viven en el reusable)
+# Caller canónico (P11): pipeline-python (+ pipeline-node si hay JS), canon, ci-gate
 ci=".github/workflows/ci.yml"
-for job in pipeline ci-gate; do
+for job in pipeline-python canon ci-gate; do
   if ! grep -Eq "^[[:space:]]*${job}:" "$ci"; then
     echo "FALTA job '${job}' en $ci"
     errors=$((errors + 1))
