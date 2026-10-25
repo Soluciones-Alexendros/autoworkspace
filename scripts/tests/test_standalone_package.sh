@@ -22,6 +22,18 @@ bash "$ROOT/scripts/package-standalone-skill.sh" --skill local-maintenance --des
 test -f "$DEST/local-maintenance/SKILL.md"
 test -f "$DEST/local-maintenance/vendor/execution/ops.py"
 
+# P11 T3: skill that cites canon docs must vendor those files
+DEST2="$TMP/pkg-plan"
+mkdir -p "$DEST2"
+bash "$ROOT/scripts/package-standalone-skill.sh" --skill plan-continue --dest "$DEST2"
+test -f "$DEST2/plan-continue/SKILL.md"
+# plan-continue references point at docs/architecture/decisions/ADR-0016…
+if ! find "$DEST2/plan-continue/vendor/canon" -type f -name 'ADR-0016*.md' | grep -q .; then
+  echo "FAIL: expected vendored ADR-0016 under vendor/canon"; find "$DEST2/plan-continue/vendor/canon" -type f | head
+  exit 1
+fi
+echo "canon vendor OK"
+
 # Move package and run with clean env (no ROOT/tools on PYTHONPATH)
 MOVED="$TMP/moved"
 mv "$DEST" "$MOVED"

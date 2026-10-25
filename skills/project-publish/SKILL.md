@@ -4,7 +4,7 @@ description: "Close a GitHub repository or work increment with local quality gat
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.3.1"
+  version: "4.3.2"
   domain: project
   type: atomic
   language: en

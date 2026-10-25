@@ -6,6 +6,12 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `plan-continue` 4.3.3 -> 4.3.4 (patch)
+- `project-publish` 4.3.1 -> 4.3.2 (patch)
+- `web-compliance` 4.1.0 -> 4.1.1 (patch)
+
+  P11 T3: desduplicar canon refs, validador ADR, package vendor
+
 - `plan-continue` 4.3.2 -> 4.3.3 (patch)
 
   P11 T2: inicio-plan apunta a REUTILIZACION (sin docs/repo-standard)

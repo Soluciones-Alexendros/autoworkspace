@@ -1,6 +1,6 @@
 # Caso de referencia — alexendros.dev (baseline a re-verificar)
 
-Hallazgos documentados en el material fuente para el dominio personal `alexendros.dev` (Astro 4.16 + Vercel, canonical apex según ADR-0029). **Usar solo como hipótesis de partida: re-verificar todo con `scripts/audit_page.py` y revisión manual antes de incluirlo en un informe.**
+Hallazgos documentados en el material fuente para el dominio personal `alexendros.dev` (Astro 4.16 + Vercel, canonical apex según el ADR de producto de ese sitio). **Usar solo como hipótesis de partida: re-verificar todo con `scripts/audit_page.py` y revisión manual antes de incluirlo en un informe.**
 
 ## Baseline documentado
 
