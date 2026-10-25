@@ -1,4 +1,10 @@
-# Reviewers for the release and validation surface.
-.github/workflows/ @Alexendros
-tools/validate/ @Alexendros
-tools/version/ @Alexendros
+# Canon surfaces — informational (solo-dev; CODEOWNERS does not block).
+/.github/workflows/ @Alexendros
+/stacks/ @Alexendros
+/rulesets/ @Alexendros
+/docs/architecture/decisions/ @Alexendros
+/templates/repo/ @Alexendros
+
+# Existing validation / release tooling ownership.
+/tools/validate/ @Alexendros
+/tools/version/ @Alexendros

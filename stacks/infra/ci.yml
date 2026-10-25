@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: Soluciones-Alexendros/repo-standard/.github/workflows/reusable-static.yml@edf4145316d35fd58d3d1b98d631ca9d726a95e2 # v2.0.0
+    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-static.yml@SHA_PLACEHOLDER # v6.0.0
     with:
       quality-command: |
         set -euo pipefail
