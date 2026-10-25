@@ -1,7 +1,7 @@
 schema_version: 1
 dialect: autoworkspace.execution
 skill: project-publish
-skill_version: 4.3.2
+skill_version: 4.3.3
 execution_kind: script
 distribution: workspace-required
 shared_dependencies:
