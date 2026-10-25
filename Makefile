@@ -21,7 +21,8 @@ lint:
 test:
 	@echo "test: placeholder del hook de producto."
 	@echo "Engancha aquí unit/function tests y el gate de cobertura (≥70%; 80% en críticos)."
-	@true
+	@echo "FAIL deliberado para prueba ci-gate (revertir)"
+	@false
 
 smoke:
 	@bash scripts/smoke.sh
