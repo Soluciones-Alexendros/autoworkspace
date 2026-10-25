@@ -9,7 +9,8 @@
     "typecheck": "npm run syntax-check",
     "test": "bash run-validation.sh --pytest-only --smoke-only",
     "lint": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "husky": "^9.1.6",
