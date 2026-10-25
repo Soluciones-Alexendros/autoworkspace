@@ -235,7 +235,8 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 - Estructura `skills/<nombre>/` con frontmatter normalizado (`license: MIT`, `metadata` con autor, versión, dominio e idioma).
 - Validadores `tools/validate/` (spec + enlaces), CI en `.github/workflows/` y `run-validation.sh` agregado.
 
-[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v6.0.0...HEAD
+[6.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v5.0.0...v6.0.0
 [5.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v4.1.0...v5.0.0
 [4.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v3.0.2...v4.0.0
