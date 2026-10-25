@@ -1,4 +1,5 @@
 """Adversarial regression suite for verifiable closure (A01–A48 subset)."""
+
 from __future__ import annotations
 
 import os
@@ -442,12 +443,8 @@ def test_a32_idempotent_complete(tmp_path):
     (tmp_path / "c").write_text("z")
     (tmp_path / ".autoworkspace").mkdir()
     rid = _store_ok(tmp_path, op="plan_specification", phase="DEFINE")
-    s1 = advance_status(
-        tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
-    )
-    s2 = advance_status(
-        tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid
-    )
+    s1 = advance_status(tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid)
+    s2 = advance_status(tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid)
     assert s1["state_revision"] == 1
     assert s2["state_revision"] == 1
     assert s2.get("_idempotent_replay") is True

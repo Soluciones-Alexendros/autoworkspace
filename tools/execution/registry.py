@@ -1,4 +1,5 @@
 """Canonical operation registry. CLIs pass only operation_id + typed params."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

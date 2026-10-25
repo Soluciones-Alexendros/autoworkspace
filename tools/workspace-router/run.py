@@ -4,6 +4,7 @@
 Query commands (route/list/status) are read-only: they do not create scaffold.
 Use --init explicitly to create .autoworkspace from templates.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,11 +29,7 @@ def load_catalog() -> list[str]:
     index = ROOT / "skill-index.json"
     if not index.is_file():
         skills_dir = ROOT / "skills"
-        return sorted(
-            p.name
-            for p in skills_dir.iterdir()
-            if p.is_dir() and (p / "SKILL.md").is_file()
-        )
+        return sorted(p.name for p in skills_dir.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
     data = json.loads(index.read_text(encoding="utf-8"))
     return [s["name"] for s in data.get("skills", [])]
 
@@ -55,8 +52,7 @@ def route(repo: Path, phase: str, *, bump: bool, note: str, init: bool = False) 
     project_path = repo / ".autoworkspace" / "project.yaml"
     if not project_path.is_file():
         raise ProjectConfigError(
-            f"missing {project_path}; run with --init to create scaffold "
-            "(route/list/status do not write by default)"
+            f"missing {project_path}; run with --init to create scaffold (route/list/status do not write by default)"
         )
     try:
         project = load_project(repo)
@@ -73,9 +69,7 @@ def route(repo: Path, phase: str, *, bump: bool, note: str, init: bool = False) 
     if skill is None or skill not in catalog:
         raise ProjectConfigError(f"unknown handoff skill for phase {phase}: {skill!r}")
     if skill not in allowed:
-        raise ProjectConfigError(
-            f"handoff skill {skill!r} not in allowlist; refusing silent fallback"
-        )
+        raise ProjectConfigError(f"handoff skill {skill!r} not in allowlist; refusing silent fallback")
     result = {
         "repo": str(repo),
         "phase": phase,
@@ -168,9 +162,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.awaiting_agent:
         try:
-            data = advance_status(
-                repo, phase=args.phase, note=args.note, evidence_ok=False, allow_awaiting=True
-            )
+            data = advance_status(repo, phase=args.phase, note=args.note, evidence_ok=False, allow_awaiting=True)
         except ValueError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
@@ -207,7 +199,11 @@ def main(argv: list[str] | None = None) -> int:
         except (ValueError, FileNotFoundError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
-        print(json.dumps(data, ensure_ascii=False, indent=2) if args.json else f"completed phase={args.phase} rev={data.get('state_revision')}")
+        print(
+            json.dumps(data, ensure_ascii=False, indent=2)
+            if args.json
+            else f"completed phase={args.phase} rev={data.get('state_revision')}"
+        )
         return 0
 
     try:

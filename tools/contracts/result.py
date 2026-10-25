@@ -1,4 +1,5 @@
 """Common versioned run result schema (D03)."""
+
 from __future__ import annotations
 
 import json

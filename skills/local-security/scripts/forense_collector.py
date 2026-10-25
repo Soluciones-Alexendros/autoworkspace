@@ -39,8 +39,14 @@ def which(cmd: str) -> str | None:
 def run_cmd(cmd: str, timeout: int = 120) -> str:
     try:
         proc = subprocess.run(
-            cmd, shell=True, executable="/bin/bash", stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, timeout=timeout, text=True, check=False,
+            cmd,
+            shell=True,
+            executable="/bin/bash",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            text=True,
+            check=False,
         )
         return proc.stdout
     except (subprocess.TimeoutExpired, OSError):
@@ -53,7 +59,9 @@ def utcnow() -> str:
 
 def collect_auth(since: str) -> list[dict]:
     events: list[dict] = []
-    out = run_cmd(f"journalctl _COMM=sshd --since \"{since}\" --no-pager 2>/dev/null | grep -iE 'failed|accepted' | head -50")
+    out = run_cmd(
+        f"journalctl _COMM=sshd --since \"{since}\" --no-pager 2>/dev/null | grep -iE 'failed|accepted' | head -50"
+    )
     for line in out.splitlines():
         if line.strip():
             events.append({"ts": line[:15], "source": "journalctl:sshd", "summary": line.strip()[:300]})
@@ -66,7 +74,9 @@ def collect_auth(since: str) -> list[dict]:
 
 def collect_sudo(since: str) -> list[dict]:
     events: list[dict] = []
-    out = run_cmd(f"journalctl _COMM=sudo --since \"{since}\" --no-pager 2>/dev/null | grep -E 'COMMAND|user' | head -50")
+    out = run_cmd(
+        f"journalctl _COMM=sudo --since \"{since}\" --no-pager 2>/dev/null | grep -E 'COMMAND|user' | head -50"
+    )
     for line in out.splitlines():
         if line.strip():
             events.append({"ts": line[:15], "source": "journalctl:sudo", "summary": line.strip()[:300]})
@@ -102,7 +112,7 @@ def collect_pid(pid: str, since: str) -> list[dict]:
         for line in out.splitlines():
             if line.strip():
                 events.append({"ts": "", "source": f"ausearch:pid:{pid}", "summary": line.strip()[:300]})
-    out = run_cmd(f"journalctl _PID={pid} --since \"{since}\" --no-pager 2>/dev/null | head -20")
+    out = run_cmd(f'journalctl _PID={pid} --since "{since}" --no-pager 2>/dev/null | head -20')
     for line in out.splitlines():
         if line.strip():
             events.append({"ts": line[:15], "source": f"journalctl:pid:{pid}", "summary": line.strip()[:300]})
@@ -142,9 +152,13 @@ def main(argv: list[str] | None = None) -> int:
         events += collect_pid(args.pid, "today" if args.since == "today" else args.since)
     events.sort(key=lambda e: (e.get("ts") or "", e.get("source") or ""))
 
-    result = {"collected_at": utcnow(), "system_clock": clock,
-              "recipe": args.recipe, "events": events,
-              "note": "candidatos, no veredicto: buscar la cadena login->sudo->proceso->escritura"}
+    result = {
+        "collected_at": utcnow(),
+        "system_clock": clock,
+        "recipe": args.recipe,
+        "events": events,
+        "note": "candidatos, no veredicto: buscar la cadena login->sudo->proceso->escritura",
+    }
     print(f"forense: receta={args.recipe} eventos={len(events)}")
     if args.json:
         try:

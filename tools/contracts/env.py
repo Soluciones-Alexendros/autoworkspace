@@ -1,4 +1,5 @@
 """Lectura de variables de entorno sin dependencias (sin python-dotenv)."""
+
 from __future__ import annotations
 
 import os

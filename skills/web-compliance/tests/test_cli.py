@@ -1,4 +1,5 @@
 """CLI: --help exit 0 y args inválidos exit 2 en los 4 scripts (sin red)."""
+
 import pytest
 
 import audit_page
@@ -7,12 +8,15 @@ import report as report_mod
 import score as score_mod
 
 
-@pytest.mark.parametrize("mod,args", [
-    (audit_page, ["--help"]),
-    (contrast, ["--help"]),
-    (score_mod, ["--help"]),
-    (report_mod, ["--help"]),
-])
+@pytest.mark.parametrize(
+    "mod,args",
+    [
+        (audit_page, ["--help"]),
+        (contrast, ["--help"]),
+        (score_mod, ["--help"]),
+        (report_mod, ["--help"]),
+    ],
+)
 def test_help_exit_0(mod, args, capsys):
     with pytest.raises(SystemExit) as e:
         mod.main(args)

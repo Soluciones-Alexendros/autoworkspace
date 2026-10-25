@@ -53,42 +53,140 @@ def _pattern_hit(tipo: str, fichero: str, linea: int, confianza: str) -> dict:
 # ---------------------------------------------------------------------------
 
 IGNORE_DIRS = {
-    ".git", ".hg", ".svn", "node_modules", "__pycache__", ".venv", "venv",
-    "env", ".env", "dist", "build", "out", "target", ".next", ".nuxt",
-    "vendor", ".idea", ".vscode", "coverage", ".pytest_cache", ".mypy_cache",
-    ".tox", ".gradle", "Pods", "DerivedData",
+    ".git",
+    ".hg",
+    ".svn",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env",
+    ".env",
+    "dist",
+    "build",
+    "out",
+    "target",
+    ".next",
+    ".nuxt",
+    "vendor",
+    ".idea",
+    ".vscode",
+    "coverage",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".tox",
+    ".gradle",
+    "Pods",
+    "DerivedData",
 }
 
 IGNORE_DIR_SUFFIXES = (".egg-info",)
 
 LANG_BY_EXT = {
-    ".py": "Python", ".js": "JavaScript", ".jsx": "JavaScript (React)",
-    ".ts": "TypeScript", ".tsx": "TypeScript (React)", ".mjs": "JavaScript",
-    ".cjs": "JavaScript", ".java": "Java", ".kt": "Kotlin", ".kts": "Kotlin",
-    ".go": "Go", ".rs": "Rust", ".c": "C", ".h": "C/C++ (cabecera)",
-    ".cpp": "C++", ".cc": "C++", ".cxx": "C++", ".hpp": "C/C++ (cabecera)",
-    ".cs": "C#", ".rb": "Ruby", ".php": "PHP", ".swift": "Swift",
-    ".scala": "Scala", ".clj": "Clojure", ".ex": "Elixir", ".exs": "Elixir",
-    ".erl": "Erlang", ".hs": "Haskell", ".lua": "Lua", ".r": "R", ".R": "R",
-    ".jl": "Julia", ".dart": "Dart", ".vue": "Vue", ".svelte": "Svelte",
-    ".html": "HTML", ".htm": "HTML", ".css": "CSS", ".scss": "SCSS",
-    ".sass": "Sass", ".less": "Less", ".sql": "SQL", ".sh": "Shell",
-    ".bash": "Shell", ".zsh": "Shell", ".ps1": "PowerShell",
-    ".yaml": "YAML", ".yml": "YAML", ".json": "JSON", ".toml": "TOML",
-    ".xml": "XML", ".md": "Markdown", ".rst": "reStructuredText",
-    ".tex": "LaTeX", ".proto": "Protocol Buffers", ".tf": "Terraform",
-    ".ipynb": "Jupyter Notebook", ".zig": "Zig", ".nim": "Nim",
-    ".fs": "F#", ".ml": "OCaml", ".elm": "Elm", ".sol": "Solidity",
+    ".py": "Python",
+    ".js": "JavaScript",
+    ".jsx": "JavaScript (React)",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript (React)",
+    ".mjs": "JavaScript",
+    ".cjs": "JavaScript",
+    ".java": "Java",
+    ".kt": "Kotlin",
+    ".kts": "Kotlin",
+    ".go": "Go",
+    ".rs": "Rust",
+    ".c": "C",
+    ".h": "C/C++ (cabecera)",
+    ".cpp": "C++",
+    ".cc": "C++",
+    ".cxx": "C++",
+    ".hpp": "C/C++ (cabecera)",
+    ".cs": "C#",
+    ".rb": "Ruby",
+    ".php": "PHP",
+    ".swift": "Swift",
+    ".scala": "Scala",
+    ".clj": "Clojure",
+    ".ex": "Elixir",
+    ".exs": "Elixir",
+    ".erl": "Erlang",
+    ".hs": "Haskell",
+    ".lua": "Lua",
+    ".r": "R",
+    ".R": "R",
+    ".jl": "Julia",
+    ".dart": "Dart",
+    ".vue": "Vue",
+    ".svelte": "Svelte",
+    ".html": "HTML",
+    ".htm": "HTML",
+    ".css": "CSS",
+    ".scss": "SCSS",
+    ".sass": "Sass",
+    ".less": "Less",
+    ".sql": "SQL",
+    ".sh": "Shell",
+    ".bash": "Shell",
+    ".zsh": "Shell",
+    ".ps1": "PowerShell",
+    ".yaml": "YAML",
+    ".yml": "YAML",
+    ".json": "JSON",
+    ".toml": "TOML",
+    ".xml": "XML",
+    ".md": "Markdown",
+    ".rst": "reStructuredText",
+    ".tex": "LaTeX",
+    ".proto": "Protocol Buffers",
+    ".tf": "Terraform",
+    ".ipynb": "Jupyter Notebook",
+    ".zig": "Zig",
+    ".nim": "Nim",
+    ".fs": "F#",
+    ".ml": "OCaml",
+    ".elm": "Elm",
+    ".sol": "Solidity",
 }
 
 # Lenguajes que cuentan para el ratio tests/código (excluye datos/markup)
 CODE_LANGS = {
-    "Python", "JavaScript", "JavaScript (React)", "TypeScript",
-    "TypeScript (React)", "Java", "Kotlin", "Go", "Rust", "C",
-    "C/C++ (cabecera)", "C++", "C#", "Ruby", "PHP", "Swift", "Scala",
-    "Clojure", "Elixir", "Erlang", "Haskell", "Lua", "R", "Julia",
-    "Dart", "Vue", "Svelte", "Shell", "PowerShell", "Zig", "Nim",
-    "F#", "OCaml", "Elm", "Solidity", "Protocol Buffers", "Terraform",
+    "Python",
+    "JavaScript",
+    "JavaScript (React)",
+    "TypeScript",
+    "TypeScript (React)",
+    "Java",
+    "Kotlin",
+    "Go",
+    "Rust",
+    "C",
+    "C/C++ (cabecera)",
+    "C++",
+    "C#",
+    "Ruby",
+    "PHP",
+    "Swift",
+    "Scala",
+    "Clojure",
+    "Elixir",
+    "Erlang",
+    "Haskell",
+    "Lua",
+    "R",
+    "Julia",
+    "Dart",
+    "Vue",
+    "Svelte",
+    "Shell",
+    "PowerShell",
+    "Zig",
+    "Nim",
+    "F#",
+    "OCaml",
+    "Elm",
+    "Solidity",
+    "Protocol Buffers",
+    "Terraform",
 }
 
 STANDARD_FILES = {
@@ -102,39 +200,82 @@ STANDARD_FILES = {
 }
 
 CI_PATHS = [
-    ".github/workflows", ".gitlab-ci.yml", "Jenkinsfile", ".circleci",
-    "azure-pipelines.yml", ".travis.yml", "bitbucket-pipelines.yml",
-    "buildkite", ".buildkite",
+    ".github/workflows",
+    ".gitlab-ci.yml",
+    "Jenkinsfile",
+    ".circleci",
+    "azure-pipelines.yml",
+    ".travis.yml",
+    "bitbucket-pipelines.yml",
+    "buildkite",
+    ".buildkite",
 ]
 
 MANIFESTS = {
-    "package.json": "npm/Node", "package-lock.json": "npm (lock)",
-    "yarn.lock": "Yarn (lock)", "pnpm-lock.yaml": "pnpm (lock)",
-    "requirements.txt": "pip", "pyproject.toml": "Python (pyproject)",
-    "Pipfile": "Pipenv", "poetry.lock": "Poetry (lock)", "setup.py": "setuptools",
-    "Cargo.toml": "Rust (Cargo)", "Cargo.lock": "Cargo (lock)",
-    "go.mod": "Go modules", "go.sum": "Go (lock)",
-    "pom.xml": "Maven", "build.gradle": "Gradle", "build.gradle.kts": "Gradle",
-    "composer.json": "PHP (Composer)", "Gemfile": "Ruby (Bundler)",
-    "mix.exs": "Elixir (Mix)", "pubspec.yaml": "Dart/Flutter (pub)",
-    "Dockerfile": "Docker", "docker-compose.yml": "Docker Compose",
-    "compose.yml": "Docker Compose", "Makefile": "Make",
+    "package.json": "npm/Node",
+    "package-lock.json": "npm (lock)",
+    "yarn.lock": "Yarn (lock)",
+    "pnpm-lock.yaml": "pnpm (lock)",
+    "requirements.txt": "pip",
+    "pyproject.toml": "Python (pyproject)",
+    "Pipfile": "Pipenv",
+    "poetry.lock": "Poetry (lock)",
+    "setup.py": "setuptools",
+    "Cargo.toml": "Rust (Cargo)",
+    "Cargo.lock": "Cargo (lock)",
+    "go.mod": "Go modules",
+    "go.sum": "Go (lock)",
+    "pom.xml": "Maven",
+    "build.gradle": "Gradle",
+    "build.gradle.kts": "Gradle",
+    "composer.json": "PHP (Composer)",
+    "Gemfile": "Ruby (Bundler)",
+    "mix.exs": "Elixir (Mix)",
+    "pubspec.yaml": "Dart/Flutter (pub)",
+    "Dockerfile": "Docker",
+    "docker-compose.yml": "Docker Compose",
+    "compose.yml": "Docker Compose",
+    "Makefile": "Make",
 }
 
 # Solo directorios dedicados a tests (no "integration"/"testing" genéricos)
 TEST_DIR_NAMES = {"test", "tests", "spec", "specs", "__tests__", "e2e", "unittest"}
-TEST_FILE_RE = re.compile(
-    r"(^test_|_test\.|\.test\.|\.spec\.|_spec\.|^conftest\.py$)", re.IGNORECASE)
+TEST_FILE_RE = re.compile(r"(^test_|_test\.|\.test\.|\.spec\.|_spec\.|^conftest\.py$)", re.IGNORECASE)
 
 PASCALCASE_EXTS = {
-    ".tsx", ".jsx", ".vue", ".svelte", ".java", ".kt", ".kts", ".cs", ".swift",
+    ".tsx",
+    ".jsx",
+    ".vue",
+    ".svelte",
+    ".java",
+    ".kt",
+    ".kts",
+    ".cs",
+    ".swift",
 }
 
 STANDARD_NAME_PREFIXES = (
-    ".", "README", "LICENSE", "CHANGELOG", "CONTRIBUTING", "Dockerfile",
-    "Makefile", "CMakeLists", "Gemfile", "Jenkinsfile", "Pipfile", "Cargo",
-    "CODE_OF_CONDUCT", "SECURITY", "AUTHORS", "NOTICE", "NEWS", "HISTORY",
-    "COPYING", "INSTALL", "TODO",
+    ".",
+    "README",
+    "LICENSE",
+    "CHANGELOG",
+    "CONTRIBUTING",
+    "Dockerfile",
+    "Makefile",
+    "CMakeLists",
+    "Gemfile",
+    "Jenkinsfile",
+    "Pipfile",
+    "Cargo",
+    "CODE_OF_CONDUCT",
+    "SECURITY",
+    "AUTHORS",
+    "NOTICE",
+    "NEWS",
+    "HISTORY",
+    "COPYING",
+    "INSTALL",
+    "TODO",
 )
 
 # Nombres de tipo sin substring "secret"/"secreto" (CodeQL sensitive string literals).
@@ -147,16 +288,14 @@ CREDENTIAL_PATTERNS = {
     "JWT hardcodeado": re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{5,}\b"),
     "Asignación de credencial": re.compile(
         r"(?i)\b(password|passwd|secret|api[_-]?key|token|auth[_-]?token)\b"
-        r"\s*[:=]\s*['\"][^'\"]{8,}['\"]"),
-    "Cadena de conexión": re.compile(
-        r"(?i)\b(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql|redis|amqp)://[^@\s]+@"),
+        r"\s*[:=]\s*['\"][^'\"]{8,}['\"]"
+    ),
+    "Cadena de conexión": re.compile(r"(?i)\b(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql|redis|amqp)://[^@\s]+@"),
 }
 
 # Falso positivo conocido: token de diseño CSS (`--…`) o handle opaco de fixture.
 # No relaja password, api_key, secret ni otros valores de token.
-DESIGN_TOKEN_ASSIGN_RE = re.compile(
-    r"""(?i)\btoken\b\s*[:=]\s*['"](?:--[A-Za-z0-9_-]+|opaque-handle\.json)['"]"""
-)
+DESIGN_TOKEN_ASSIGN_RE = re.compile(r"""(?i)\btoken\b\s*[:=]\s*['"](?:--[A-Za-z0-9_-]+|opaque-handle\.json)['"]""")
 
 MARKER_RE = re.compile(r"\b(TODO|FIXME|HACK|XXX|BUG)\b")
 
@@ -166,15 +305,24 @@ LOW_CONFIDENCE_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 SKIP_CONTENT_SCAN_RE = re.compile(
-    r"(^|/)(SKILL\.md|references/|scripts/scan_repo\.py$)", re.IGNORECASE,
+    r"(^|/)(SKILL\.md|references/|scripts/scan_repo\.py$)",
+    re.IGNORECASE,
 )
 
 ENV_FILE_RE = re.compile(r"^\.env(\..+)?$", re.IGNORECASE)
 ENV_SAFE_SUFFIXES = (".example", ".sample", ".template", ".dist")
 
 TEXT_EXTS = set(LANG_BY_EXT) | {
-    ".txt", ".cfg", ".ini", ".conf", ".env", ".lock", ".gitignore",
-    ".editorconfig", ".csv", ".tsv",
+    ".txt",
+    ".cfg",
+    ".ini",
+    ".conf",
+    ".env",
+    ".lock",
+    ".gitignore",
+    ".editorconfig",
+    ".csv",
+    ".tsv",
 }
 
 MAX_PATTERN_SCAN_BYTES = 2 * 1024 * 1024
@@ -447,9 +595,7 @@ def scan(root):
                     ):
                         continue
                     line_no = text.count("\n", 0, m.start()) + 1
-                    report["hallazgos_patrones"].append(
-                        _pattern_hit(name, r, line_no, confidence)
-                    )
+                    report["hallazgos_patrones"].append(_pattern_hit(name, r, line_no, confidence))
                     break  # una coincidencia por tipo y fichero basta
 
             if confidence == "alta":
@@ -464,16 +610,17 @@ def scan(root):
 
     for (size, digest), paths in hashes.items():
         if len(paths) > 1:
-            report["duplicados"].append({
-                "bytes": size,
-                "sha256": digest[:16],
-                "ficheros": paths,
-            })
+            report["duplicados"].append(
+                {
+                    "bytes": size,
+                    "sha256": digest[:16],
+                    "ficheros": paths,
+                }
+            )
 
     report["tests"]["directorios_test"] = sorted(test_dirs_seen)
     report["lenguajes"] = {
-        lang: {"ficheros": lang_files[lang], "bytes": lang_bytes[lang]}
-        for lang, _ in lang_bytes.most_common()
+        lang: {"ficheros": lang_files[lang], "bytes": lang_bytes[lang]} for lang, _ in lang_bytes.most_common()
     }
     report["marcadores"] = dict(marker_hits.most_common())
     report["resumen"] = {
@@ -481,9 +628,7 @@ def scan(root):
         "total_bytes": total_bytes,
         "lenguaje_principal": lang_bytes.most_common(1)[0][0] if lang_bytes else None,
         "n_hallazgos_patrones": len(report["hallazgos_patrones"]),
-        "n_hallazgos_alta": sum(
-            1 for s in report["hallazgos_patrones"] if s.get("confianza") == "alta"
-        ),
+        "n_hallazgos_alta": sum(1 for s in report["hallazgos_patrones"] if s.get("confianza") == "alta"),
         "n_env_versionados": len(report["env_versionados"]),
         "n_duplicados": len(report["duplicados"]),
         "n_vacios": len(report["higiene"].get("vacios", [])),
@@ -524,17 +669,14 @@ def check_dependency_health(root):
             for section in ("dependencies", "devDependencies"):
                 for dep, ver in (data.get(section) or {}).items():
                     if version_is_unpinned(str(ver)):
-                        findings.append(
-                            f"{rel_pkg}: dependencia sin fijar '{dep}': '{ver}' ({section})"
-                        )
+                        findings.append(f"{rel_pkg}: dependencia sin fijar '{dep}': '{ver}' ({section})")
         except (json.JSONDecodeError, OSError) as exc:
             findings.append(f"{rel_pkg}: no se pudo parsear ({exc})")
 
     root_pkg = os.path.join(root, "package.json")
     if os.path.isfile(root_pkg):
         if not any(
-            os.path.isfile(os.path.join(root, lock))
-            for lock in ("package-lock.json", "pnpm-lock.yaml", "yarn.lock")
+            os.path.isfile(os.path.join(root, lock)) for lock in ("package-lock.json", "pnpm-lock.yaml", "yarn.lock")
         ):
             findings.append("package.json sin fichero lock (package-lock/pnpm-lock/yarn.lock)")
 
@@ -544,9 +686,7 @@ def check_dependency_health(root):
             with open(req, encoding="utf-8") as fh:
                 for i, line in enumerate(fh, 1):
                     if pip_line_unpinned(line):
-                        findings.append(
-                            f"requirements.txt:{i}: dependencia sin versión: '{line.strip()}'"
-                        )
+                        findings.append(f"requirements.txt:{i}: dependencia sin versión: '{line.strip()}'")
         except OSError:
             pass
 
@@ -560,9 +700,7 @@ def check_dependency_health(root):
                 r"""["']([A-Za-z0-9_.\-]+)["']\s*=\s*["'](\*|latest)["']""",
                 text,
             ):
-                findings.append(
-                    f"pyproject.toml: dependencia sin fijar '{m.group(1)}': '{m.group(2)}'"
-                )
+                findings.append(f"pyproject.toml: dependencia sin fijar '{m.group(1)}': '{m.group(2)}'")
         except OSError:
             pass
 
@@ -576,9 +714,7 @@ def check_dependency_health(root):
                 text,
                 re.MULTILINE,
             ):
-                findings.append(
-                    f"Cargo.toml: dependencia sin fijar '{m.group(1)}': '{m.group(2)}'"
-                )
+                findings.append(f"Cargo.toml: dependencia sin fijar '{m.group(1)}': '{m.group(2)}'")
         except OSError:
             pass
 
@@ -623,9 +759,7 @@ def check_tracked_artifacts(root):
         if TRACKED_ARTIFACT_RE.search(path):
             # .env.example no es artefacto peligroso
             base = os.path.basename(path)
-            if base.lower().startswith(".env") and any(
-                base.lower().endswith(suf) for suf in ENV_SAFE_SUFFIXES
-            ):
+            if base.lower().startswith(".env") and any(base.lower().endswith(suf) for suf in ENV_SAFE_SUFFIXES):
                 continue
             findings.append(path)
     return findings[:100]
@@ -642,8 +776,7 @@ def to_markdown(rep):
         "# Escaneo estructural del repositorio",
         "",
         f"- Raíz: `{rep['raiz']}`",
-        f"- Ficheros analizados: **{r.get('total_ficheros', 0)}** "
-        f"({r.get('total_bytes', 0) / 1024:.1f} KiB)",
+        f"- Ficheros analizados: **{r.get('total_ficheros', 0)}** ({r.get('total_bytes', 0) / 1024:.1f} KiB)",
         f"- Lenguaje principal: **{r.get('lenguaje_principal') or 'n/d'}**",
         "",
         "## Lenguajes",
@@ -662,10 +795,7 @@ def to_markdown(rep):
     if rep["manifiestos"]:
         lines += ["", "## Manifiestos"]
         for kind, paths in rep["manifiestos"].items():
-            lines.append(
-                f"- {kind}: {', '.join(paths[:5])}"
-                + (f" (+{len(paths) - 5} más)" if len(paths) > 5 else "")
-            )
+            lines.append(f"- {kind}: {', '.join(paths[:5])}" + (f" (+{len(paths) - 5} más)" if len(paths) > 5 else ""))
 
     lines += [
         "",
@@ -690,8 +820,7 @@ def to_markdown(rep):
         for s in hallazgos[:30]:
             fp = s.get("fingerprint", "n/d")
             lines.append(
-                f"- [{s['tipo']}] `{s['fichero']}:{s['linea']}` "
-                f"(confianza: {s.get('confianza', 'n/d')}; fp: `{fp}`)"
+                f"- [{s['tipo']}] `{s['fichero']}:{s['linea']}` (confianza: {s.get('confianza', 'n/d')}; fp: `{fp}`)"
             )
     if rep["salud_dependencias"]:
         lines.append("\n### Salud de dependencias")
@@ -706,14 +835,9 @@ def to_markdown(rep):
         for m, n in rep["marcadores"].items():
             lines.append(f"- {m}: {n}")
     t = rep["tests"]
-    ratio = (
-        f" | ratio: {t['ficheros_test'] / t['ficheros_codigo']:.2%}"
-        if t["ficheros_codigo"]
-        else ""
-    )
+    ratio = f" | ratio: {t['ficheros_test'] / t['ficheros_codigo']:.2%}" if t["ficheros_codigo"] else ""
     lines.append(
-        f"\n### Tests\n- Ficheros de test: {t['ficheros_test']} | "
-        f"Ficheros de código: {t['ficheros_codigo']}{ratio}"
+        f"\n### Tests\n- Ficheros de test: {t['ficheros_test']} | Ficheros de código: {t['ficheros_codigo']}{ratio}"
     )
     if t["directorios_test"]:
         lines.append(f"- Directorios de test: {', '.join(t['directorios_test'])}")
@@ -731,8 +855,7 @@ def warn_if_output_inside_repo(repo, out_path):
         return
     if common == repo_abs:
         logger.warning(
-            "La salida '%s' cae dentro del repositorio auditado; "
-            "preferible escribir fuera del árbol.",
+            "La salida '%s' cae dentro del repositorio auditado; preferible escribir fuera del árbol.",
             out_path,
         )
 

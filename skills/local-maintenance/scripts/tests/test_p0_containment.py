@@ -1,4 +1,5 @@
 """P0 containment + exact assertions (no or True / failed >= 0)."""
+
 from __future__ import annotations
 
 import json
@@ -81,9 +82,7 @@ def test_f03_json_reflects_simulated_not_completed(monkeypatch, tmp_path):
     assert data["summary"]["failed"] == 0
     assert data["summary"]["simulated"] >= 1
     assert data["metadata"]["dry_run"] is True
-    assert all(
-        a["status"] in ("simulated", "skipped") for a in data["actions"]
-    )
+    assert all(a["status"] in ("simulated", "skipped") for a in data["actions"])
     assert "completed" not in {a["status"] for a in data["actions"]}
 
 
@@ -95,9 +94,7 @@ def test_f04_unknown_operation_denied():
 
 
 def test_authorize_rejects_approved_token():
-    allowed, reason = risk_gate.authorize_operation(
-        "clean_journal", {"approved": True, "snapshot_id": "s"}
-    )
+    allowed, reason = risk_gate.authorize_operation("clean_journal", {"approved": True, "snapshot_id": "s"})
     assert allowed is False
     assert "consent" in reason or "ApprovalProvider" in reason
 
@@ -182,9 +179,7 @@ def test_restore_staging_content_assert(tmp_path):
     (src / "hello.txt").write_text("restore-ok\n", encoding="utf-8")
     with tarfile.open(tarball, "w:gz") as tf:
         tf.add(src / "hello.txt", arcname="hello.txt")
-    rc = snapshot_state.main(
-        ["--rollback", "snap-x", "--snapshot-dir", str(tmp_path), "--execute"]
-    )
+    rc = snapshot_state.main(["--rollback", "snap-x", "--snapshot-dir", str(tmp_path), "--execute"])
     assert rc == 0
 
 
@@ -212,7 +207,5 @@ def test_host_rollback_privileged_root_blocked(tmp_path):
     snap.mkdir()
     (snap / "etc-backup.tar.gz").write_bytes(b"\x1f\x8b")  # not used if root rejected first
     (snap / "metadata.json").write_text("{}", encoding="utf-8")
-    rc = snapshot_state.rollback_snapshot(
-        str(tmp_path), "snap-x", execute=True, restore_root="/"
-    )
+    rc = snapshot_state.rollback_snapshot(str(tmp_path), "snap-x", execute=True, restore_root="/")
     assert rc == 3

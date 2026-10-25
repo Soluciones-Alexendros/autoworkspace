@@ -15,6 +15,7 @@ Uso:
 Sin dependencias externas. Exit 0 si aplica (o no hay nada que hacer);
 exit 1 con error de uso/entorno; exit 2 en --check si falta bump.
 """
+
 import argparse
 import re
 import subprocess
@@ -107,9 +108,7 @@ def skills_from_paths(paths: list[str]) -> list[str]:
 
 
 def git(args: list[str], root: Path = ROOT) -> str:
-    r = subprocess.run(
-        ["git", *args], cwd=root, capture_output=True, text=True, check=False
-    )
+    r = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=False)
     if r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)}: {r.stderr.strip()}")
     return r.stdout
@@ -293,7 +292,10 @@ def main(argv: list[str] | None = None) -> int:
         update_changelog(entries, args.message)
         print("CHANGELOG: entrada [Unreleased] actualizada")
     if args.tag and not args.dry_run and repo_next:
-        git(["tag", "-a", f"v{repo_next}", "-m", f"v{repo_next} ({top}): {', '.join(s for s, _, _, _ in entries)}"], root)
+        git(
+            ["tag", "-a", f"v{repo_next}", "-m", f"v{repo_next} ({top}): {', '.join(s for s, _, _, _ in entries)}"],
+            root,
+        )
         print(f"TAG: v{repo_next} creado (recordar: git push origin v{repo_next})")
     return 0
 

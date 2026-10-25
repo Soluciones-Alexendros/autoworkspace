@@ -74,9 +74,7 @@ def calculate_trend(current_score, previous_score):
 
 def severity_emoji(severity):
     """Devuelve emoji para severidad."""
-    return {"P0": "🔴", "P1": "🟠", "P2": "🟡", "P3": "🔵", "P4": "⚪"}.get(
-        severity, "❓"
-    )
+    return {"P0": "🔴", "P1": "🟠", "P2": "🟡", "P3": "🔵", "P4": "⚪"}.get(severity, "❓")
 
 
 def severity_color(severity):
@@ -125,8 +123,12 @@ def diff_findings(prev_findings, curr_findings) -> dict:
     for fid, f in prev_by_id.items():
         if _is_bad(f) and not _is_bad(curr_by_id.get(fid)):
             resueltos.append(_finding_label(f))
-    return {"nuevos": sorted(nuevos), "resueltos": sorted(resueltos),
-            "persistentes": sorted(persistentes), "regresados": sorted(regresados)}
+    return {
+        "nuevos": sorted(nuevos),
+        "resueltos": sorted(resueltos),
+        "persistentes": sorted(persistentes),
+        "regresados": sorted(regresados),
+    }
 
 
 def _extract_prev_findings(history, prev_data) -> list | None:
@@ -152,9 +154,7 @@ def render_markdown(data, history=None, prev_data=None):
     lines.append(f"**Fecha:** {meta.get('timestamp', 'N/A')}")
     lines.append(f"**Host:** {meta.get('hostname', 'N/A')}")
     lines.append(f"**Modo:** {meta.get('mode', 'N/A')}")
-    lines.append(
-        f"**Distro:** {meta.get('distro', 'N/A')} ({meta.get('family', 'N/A')})"
-    )
+    lines.append(f"**Distro:** {meta.get('distro', 'N/A')} ({meta.get('family', 'N/A')})")
     lines.append(f"**Kernel:** {meta.get('kernel', 'N/A')}")
     lines.append(f"**Duración:** {meta.get('duration_seconds', 'N/A')}s")
     lines.append("")
@@ -180,9 +180,7 @@ def render_markdown(data, history=None, prev_data=None):
     if history and len(history) >= 2:
         prev = history[-2]
         prev_score = (
-            prev.get("health_score", {}).get("overall", 0)
-            if isinstance(prev, dict)
-            else prev.get("health_score", 0)
+            prev.get("health_score", {}).get("overall", 0) if isinstance(prev, dict) else prev.get("health_score", 0)
         )
         trend = calculate_trend(overall, prev_score)
         trend_labels = {
@@ -191,9 +189,7 @@ def render_markdown(data, history=None, prev_data=None):
             "stable": "➡️ Estable",
             "first_run": "🆕 Primera ejecución",
         }
-        lines.append(
-            f"**Tendencia:** {trend_labels.get(trend, trend)} (anterior: {prev_score})"
-        )
+        lines.append(f"**Tendencia:** {trend_labels.get(trend, trend)} (anterior: {prev_score})")
         lines.append("")
 
     # Resumen
@@ -222,8 +218,12 @@ def render_markdown(data, history=None, prev_data=None):
         diff = diff_findings(prev_findings, findings)
         lines.append("## Diff temporal (vs auditoria previa)")
         lines.append("")
-        for key, label in (("nuevos", "🆕 Nuevos"), ("resueltos", "✅ Resueltos"),
-                           ("persistentes", "🔁 Persistentes"), ("regresados", "⚠️ Regresados")):
+        for key, label in (
+            ("nuevos", "🆕 Nuevos"),
+            ("resueltos", "✅ Resueltos"),
+            ("persistentes", "🔁 Persistentes"),
+            ("regresados", "⚠️ Regresados"),
+        ):
             items = diff[key]
             lines.append(f"### {label} ({len(items)})")
             lines.append("")
@@ -269,9 +269,7 @@ def render_html(data, history=None, prev_data=None):
     summary = data.get("summary", {})
     overall = hs.get("overall", 0)
 
-    score_color = (
-        "#28a745" if overall >= 85 else "#ffc107" if overall >= 70 else "#dc3545"
-    )
+    score_color = "#28a745" if overall >= 85 else "#ffc107" if overall >= 70 else "#dc3545"
 
     html = f"""<!DOCTYPE html>
 <html lang="es">
@@ -423,8 +421,12 @@ def render_html(data, history=None, prev_data=None):
         html += """        <div class="section">
             <h2>Diff temporal (vs auditoria previa)</h2>
 """
-        for key, label in (("nuevos", "Nuevos"), ("resueltos", "Resueltos"),
-                           ("persistentes", "Persistentes"), ("regresados", "Regresados")):
+        for key, label in (
+            ("nuevos", "Nuevos"),
+            ("resueltos", "Resueltos"),
+            ("persistentes", "Persistentes"),
+            ("regresados", "Regresados"),
+        ):
             items = diff[key]
             html += f"            <h3>{label} ({len(items)})</h3>\n"
             for item in items:
@@ -444,16 +446,10 @@ def render_html(data, history=None, prev_data=None):
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Genera informe de mantenimiento-linux"
-    )
-    parser.add_argument(
-        "--input", "-i", required=True, help="Archivo JSON de auditoría"
-    )
+    parser = argparse.ArgumentParser(description="Genera informe de mantenimiento-linux")
+    parser.add_argument("--input", "-i", required=True, help="Archivo JSON de auditoría")
     parser.add_argument("--output", "-o", default="report.md", help="Archivo de salida")
-    parser.add_argument(
-        "--format", "-f", choices=["md", "html"], default="md", help="Formato de salida"
-    )
+    parser.add_argument("--format", "-f", choices=["md", "html"], default="md", help="Formato de salida")
     parser.add_argument("--history", help="Directorio de historial")
     parser.add_argument("--prev", default="", help="Auditoria previa JSON para diff temporal")
     parser.add_argument(

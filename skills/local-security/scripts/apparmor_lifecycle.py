@@ -77,8 +77,11 @@ def validate_logprof_parseable(profile: str) -> bool:
     try:
         proc = subprocess.run(
             ["sh", "-c", "echo F | aa-logprof -f /etc/apparmor.d/" + profile],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=30, text=True, check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+            text=True,
+            check=False,
         )
         return "skipping unparseable" not in (proc.stdout + proc.stderr).lower()
     except (OSError, subprocess.TimeoutExpired):

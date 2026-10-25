@@ -1,4 +1,5 @@
 """Tests audit_quick.py: --help, inválidos, error perfil -> 1, doradas."""
+
 import subprocess
 import sys
 
@@ -9,7 +10,10 @@ SCRIPT = "audit_quick.py"
 
 def _run(*args):
     return subprocess.run(
-        [sys.executable, SCRIPT, *args], capture_output=True, text=True, cwd=".",
+        [sys.executable, SCRIPT, *args],
+        capture_output=True,
+        text=True,
+        cwd=".",
     )
 
 
@@ -26,14 +30,15 @@ def test_invalid_args_exit2():
 def test_error_perfil_exit1(tmp_path, monkeypatch):
     def _boom(_p):
         raise OSError("perfil simulado")
+
     monkeypatch.setattr(audit_quick, "load_profile_family", _boom)
     assert audit_quick.main([str(tmp_path / "o.json")]) == 1
 
 
 def test_error_escritura_exit1(tmp_path, monkeypatch):
     import audit_quick as aq
-    monkeypatch.setattr(aq, "load_profile_family",
-                        lambda _p: ("unknown", "unknown", "x", "", ""))
+
+    monkeypatch.setattr(aq, "load_profile_family", lambda _p: ("unknown", "unknown", "x", "", ""))
     # Acelerar: sin subprocesos reales (run mockeado), solo para llegar al write.
     monkeypatch.setattr(aq, "run", lambda *a, **k: "")
     monkeypatch.setattr(aq, "run_check", lambda *a, **k: "")

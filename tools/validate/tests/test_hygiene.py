@@ -1,4 +1,5 @@
 """Tests de hygiene.py: .env versionado falla; .env.example pasa."""
+
 from __future__ import annotations
 
 import subprocess

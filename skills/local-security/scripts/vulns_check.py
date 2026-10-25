@@ -34,8 +34,14 @@ def which(cmd: str) -> str | None:
 def run_cmd(cmd: str, timeout: int = 120) -> tuple[int, str]:
     try:
         proc = subprocess.run(
-            cmd, shell=True, executable="/bin/bash", stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, timeout=timeout, text=True, check=False,
+            cmd,
+            shell=True,
+            executable="/bin/bash",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            text=True,
+            check=False,
         )
         return proc.returncode, proc.stdout
     except (subprocess.TimeoutExpired, OSError) as exc:
@@ -54,8 +60,7 @@ def check_apt() -> dict:
     _, out = run_cmd("apt list --upgradable 2>/dev/null | grep -vE '^(Listing|Listando)'", timeout=120)
     lines = [l for l in out.splitlines() if l.strip()]
     sec = [l for l in lines if "-security" in l or "security" in l.lower()]
-    return {"status": "ok", "upgradable": len(lines), "security": len(sec),
-            "sample": lines[:10]}
+    return {"status": "ok", "upgradable": len(lines), "security": len(sec), "sample": lines[:10]}
 
 
 def check_snap() -> dict:
@@ -63,8 +68,7 @@ def check_snap() -> dict:
         return {"status": "skip", "reason": "snap no instalado"}
     _, out = run_cmd("snap refresh --list 2>/dev/null", timeout=120)
     lines = [l for l in out.splitlines() if l.strip()]
-    return {"status": "ok", "pending": max(0, len(lines) - 1) if lines else 0,
-            "sample": lines[:10]}
+    return {"status": "ok", "pending": max(0, len(lines) - 1) if lines else 0, "sample": lines[:10]}
 
 
 def check_flatpak() -> dict:
@@ -91,8 +95,9 @@ def main(argv: list[str] | None = None) -> int:
     result["sources"]["snap"] = check_snap()
     result["sources"]["flatpak"] = check_flatpak()
 
-    total = sum(int(v.get("security", v.get("pending", 0)) or 0) for v in result["sources"].values()
-                if isinstance(v, dict))
+    total = sum(
+        int(v.get("security", v.get("pending", 0)) or 0) for v in result["sources"].values() if isinstance(v, dict)
+    )
     result["summary"] = {"pending_security_signals": total, "degraded": not online}
     print(f"vulns: {total} senales pendientes (degradado={not online})")
 

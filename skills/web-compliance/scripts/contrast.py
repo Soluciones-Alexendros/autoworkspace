@@ -9,6 +9,7 @@ Salida JSON con ratio y veredicto por nivel. Código de salida: 0 si el par
 cumple AA (o AA large con --large), 1 si el veredicto es FAIL, 2 si el input
 es inválido.
 """
+
 import argparse
 import json
 import logging
@@ -35,12 +36,13 @@ def _hex_to_rgb(hex_color):
     h = m.group(1)
     if len(h) == 3:
         h = "".join(ch * 2 for ch in h)
-    return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    return tuple(int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))
 
 
 def relative_luminance(hex_color):
     def linearize(c):
         return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
     r, g, b = (linearize(c) for c in _hex_to_rgb(hex_color))
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
@@ -56,7 +58,9 @@ def check(fg, bg, large_text=False):
     aa = THRESHOLDS["aa_large"] if large_text else THRESHOLDS["aa_normal"]
     aaa = THRESHOLDS["aaa_large"] if large_text else THRESHOLDS["aaa_normal"]
     return {
-        "foreground": fg, "background": bg, "large_text": large_text,
+        "foreground": fg,
+        "background": bg,
+        "large_text": large_text,
         "ratio": round(ratio, 2),
         "aa": ratio >= aa,
         "aaa": ratio >= aaa,
@@ -81,8 +85,7 @@ def selftest():
 
 
 def main(argv=None) -> int:
-    logging.basicConfig(stream=sys.stderr, level=logging.WARNING,
-                        format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Contraste WCAG entre dos colores")
     ap.add_argument("fg", nargs="?", help="Color de texto (#RRGGBB)")
     ap.add_argument("bg", nargs="?", help="Color de fondo (#RRGGBB)")
@@ -92,8 +95,7 @@ def main(argv=None) -> int:
 
     if args.selftest:
         failures = selftest()
-        print(json.dumps({"selftest": "PASS" if not failures else "FAIL",
-                          "failures": failures}, ensure_ascii=False))
+        print(json.dumps({"selftest": "PASS" if not failures else "FAIL", "failures": failures}, ensure_ascii=False))
         return 0 if not failures else 1
 
     if not args.fg or not args.bg:

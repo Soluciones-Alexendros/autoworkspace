@@ -1,4 +1,5 @@
 """Tests for clean_routine single-path dispatch."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -12,9 +13,7 @@ def test_dry_run_simulates(monkeypatch):
     monkeypatch.setattr(clean_routine, "run", lambda *a, **k: "")
     rc = clean_routine.main(["--dry-run", "--json"])
     assert rc == 0
-    assert all(
-        a["status"] in ("simulated", "skipped") for a in clean_routine.ACTION_RESULTS
-    )
+    assert all(a["status"] in ("simulated", "skipped") for a in clean_routine.ACTION_RESULTS)
 
 
 def test_execute_blocked_without_approval(monkeypatch, tmp_path):
@@ -71,8 +70,6 @@ def test_generate_json_dry_run(monkeypatch, tmp_path):
     monkeypatch.setattr(clean_routine, "JSON_OUTPUT", str(out))
     monkeypatch.setattr(clean_routine, "WITH_FIRMWARE", False)
     clean_routine.ACTION_RESULTS.clear()
-    clean_routine.ACTION_RESULTS.append(
-        {"action": "clean_journal", "status": "simulated", "rc": 0, "detail": ""}
-    )
+    clean_routine.ACTION_RESULTS.append({"action": "clean_journal", "status": "simulated", "rc": 0, "detail": ""})
     clean_routine.generate_json_output()
     assert out.is_file()

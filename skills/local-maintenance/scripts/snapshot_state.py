@@ -295,8 +295,7 @@ def rollback_snapshot(
         print(f"snapshot inexistente: {snapshot_id}", file=sys.stderr)
         return 1
     changed, missing, total = diff_snapshot(base_dir, snapshot_id)
-    print(f"rollback {snapshot_id}: {total} ficheros vigilados, "
-          f"{len(changed)} cambiados, {len(missing)} eliminados")
+    print(f"rollback {snapshot_id}: {total} ficheros vigilados, {len(changed)} cambiados, {len(missing)} eliminados")
     for path in (changed + missing)[:20]:
         print(f"  ~ {path}")
     tarball = os.path.join(snapshot_path, "etc-backup.tar.gz")
@@ -343,10 +342,7 @@ def rollback_snapshot(
     rc = _inspect_and_extract_tar(tarball, restore_root)
     if rc != 0:
         return rc
-    log_info(
-        f"Rollback {snapshot_id}: extracted to staging {restore_root} "
-        f"(owned={owned_staging}; not host /)"
-    )
+    log_info(f"Rollback {snapshot_id}: extracted to staging {restore_root} (owned={owned_staging}; not host /)")
     return 0
 
 
@@ -379,7 +375,9 @@ def main(argv: list[str] | None = None) -> int:
             execute=args.execute,
             restore_root=args.restore_root or None,
         )
-    snapshot_id = args.snapshot_id or f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
+    snapshot_id = (
+        args.snapshot_id or f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
+    )
     if "/" in snapshot_id or "\\" in snapshot_id or snapshot_id in ("", ".", ".."):
         logger.error("snapshot_id inválido: %r", snapshot_id)
         print(f"snapshot_id inválido: {snapshot_id}", file=sys.stderr)
@@ -524,9 +522,7 @@ def create_snapshot_backend(snapshot_id: str, base_dir: str) -> int:
         coverage = "snapper-partial" if rc == 0 else "inventory-only"
     else:
         backend_name = "tar-config"
-        log_warn(
-            "No hay timeshift/snapper. Backup tar de configs públicas (sin claves privadas)..."
-        )
+        log_warn("No hay timeshift/snapper. Backup tar de configs públicas (sin claves privadas)...")
         family = detect_pkg_mgr()
         etc_files = ["/etc/ssh/sshd_config", "/etc/fstab"]
         if family == "pacman":
@@ -567,9 +563,7 @@ def create_snapshot_backend(snapshot_id: str, base_dir: str) -> int:
             os.chmod(f"{snapshot_path}/metadata.json", 0o600)
         except OSError:
             pass
-        logger.error(
-            "backend/backup falló: inventario puede existir pero no hay recuperación válida"
-        )
+        logger.error("backend/backup falló: inventario puede existir pero no hay recuperación válida")
         print(
             "ERROR: captura de inventario no implica backup restaurable; backend falló",
             file=sys.stderr,

@@ -1,4 +1,5 @@
 """Contract loader and result schema tests."""
+
 from __future__ import annotations
 
 import sys

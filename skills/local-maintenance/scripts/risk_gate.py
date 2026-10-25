@@ -28,12 +28,25 @@ def _setup_logging(verbose: bool = False) -> None:
     else:
         logging.getLogger().setLevel(level)
 
+
 PROTECTED_PATHS = (
-    "/boot", "/efi", "/etc/fstab", "/etc/passwd", "/etc/shadow",
-    "/etc/group", "/etc/gshadow", "/etc/sudoers", "/etc/ssh/sshd_config",
-    "/etc/ssh/ssh_host_", "/etc/systemd", "/etc/pacman.conf",
-    "/etc/pacman.d", "/usr/lib/modules", "/var/lib/pacman/local",
-    "/var/lib/dpkg", "/var/lib/rpm",
+    "/boot",
+    "/efi",
+    "/etc/fstab",
+    "/etc/passwd",
+    "/etc/shadow",
+    "/etc/group",
+    "/etc/gshadow",
+    "/etc/sudoers",
+    "/etc/ssh/sshd_config",
+    "/etc/ssh/ssh_host_",
+    "/etc/systemd",
+    "/etc/pacman.conf",
+    "/etc/pacman.d",
+    "/usr/lib/modules",
+    "/var/lib/pacman/local",
+    "/var/lib/dpkg",
+    "/var/lib/rpm",
 )
 
 R3_PATTERNS = (
@@ -163,10 +176,33 @@ def touches_protected_path(cmd: str) -> bool:
     Comandos de solo lectura como cat, grep, head, ls no se clasifican.
     """
     # Whitelist de comandos de solo lectura que no deberían clasificar como R2
-    read_only_cmds = ("cat", "grep", "head", "tail", "ls", "find", "df", "du",
-                       "systemctl status", "journalctl", "ps", "top", "htop",
-                       "ss", "ip", "uname", "uptime", "whoami", "id",
-                       "mount", "blkid", "lscpu", "free", "vmstat", "nproc")
+    read_only_cmds = (
+        "cat",
+        "grep",
+        "head",
+        "tail",
+        "ls",
+        "find",
+        "df",
+        "du",
+        "systemctl status",
+        "journalctl",
+        "ps",
+        "top",
+        "htop",
+        "ss",
+        "ip",
+        "uname",
+        "uptime",
+        "whoami",
+        "id",
+        "mount",
+        "blkid",
+        "lscpu",
+        "free",
+        "vmstat",
+        "nproc",
+    )
     cmd_lower = cmd.lower()
 
     for ro_cmd in read_only_cmds:
@@ -264,14 +300,10 @@ def validate(cmd: str, snapshot_id: str = "", approved: bool = False) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Validador determinista pre-ejecución (clasifica R0/R1/R2/R3)."
-    )
-    parser.add_argument("command", nargs="?", default=None, help='Comando a validar entre comillas')
+    parser = argparse.ArgumentParser(description="Validador determinista pre-ejecución (clasifica R0/R1/R2/R3).")
+    parser.add_argument("command", nargs="?", default=None, help="Comando a validar entre comillas")
     parser.add_argument("snapshot_id", nargs="?", default="", help="ID de snapshot previo")
-    parser.add_argument(
-        "approved", nargs="?", default="false", help='"true" si hay aprobación humana explícita'
-    )
+    parser.add_argument("approved", nargs="?", default="false", help='"true" si hay aprobación humana explícita')
     parser.add_argument("--verbose", action="store_true", help="Logging verboso a stderr")
     args = parser.parse_args(argv)
     _setup_logging(args.verbose)

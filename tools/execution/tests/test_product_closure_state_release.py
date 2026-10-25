@@ -1,4 +1,5 @@
 """Product closure: state/idempotency (V26–V30) and release readiness (V44–V45)."""
+
 from __future__ import annotations
 
 import json

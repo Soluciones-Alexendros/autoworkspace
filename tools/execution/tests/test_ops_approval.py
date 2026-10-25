@@ -1,4 +1,5 @@
 """Execution ops and approval boundary tests."""
+
 from __future__ import annotations
 
 import sys
@@ -26,9 +27,7 @@ class AllowProvider(ApprovalProvider):
 
 
 def test_deny_provider_blocks_mutation():
-    d = DenyProvider().decide(
-        ApprovalRequest("clean_routine", "/tmp", {}, ("mutate-host",), "abc")
-    )
+    d = DenyProvider().decide(ApprovalRequest("clean_routine", "/tmp", {}, ("mutate-host",), "abc"))
     assert d.allowed is False
 
 

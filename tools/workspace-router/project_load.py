@@ -1,4 +1,5 @@
 """Load and validate .autoworkspace/project.yaml."""
+
 from __future__ import annotations
 
 from pathlib import Path

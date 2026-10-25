@@ -21,8 +21,7 @@ import sys
 
 logger = logging.getLogger("seguridad.harden_plan")
 
-DEFAULT_BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                "..", "references", "hardening-baseline.md")
+DEFAULT_BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "references", "hardening-baseline.md")
 
 
 def _setup_logging(verbose: bool = False) -> None:
@@ -36,8 +35,14 @@ def _setup_logging(verbose: bool = False) -> None:
 def run_cmd(cmd: str, timeout: int = 10) -> str:
     try:
         proc = subprocess.run(
-            cmd, shell=True, executable="/bin/bash", stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, timeout=timeout, text=True, check=False,
+            cmd,
+            shell=True,
+            executable="/bin/bash",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            text=True,
+            check=False,
         )
         return proc.stdout
     except (subprocess.TimeoutExpired, OSError):
@@ -74,24 +79,35 @@ def probe_current() -> dict:
     state["SSH-01"] = eff.get("permitrootlogin", "?")
     state["SSH-02"] = eff.get("passwordauthentication", "?")
     state["SSH-05"] = eff.get("maxauthtries", "?")
-    for key in ("kernel.randomize_va_space", "kernel.kptr_restrict",
-                "kernel.dmesg_restrict", "net.ipv4.tcp_syncookies",
-                "fs.suid_dumpable", "fs.protected_hardlinks",
-                "fs.protected_symlinks"):
+    for key in (
+        "kernel.randomize_va_space",
+        "kernel.kptr_restrict",
+        "kernel.dmesg_restrict",
+        "net.ipv4.tcp_syncookies",
+        "fs.suid_dumpable",
+        "fs.protected_hardlinks",
+        "fs.protected_symlinks",
+    ):
         state[key] = run_cmd(f"sysctl -n {key} 2>/dev/null", timeout=5).strip() or "?"
     for unit in ("ufw", "nftables", "firewalld", "auditd"):
         rc = run_cmd(f"systemctl is-active {unit} 2>/dev/null", timeout=10).strip()
         state[f"svc:{unit}"] = rc or "unknown"
-    state["journald_storage"] = run_cmd(
-        "grep '^Storage=' /etc/systemd/journald.conf 2>/dev/null | cut -d= -f2", timeout=10).strip() or "?"
+    state["journald_storage"] = (
+        run_cmd("grep '^Storage=' /etc/systemd/journald.conf 2>/dev/null | cut -d= -f2", timeout=10).strip() or "?"
+    )
     return state
 
 
 DESIRED = {
-    "SSH-01": "no", "SSH-02": "no", "SSH-05": "<=4",
-    "kernel.randomize_va_space": "2", "kernel.kptr_restrict": "2",
-    "kernel.dmesg_restrict": "1", "net.ipv4.tcp_syncookies": "1",
-    "fs.suid_dumpable": "0", "fs.protected_hardlinks": "1",
+    "SSH-01": "no",
+    "SSH-02": "no",
+    "SSH-05": "<=4",
+    "kernel.randomize_va_space": "2",
+    "kernel.kptr_restrict": "2",
+    "kernel.dmesg_restrict": "1",
+    "net.ipv4.tcp_syncookies": "1",
+    "fs.suid_dumpable": "0",
+    "fs.protected_hardlinks": "1",
     "fs.protected_symlinks": "1",
 }
 
@@ -115,33 +131,38 @@ def build_plan(level: int, baseline_ids: list[str], current: dict) -> list[dict]
         if ok:
             continue
         family = ctrl.split("-")[0] if "-" in ctrl and not ctrl.startswith(("kernel", "net.", "fs.")) else "sysctl"
-        plan.append({
-            "control": ctrl,
-            "severity": prio,
-            "current": got,
-            "desired": want,
-            "diff": f"{got} -> {want}",
-            "risk": RISK.get(ctrl, "R1"),
-            "rollback": ROLLBACK.get(family, ROLLBACK["sysctl"]),
-            "in_baseline": ctrl in baseline_ids,
-        })
+        plan.append(
+            {
+                "control": ctrl,
+                "severity": prio,
+                "current": got,
+                "desired": want,
+                "diff": f"{got} -> {want}",
+                "risk": RISK.get(ctrl, "R1"),
+                "rollback": ROLLBACK.get(family, ROLLBACK["sysctl"]),
+                "in_baseline": ctrl in baseline_ids,
+            }
+        )
     # Controles de nivel 2/3 no probados aqui: se listan como pendientes de revision manual
     if level >= 2:
         for extra in ("FW-02", "AU-01", "UA-07", "CR-01"):
-            plan.append({
-                "control": extra, "severity": "P2", "current": "revisar",
-                "desired": "baseline §" + extra.split("-")[0],
-                "diff": "pendiente de revision manual",
-                "risk": "R2" if extra in ("FW-02", "UA-07") else "R1",
-                "rollback": "segun familia (§11 del baseline)",
-                "in_baseline": extra in baseline_ids,
-            })
+            plan.append(
+                {
+                    "control": extra,
+                    "severity": "P2",
+                    "current": "revisar",
+                    "desired": "baseline §" + extra.split("-")[0],
+                    "diff": "pendiente de revision manual",
+                    "risk": "R2" if extra in ("FW-02", "UA-07") else "R1",
+                    "rollback": "segun familia (§11 del baseline)",
+                    "in_baseline": extra in baseline_ids,
+                }
+            )
     return plan
 
 
 def render_md(plan: list[dict], level: int) -> str:
-    lines = [f"# Plan de hardening — Nivel {level}", "",
-             f"Controles con gap: {len(plan)}", ""]
+    lines = [f"# Plan de hardening — Nivel {level}", "", f"Controles con gap: {len(plan)}", ""]
     for item in plan:
         lines.append(f"## {item['control']} ({item['severity']}, {item['risk']})")
         lines.append(f"- Actual: `{item['current']}` → Deseado: `{item['desired']}`")
@@ -172,8 +193,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         try:
             with open(args.json, "w", encoding="utf-8") as fh:
-                json.dump({"level": args.level, "baseline_controls": len(ids),
-                           "plan": plan}, fh, indent=2, ensure_ascii=False)
+                json.dump(
+                    {"level": args.level, "baseline_controls": len(ids), "plan": plan}, fh, indent=2, ensure_ascii=False
+                )
                 fh.write("\n")
         except (OSError, TypeError, ValueError) as exc:
             logger.error("no se pudo escribir %r: %s", args.json, exc)

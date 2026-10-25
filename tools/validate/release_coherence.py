@@ -6,6 +6,7 @@ Uso:
 Exit 0 si cumple; 1 si hay fallos.
 --release-gate exige sección de changelog para package.json (job de publicación).
 """
+
 from __future__ import annotations
 
 import json

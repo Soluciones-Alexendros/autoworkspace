@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests hardening para postura_seguridad.sh (solo lectura, sin cambios)."""
+
 from __future__ import annotations
 
 import subprocess
@@ -12,7 +13,9 @@ SH = Path(__file__).resolve().parent / "postura_seguridad.sh"
 def run(*args):
     return subprocess.run(
         ["bash", str(SH), *args],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
 
 

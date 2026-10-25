@@ -9,6 +9,7 @@ Usage:
   python3 tools/skill-router/build_index.py           # write index
   python3 tools/skill-router/build_index.py --check   # compare in memory, no write
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,9 +26,7 @@ def build_index(root: pathlib.Path | None = None) -> dict:
     triggers_by_skill: dict[str, list[str]] = {}
     intent_map = root / "tools" / "skill-router" / "intent-map.yaml"
     if intent_map.exists():
-        intents = (yaml.safe_load(intent_map.read_text(encoding="utf-8")) or {}).get(
-            "intents", {}
-        )
+        intents = (yaml.safe_load(intent_map.read_text(encoding="utf-8")) or {}).get("intents", {})
         for intent in intents.values():
             for skill in intent.get("skills", []):
                 triggers_by_skill.setdefault(skill, []).extend(intent.get("patterns", []))
@@ -52,9 +51,7 @@ def build_index(root: pathlib.Path | None = None) -> dict:
                 "domain": meta.get("domain", ""),
                 "type": meta.get("type", "atomic"),
                 "language": meta.get("language", "es"),
-                "keywords": [
-                    k.strip() for k in meta.get("keywords", "").split(",") if k.strip()
-                ],
+                "keywords": [k.strip() for k in meta.get("keywords", "").split(",") if k.strip()],
                 "triggers": sorted(set(triggers_by_skill.get(name, []))),
                 "entry": f"skills/{md.parent.name}/SKILL.md",
                 "compatibility": fm.get("compatibility", "opencode, codex, cursor"),
@@ -92,9 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Index OK (check-only, no write): {len(built_names)} skills")
         return 0
 
-    index_path.write_text(
-        json.dumps(built, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    index_path.write_text(json.dumps(built, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Built index with {len(built['skills'])} skills")
     return 0
 

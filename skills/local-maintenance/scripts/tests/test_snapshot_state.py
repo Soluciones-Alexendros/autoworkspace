@@ -1,4 +1,5 @@
 """Tests snapshot_state.py: --help, inválidos, error dir -> 1, doradas puras."""
+
 import hashlib
 import json
 import subprocess
@@ -13,11 +14,16 @@ SCRIPT = "snapshot_state.py"
 
 def _run(*args, env=None):
     import os as _os
+
     e = dict(_os.environ)
     if env:
         e.update(env)
     return subprocess.run(
-        [sys.executable, SCRIPT, *args], capture_output=True, text=True, cwd=".", env=e,
+        [sys.executable, SCRIPT, *args],
+        capture_output=True,
+        text=True,
+        cwd=".",
+        env=e,
     )
 
 
@@ -62,6 +68,7 @@ def test_detect_pkg_mgr_golden():
 
 
 # --- snapshot_state unit tests for coverage ---
+
 
 def test_snapshot_detect_pkgmgr_pacman(monkeypatch):
     monkeypatch.setattr(snapshot_state, "which", lambda cmd: "/usr/bin/pacman" if cmd == "pacman" else None)
@@ -141,14 +148,10 @@ def test_snapshot_rollback_execute_rejects_host_root(tmp_path):
     (meta.parent / "etc-checksums.txt").write_text("abc123  /etc/fstab\n", encoding="utf-8")
     (meta.parent / "etc-backup.tar.gz").write_bytes(b"dummy")
     # Privileged host root must remain blocked
-    rc = snapshot_state.rollback_snapshot(
-        str(snap_dir), "snap-test", execute=True, restore_root="/"
-    )
+    rc = snapshot_state.rollback_snapshot(str(snap_dir), "snap-test", execute=True, restore_root="/")
     assert rc == 3
     # Without --restore-root, program creates staging (bad tar → extract fail, not host write)
-    rc2 = snapshot_state.main(
-        ["--rollback", "snap-test", "--snapshot-dir", str(snap_dir), "--execute"]
-    )
+    rc2 = snapshot_state.main(["--rollback", "snap-test", "--snapshot-dir", str(snap_dir), "--execute"])
     assert rc2 != 0
 
 
@@ -182,7 +185,5 @@ def test_snapshot_rollback_execute_program_staging(tmp_path):
     )
     assert rc_bad == 3
     # Program-owned staging (no --restore-root)
-    rc = snapshot_state.main(
-        ["--rollback", "snap-test", "--snapshot-dir", str(snap_dir), "--execute"]
-    )
+    rc = snapshot_state.main(["--rollback", "snap-test", "--snapshot-dir", str(snap_dir), "--execute"])
     assert rc == 0

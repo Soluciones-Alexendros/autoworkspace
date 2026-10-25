@@ -4,6 +4,7 @@
 Uso: python3 tools/validate/skill_spec.py [--root DIR]
 Exit 0 si todas las skills cumplen; 1 en caso contrario (lista errores).
 """
+
 from __future__ import annotations
 
 import os
