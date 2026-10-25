@@ -1,6 +1,6 @@
 [project]
 name = "autoworkspace"
-version = "5.1.0"
+version = "6.0.0"
 description = "Autoworkspace — agentic pipeline and fleet canon host"
 requires-python = ">=3.12"
 dependencies = []
