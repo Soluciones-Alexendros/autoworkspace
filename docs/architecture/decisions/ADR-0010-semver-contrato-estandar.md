@@ -8,8 +8,8 @@ priority: "P1"
 
 # ADR-0010: SemVer y CHANGELOG del contrato del estándar
 
-**Fecha:** 2026-09-24  
-**Estado:** Proposed  
+**Fecha:** 2026-09-24
+**Estado:** Proposed
 **Prioridad:** P1
 
 ### Propósito de este documento

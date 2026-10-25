@@ -8,8 +8,8 @@ priority: "P1"
 
 # ADR-XXXX: &lt;Título breve&gt;
 
-**Fecha:** YYYY-MM-DD  
-**Estado:** Proposed | Accepted | Superseded | Deprecated  
+**Fecha:** YYYY-MM-DD
+**Estado:** Proposed | Accepted | Superseded | Deprecated
 **Prioridad:** P0 | P1
 
 ### Propósito de este documento

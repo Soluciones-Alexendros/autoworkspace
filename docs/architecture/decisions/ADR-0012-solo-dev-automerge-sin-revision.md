@@ -8,9 +8,9 @@ priority: "P0"
 
 # ADR-0012: Solo-dev con IA: auto-merge sin revisión
 
-**Fecha:** 2026-10-25  
-**Estado:** Accepted  
-**Prioridad:** P0  
+**Fecha:** 2026-10-25
+**Estado:** Accepted
+**Prioridad:** P0
 **Sustituye:** [ADR-0006](./ADR-0006-reviews-por-perfil.md)
 
 ### Propósito de este documento

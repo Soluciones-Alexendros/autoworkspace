@@ -8,8 +8,8 @@ priority: "P1"
 
 # ADR-0008: Snippets reales post-oleada (Astro+pnpm+Vercel y skills/Python)
 
-**Fecha:** 2026-09-24  
-**Estado:** Proposed  
+**Fecha:** 2026-09-24
+**Estado:** Proposed
 **Prioridad:** P1
 
 ### Propósito de este documento

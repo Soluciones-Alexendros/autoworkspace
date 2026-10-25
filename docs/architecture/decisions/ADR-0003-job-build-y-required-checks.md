@@ -8,8 +8,8 @@ priority: "P0"
 
 # ADR-0003: Cuándo el job `build` es required
 
-**Fecha:** 2026-09-24  
-**Estado:** Superseded by [ADR-0013](./ADR-0013-check-unico-ci-gate.md) (required checks). La regla «`build` solo si hay artefacto» y el orden de fases siguen vigentes allí.  
+**Fecha:** 2026-09-24
+**Estado:** Superseded by [ADR-0013](./ADR-0013-check-unico-ci-gate.md) (required checks). La regla «`build` solo si hay artefacto» y el orden de fases siguen vigentes allí.
 **Prioridad:** P0 (hacer pronto)
 
 ### Propósito de este documento

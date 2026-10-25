@@ -8,9 +8,9 @@ priority: "P0"
 
 # ADR-0013: Check único `ci-gate`
 
-**Fecha:** 2026-10-25  
-**Estado:** Accepted  
-**Prioridad:** P0  
+**Fecha:** 2026-10-25
+**Estado:** Accepted
+**Prioridad:** P0
 **Sustituye:** [ADR-0003](./ADR-0003-job-build-y-required-checks.md) en lo relativo a required checks
 
 ### Propósito de este documento

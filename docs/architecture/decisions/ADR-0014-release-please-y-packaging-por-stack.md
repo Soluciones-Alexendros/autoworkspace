@@ -8,8 +8,8 @@ priority: "P1"
 
 # ADR-0014: Versionado release-please + packaging por stack
 
-**Fecha:** 2026-10-25  
-**Estado:** Accepted  
+**Fecha:** 2026-10-25
+**Estado:** Accepted
 **Prioridad:** P1
 
 ### Propósito de este documento

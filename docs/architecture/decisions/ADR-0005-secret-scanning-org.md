@@ -8,8 +8,8 @@ priority: "P0"
 
 # ADR-0005: Secret scanning y push protection a nivel org
 
-**Fecha:** 2026-09-24  
-**Estado:** Accepted  
+**Fecha:** 2026-09-24
+**Estado:** Accepted
 **Prioridad:** P0 (hacer pronto)
 
 ### Propósito de este documento

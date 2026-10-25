@@ -8,8 +8,8 @@ priority: "P1"
 
 # ADR-0007: Coverage ≥70% como gate opcional en `test`
 
-**Fecha:** 2026-09-24  
-**Estado:** Proposed  
+**Fecha:** 2026-09-24
+**Estado:** Proposed
 **Prioridad:** P1
 
 ### Propósito de este documento
