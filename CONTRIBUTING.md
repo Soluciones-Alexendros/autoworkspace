@@ -4,7 +4,7 @@
 
 - **Objetivos:** Cómo añadir o cambiar skills, bump de versión, gates locales y de CI, y convenciones de PR en este repositorio.
 - **Estructura:** Esta meta-sección → skills → versionado → smoke → PRs → issues → planificación.
-- **Contenido a integrar según contexto:** El árbol canónico de producto está en [docs/repo-standard/structure.md](docs/repo-standard/structure.md). Detalle de skill en [docs/STANDARD.md](docs/STANDARD.md).
+- **Contenido a integrar según contexto:** Árbol de skills en [docs/STANDARD.md](docs/STANDARD.md). Canon de flota en [docs/REUTILIZACION.md](docs/REUTILIZACION.md) y `templates/repo/`. Merge: `gh pr merge --auto --squash` ([templates/repo/AGENTS.md](templates/repo/AGENTS.md) §5).
 
 ## Adding or changing a skill
 
@@ -44,10 +44,12 @@ bash skills/<skill>/scripts/tests/smoke_sh.sh
 ## PRs
 
 - Describe which skill changes and why; bump `metadata.version` when instructions change (`python3 tools/version/bump.py --auto --type <major|minor|patch>`; CI enforces it in `version.yml`).
-- CI runs `validate.yml` (spec, links, coherence, tests), `version.yml` (required bump), and `quality.yml` (hygiene). All must be green.
+- CI: `validate`, `hygiene`, `check-bump` (required clásicos) y `ci-gate` en `ci.yml`. All must be green.
+- Auto-merge: `gh pr merge --auto --squash` (prohibidos `--merge`, `--rebase`, `--admin`). Flujo `plan/*` cuando aplique la norma de flota.
 - Do not commit residues (`__pycache__/`, `.pytest_cache/`, `.log`, `.tmp`): they are in `.gitignore` and CI rejects them when tracked by git.
-- Use the PR template: [`.github/pull_request_template.md`](.github/pull_request_template.md).
+- PR template de producto: [`templates/repo/.github/PULL_REQUEST_TEMPLATE.md`](templates/repo/.github/PULL_REQUEST_TEMPLATE.md) (copiar al repo de producto).
 - Conventional Commits. Renovate is the only dependency update bot; do not add `dependabot.yml` for version updates.
+- Contacto de conducta / ops: **operaciones@alexendros.dev** (ver `CODE_OF_CONDUCT.md` / plantilla).
 
 ## Issues
 

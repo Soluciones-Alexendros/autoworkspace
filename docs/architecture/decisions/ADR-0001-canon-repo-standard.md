@@ -18,13 +18,13 @@ adr_id: "ADR-0001"
 
 ## Contexto
 
-La flota Iniciativas-Alexendros tiene estándares desiguales (inventario 2026-09-24): hay gold (`website-landingpage-template`, `zedazo`, `saas-afiladocs`) y repos sin CI, sin SECURITY, sin CODEOWNERS o con Dependabot y Renovate a la vez.
+La flota Soluciones-Alexendros tiene estándares desiguales (inventario 2026-09-24): hay gold (`website-landingpage-template`, `zedazo`, `saas-afiladocs`) y repos sin CI, sin SECURITY, sin CODEOWNERS o con Dependabot y Renovate a la vez.
 
 Hacía falta un **único contrato** (perfiles P0/P1/P2) que no aplastara el stack. Las decisiones abiertas de la plantilla (repo canónico, coverage, automerge humano, idioma) se cerraron al crear este repositorio.
 
 ## Decisión
 
-1. El repo canónico es **`Iniciativas-Alexendros/repo-standard`** (nuevo), no una extensión de `website-landingpage-template`. La landing sigue siendo plantilla de producto web.
+1. El repo canónico es **`Soluciones-Alexendros/repo-standard`** (nuevo), no una extensión de `website-landingpage-template`. La landing sigue siendo plantilla de producto web.
 2. **Renovate** es el único bot de version-updates. No se añade `dependabot.yml` de bumps. Dependabot Alerts (seguridad) pueden permanecer ON.
 3. Documentación del estándar en **español**.
 4. Coverage por defecto **≥70%** de líneas; los módulos críticos documentan **80%** (techo aspiracional tipo zedazo).

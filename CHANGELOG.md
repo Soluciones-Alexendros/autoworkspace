@@ -6,6 +6,10 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** autoworkspace es el host público del canon de flota (absorbe `repo-standard@e518eb1`). Callers pasan a `Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-<stack>.yml@<SHA>`. Método de merge de la flota: `gh pr merge --auto --squash` (prohibidos `--merge` / `--rebase` / `--admin`). Plantilla de producto en `templates/repo/`.
+
 - `plan-continue` 4.3.1 -> 4.3.2 (patch)
 
   Avoid CodeQL secret string literals in inicio_plan/scan_repo user-facing text and pattern type names.

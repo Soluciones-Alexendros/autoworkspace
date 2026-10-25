@@ -4,9 +4,9 @@
 
 - **Objetivos:** Presentar el pipeline, el catálogo de 16 skills y la instalación en los harnesses.
 - **Estructura:** Esta meta-sección → qué es el producto → inicio rápido → skills por dominio → nomenclatura → validación.
-- **Contenido a integrar según contexto:** El canon de árbol de producto está en `docs/repo-standard/structure.md`. Este README no lo copia.
+- **Contenido a integrar según contexto:** El canon de flota vive en este mismo repo (`docs/architecture/`, `stacks/`, `templates/repo/`). Este README presenta el producto y apunta al índice del canon.
 
-Workspace agéntico de Soluciones-Alexendros (MIT): no es una vitrina de skills, sino un pipeline preprogramado con variables por proyecto — especificación → esquemas/tests → código → validación → integración → status declarativo versionado.
+Workspace agéntico de Soluciones-Alexendros (MIT): no es una vitrina de skills, sino un pipeline preprogramado con variables por proyecto — especificación → esquemas/tests → código → validación → integración → status declarativo versionado. También es el **host público del canon de flota** (antes `repo-standard`).
 
 Versión **5.1.0**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
 
@@ -137,10 +137,25 @@ El cuerpo debe incluir `## Overview` y `## When to Use`. Las skills que empaquet
 
 Las flechas (`→ otra-skill`) de las descripciones deben apuntar a una skill existente en este catálogo.
 
+## Canon de flota (repo-standard)
+
+Este repositorio aloja el contrato P0/P1 de la flota. Índice rápido:
+
+| Pieza | Ruta |
+| --- | --- |
+| ADRs | [`docs/architecture/decisions/`](docs/architecture/decisions/) (ADR-0001…; host: ADR-0016) |
+| Reutilización | [`docs/REUTILIZACION.md`](docs/REUTILIZACION.md) |
+| Callers por stack | [`stacks/`](stacks/) |
+| Reusables CI | [`.github/workflows/reusable-*.yml`](.github/workflows/) |
+| Plantilla de producto | [`templates/repo/`](templates/repo/) — `gh repo create … && cp -a templates/repo/. <repo>/` |
+
+Norma de planes (`docs/plan-template.md`) y `docs/plans/` llegan en T2. Rulesets como código llegan con P2/P10 (`rulesets/`).
+
 ## Validación
 
 ```bash
 bash run-validation.sh
+# o: make validate && make test && make smoke
 ```
 
 Comprueba: esquema del frontmatter, cláusulas de alcance de las descripciones, canon de encabezados, paridad del catálogo entre carpetas, README y TAXONOMY, resolución de referencias y smoke tests.

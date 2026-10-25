@@ -28,7 +28,7 @@ Comportamiento inaceptable:
 
 ## Alcance
 
-Aplica en issues, pull requests, discusiones, reviews y cualquier espacio ligado al proyecto o a la org Iniciativas-Alexendros.
+Aplica en issues, pull requests, discusiones, reviews y cualquier espacio ligado al proyecto o a la org Soluciones-Alexendros.
 
 ## Aplicación
 
