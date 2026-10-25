@@ -1,0 +1,221 @@
+name: Reusable Rust
+
+on:
+  workflow_call:
+    inputs:
+      msrv:
+        description: Versión MSRV (vacío = stable)
+        type: string
+        required: false
+        default: ""
+      clippy-pedantic:
+        type: boolean
+        required: false
+        default: true
+      coverage-threshold:
+        type: string
+        required: false
+        default: "80"
+      working-directory:
+        type: string
+        required: false
+        default: "."
+
+permissions: {}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master (stable)
+        with:
+          toolchain: ${{ inputs.msrv != '' && inputs.msrv || 'stable' }}
+          components: rustfmt, clippy
+      - name: Cache
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+        with:
+          workspaces: ${{ inputs.working-directory }}
+      - name: Validar título Conventional Commits
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style)(\([a-z0-9._/-]+\))?!?: .{1,100}$'
+          if ! printf '%s\n' "$PR_TITLE" | grep -Eq "$pattern"; then
+            echo "::error::Título de PR inválido: «${PR_TITLE}»"
+            echo "Esperado: tipo(alcance)?: descripción (1–100 caracteres tras «: »)"
+            echo "Tipos: feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style"
+            exit 1
+          fi
+        working-directory: .
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        env:
+          PEDANTIC: ${{ inputs.clippy-pedantic }}
+        run: |
+          set -euo pipefail
+          args=(--all-targets --all-features -- -D warnings)
+          if [[ "$PEDANTIC" == "true" ]]; then
+            args+=(-W clippy::pedantic)
+          fi
+          cargo clippy "${args[@]}"
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master (stable)
+        with:
+          toolchain: ${{ inputs.msrv != '' && inputs.msrv || 'stable' }}
+          components: llvm-tools-preview
+      - name: Cache
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+        with:
+          workspaces: ${{ inputs.working-directory }}
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@d6912b47771be2c443ec90dbb3d28e023987e782 # v2.62.1
+        with:
+          tool: cargo-llvm-cov
+      - name: Test + coverage
+        env:
+          COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
+        run: |
+          set -euo pipefail
+          cargo test --workspace
+          cargo llvm-cov --workspace --fail-under-lines "${COVERAGE_THRESHOLD}" --lcov --output-path lcov.info
+
+  build:
+    needs: [quality, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master (stable)
+        with:
+          toolchain: ${{ inputs.msrv != '' && inputs.msrv || 'stable' }}
+      - name: Cache
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+        with:
+          workspaces: ${{ inputs.working-directory }}
+      - name: Build release
+        run: cargo build --release --locked
+      - name: Upload binary path hint
+        run: |
+          set -euo pipefail
+          ls -la target/release || true
+
+  smoke:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master (stable)
+        with:
+          toolchain: ${{ inputs.msrv != '' && inputs.msrv || 'stable' }}
+      - name: Cache
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+        with:
+          workspaces: ${{ inputs.working-directory }}
+      - name: Build release
+        run: cargo build --release --locked
+      - name: Smoke --version / --help
+        run: |
+          set -euo pipefail
+          bin=""
+          for candidate in target/release/*; do
+            [[ -f "$candidate" && -x "$candidate" ]] || continue
+            base="$(basename "$candidate")"
+            case "$base" in
+              *.d|*.rlib|*.so|*.a|build|deps|examples|incremental) continue ;;
+            esac
+            bin="$candidate"
+            break
+          done
+          if [[ -z "$bin" ]]; then
+            echo "::error::No se encontró binario ejecutable en target/release"
+            exit 1
+          fi
+          "$bin" --version || "$bin" --help
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master (stable)
+      - name: Install cargo-deny o cargo-audit
+        uses: taiki-e/install-action@d6912b47771be2c443ec90dbb3d28e023987e782 # v2.62.1
+        with:
+          tool: cargo-deny,cargo-audit
+      - name: Security check
+        env:
+          WD: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          root="${GITHUB_WORKSPACE}/${WD}"
+          if [[ -f "${root}/deny.toml" ]]; then
+            cargo deny check
+          else
+            cargo audit
+          fi

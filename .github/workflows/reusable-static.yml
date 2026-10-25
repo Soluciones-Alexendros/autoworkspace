@@ -1,0 +1,152 @@
+name: Reusable static / infra
+
+on:
+  workflow_call:
+    inputs:
+      quality-command:
+        description: Comando bash de quality (actionlint, check-structure, make lint, …)
+        type: string
+        required: true
+      test-command:
+        description: Comando bash de test (make test, echo placeholder, …)
+        type: string
+        required: true
+      smoke-command:
+        description: Comando bash de smoke
+        type: string
+        required: true
+      build-command:
+        description: Comando de build; vacío = omitir job build
+        type: string
+        required: false
+        default: ""
+      link-check-command:
+        description: Comando de enlaces/HTML que el repo ya tenga; vacío = omitir
+        type: string
+        required: false
+        default: ""
+      working-directory:
+        type: string
+        required: false
+        default: "."
+
+permissions: {}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Validar título Conventional Commits
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style)(\([a-z0-9._/-]+\))?!?: .{1,100}$'
+          if ! printf '%s\n' "$PR_TITLE" | grep -Eq "$pattern"; then
+            echo "::error::Título de PR inválido: «${PR_TITLE}»"
+            echo "Esperado: tipo(alcance)?: descripción (1–100 caracteres tras «: »)"
+            echo "Tipos: feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style"
+            exit 1
+          fi
+        working-directory: .
+      - name: Quality
+        env:
+          CMD: ${{ inputs.quality-command }}
+        run: bash -c "$CMD"
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Test
+        env:
+          CMD: ${{ inputs.test-command }}
+        run: bash -c "$CMD"
+
+  build:
+    if: inputs.build-command != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Build
+        env:
+          CMD: ${{ inputs.build-command }}
+        run: bash -c "$CMD"
+
+  smoke:
+    needs: [quality, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Smoke
+        env:
+          CMD: ${{ inputs.smoke-command }}
+        run: bash -c "$CMD"
+
+  link-check:
+    if: inputs.link-check-command != ''
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Link / HTML check
+        env:
+          CMD: ${{ inputs.link-check-command }}
+        run: bash -c "$CMD"
