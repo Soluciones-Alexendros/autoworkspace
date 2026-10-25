@@ -1,0 +1,390 @@
+name: Reusable Node
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        required: false
+        default: "22"
+      package-manager:
+        description: auto | pnpm | npm
+        type: string
+        required: false
+        default: "auto"
+      coverage-threshold:
+        type: string
+        required: false
+        default: "80"
+      run-build:
+        type: boolean
+        required: false
+        default: true
+      run-smoke:
+        type: boolean
+        required: false
+        default: true
+      e2e:
+        type: boolean
+        required: false
+        default: false
+      working-directory:
+        type: string
+        required: false
+        default: "."
+
+permissions: {}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Detectar package manager
+        id: pm
+        env:
+          PM_INPUT: ${{ inputs.package-manager }}
+          WD: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          root="${GITHUB_WORKSPACE}/${WD}"
+          case "$PM_INPUT" in
+            pnpm|npm) echo "name=${PM_INPUT}" >> "$GITHUB_OUTPUT" ;;
+            auto)
+              if [[ -f "${root}/pnpm-lock.yaml" ]]; then
+                echo "name=pnpm" >> "$GITHUB_OUTPUT"
+              elif [[ -f "${root}/package-lock.json" ]]; then
+                echo "name=npm" >> "$GITHUB_OUTPUT"
+              else
+                echo "::error::No hay pnpm-lock.yaml ni package-lock.json en ${WD}"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::package-manager inválido: ${PM_INPUT}"
+              exit 1
+              ;;
+          esac
+        working-directory: .
+      - name: Setup pnpm
+        if: steps.pm.outputs.name == 'pnpm'
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ steps.pm.outputs.name }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.pm.outputs.name == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json' }}
+      - name: Install
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then
+            pnpm install --frozen-lockfile
+          else
+            npm ci
+          fi
+      - name: Validar título Conventional Commits
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style)(\([a-z0-9._/-]+\))?!?: .{1,100}$'
+          if ! printf '%s\n' "$PR_TITLE" | grep -Eq "$pattern"; then
+            echo "::error::Título de PR inválido: «${PR_TITLE}»"
+            echo "Esperado: tipo(alcance)?: descripción (1–100 caracteres tras «: »)"
+            echo "Tipos: feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style"
+            exit 1
+          fi
+        working-directory: .
+      - name: Format
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm format:check; else npm run format:check; fi
+      - name: Lint
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm lint; else npm run lint; fi
+      - name: Typecheck
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm typecheck; else npm run typecheck; fi
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Detectar package manager
+        id: pm
+        env:
+          PM_INPUT: ${{ inputs.package-manager }}
+          WD: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          root="${GITHUB_WORKSPACE}/${WD}"
+          case "$PM_INPUT" in
+            pnpm|npm) echo "name=${PM_INPUT}" >> "$GITHUB_OUTPUT" ;;
+            auto)
+              if [[ -f "${root}/pnpm-lock.yaml" ]]; then
+                echo "name=pnpm" >> "$GITHUB_OUTPUT"
+              elif [[ -f "${root}/package-lock.json" ]]; then
+                echo "name=npm" >> "$GITHUB_OUTPUT"
+              else
+                echo "::error::No hay lockfile en ${WD}"
+                exit 1
+              fi
+              ;;
+            *) echo "::error::package-manager inválido"; exit 1 ;;
+          esac
+        working-directory: .
+      - name: Setup pnpm
+        if: steps.pm.outputs.name == 'pnpm'
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ steps.pm.outputs.name }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.pm.outputs.name == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json' }}
+      - name: Install
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm install --frozen-lockfile; else npm ci; fi
+      - name: Test + coverage
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+          COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then
+            pnpm exec vitest run --coverage --coverage.thresholds.lines="${COVERAGE_THRESHOLD}"
+          else
+            npx vitest run --coverage --coverage.thresholds.lines="${COVERAGE_THRESHOLD}"
+          fi
+
+  build:
+    if: inputs.run-build
+    needs: [quality, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Detectar package manager
+        id: pm
+        env:
+          PM_INPUT: ${{ inputs.package-manager }}
+          WD: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          root="${GITHUB_WORKSPACE}/${WD}"
+          case "$PM_INPUT" in
+            pnpm|npm) echo "name=${PM_INPUT}" >> "$GITHUB_OUTPUT" ;;
+            auto)
+              if [[ -f "${root}/pnpm-lock.yaml" ]]; then echo "name=pnpm" >> "$GITHUB_OUTPUT"
+              elif [[ -f "${root}/package-lock.json" ]]; then echo "name=npm" >> "$GITHUB_OUTPUT"
+              else echo "::error::No hay lockfile"; exit 1; fi ;;
+            *) exit 1 ;;
+          esac
+        working-directory: .
+      - name: Setup pnpm
+        if: steps.pm.outputs.name == 'pnpm'
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ steps.pm.outputs.name }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.pm.outputs.name == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json' }}
+      - name: Install
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm install --frozen-lockfile; else npm ci; fi
+      - name: Build
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm build; else npm run build; fi
+
+  smoke:
+    if: |
+      always() &&
+      inputs.run-smoke &&
+      needs.quality.result == 'success' &&
+      needs.test.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    needs: [quality, test, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Detectar package manager
+        id: pm
+        env:
+          PM_INPUT: ${{ inputs.package-manager }}
+          WD: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          root="${GITHUB_WORKSPACE}/${WD}"
+          case "$PM_INPUT" in
+            pnpm|npm) echo "name=${PM_INPUT}" >> "$GITHUB_OUTPUT" ;;
+            auto)
+              if [[ -f "${root}/pnpm-lock.yaml" ]]; then echo "name=pnpm" >> "$GITHUB_OUTPUT"
+              elif [[ -f "${root}/package-lock.json" ]]; then echo "name=npm" >> "$GITHUB_OUTPUT"
+              else echo "::error::No hay lockfile"; exit 1; fi ;;
+            *) exit 1 ;;
+          esac
+        working-directory: .
+      - name: Setup pnpm
+        if: steps.pm.outputs.name == 'pnpm'
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ steps.pm.outputs.name }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.pm.outputs.name == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json' }}
+      - name: Install
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm install --frozen-lockfile; else npm ci; fi
+      - name: Smoke
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm smoke; else npm run smoke; fi
+
+  e2e:
+    if: |
+      always() &&
+      inputs.e2e &&
+      needs.quality.result == 'success' &&
+      needs.test.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    needs: [quality, test, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Detectar package manager
+        id: pm
+        env:
+          PM_INPUT: ${{ inputs.package-manager }}
+          WD: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          root="${GITHUB_WORKSPACE}/${WD}"
+          case "$PM_INPUT" in
+            pnpm|npm) echo "name=${PM_INPUT}" >> "$GITHUB_OUTPUT" ;;
+            auto)
+              if [[ -f "${root}/pnpm-lock.yaml" ]]; then echo "name=pnpm" >> "$GITHUB_OUTPUT"
+              elif [[ -f "${root}/package-lock.json" ]]; then echo "name=npm" >> "$GITHUB_OUTPUT"
+              else echo "::error::No hay lockfile"; exit 1; fi ;;
+            *) exit 1 ;;
+          esac
+        working-directory: .
+      - name: Setup pnpm
+        if: steps.pm.outputs.name == 'pnpm'
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ steps.pm.outputs.name }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.pm.outputs.name == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json' }}
+      - name: Install
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm install --frozen-lockfile; else npm ci; fi
+      - name: e2e
+        env:
+          PM: ${{ steps.pm.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ "$PM" == "pnpm" ]]; then pnpm e2e; else npm run e2e; fi
+
+  security:
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+      - name: Dependency review
+        uses: actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9 # v4.7.1
