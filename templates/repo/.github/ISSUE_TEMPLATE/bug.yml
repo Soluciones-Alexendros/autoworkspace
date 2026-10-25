@@ -28,7 +28,6 @@ body:
         - P0 Base
         - P1 Producto
         - P2 Público
-        - Este canon (repo-standard)
         - No lo sé
     validations:
       required: true

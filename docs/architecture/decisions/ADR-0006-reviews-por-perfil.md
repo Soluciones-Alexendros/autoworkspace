@@ -8,6 +8,8 @@ priority: "P1"
 
 # ADR-0006: Reviews por perfil y label `automerge`
 
+> **Histórico (Superseded by ADR-0012).** No aplicar; la decisión vigente está en [ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md).
+
 **Fecha:** 2026-09-24
 **Estado:** Superseded by [ADR-0012](./ADR-0012-solo-dev-automerge-sin-revision.md)
 **Prioridad:** P1

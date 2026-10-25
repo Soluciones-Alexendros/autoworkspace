@@ -99,7 +99,7 @@ Plantillas caller: `stacks/typescript`, `stacks/rust`, `stacks/python`, `stacks/
 - Sin secretos en el diff
 - PR en español, checklist de la plantilla marcado; auto-merge squash activado (salvo `hold`)
 
-## 9. Hechos de este workspace (repo-standard)
+## 9. Hechos de este workspace (`<repo>`)
 
 - Producto de plataforma, no app. No hay `package.json` / `Cargo.toml` de runtime.
 - El validador de este canon es `scripts/check-structure.sh`.

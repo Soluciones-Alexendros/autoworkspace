@@ -1,4 +1,4 @@
-# Documentación de repo-standard
+# Documentación de `<repo>`
 
 ### Propósito de este documento
 

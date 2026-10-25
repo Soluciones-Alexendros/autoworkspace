@@ -14,7 +14,7 @@ priority: "P1"
 
 ### Propósito de este documento
 
-- **Objetivos:** Versionar el contrato de `repo-standard` con release-please (un solo componente SemVer) y empaquetar el CI por stack como workflows reutilizables pineados por SHA.
+- **Objetivos:** Versionar el contrato del canon (autoworkspace) con release-please (un solo componente SemVer) y empaquetar el CI por stack como workflows reutilizables pineados por SHA.
 - **Estructura:** Frontmatter → H1 → esta meta-sección → Contexto, Decisión, Consecuencias, Prioridad, Checklist, Alternativas, Relacionados.
 - **Contenido a integrar según contexto:** No copies este ADR. En producto: pineá el reusable con `@<SHA> # vX.Y.Z` de este canon. No publiques un package npm/crate por stack.
 
@@ -26,14 +26,14 @@ priority: "P1"
 
 1. **Un solo componente SemVer** (el contrato de flota). release-please corta tags `vX.Y.Z` desde Conventional Commits + CHANGELOG. Este cambio de contrato (required → `ci-gate`, auto-merge sin `automerge`) es **2.0.0**.
 2. **Packaging de CI:** workflows reutilizables en `.github/workflows/reusable-{node,rust,python,static}.yml`. Los callers en `stacks/<stack>/ci.yml` (y el `ci.yml` del producto) usan:
-   `uses: Soluciones-Alexendros/repo-standard/.github/workflows/reusable-<stack>.yml@<SHA> # vX.Y.Z`
+   `uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-<stack>.yml@<SHA> # vX.Y.Z`
 3. El comentario `# vX.Y.Z` nombra la versión de contrato a la que pertenece el pin. Actualizar el reusable exige actualizar el SHA en los callers.
 4. **No** hay package de release-please por stack ni publicación a npm/crates.io de estos YAML.
 5. El workflow y el manifest de release-please quedan en el checklist; **fuera de este PR** hasta que exista la App / tag base.
 
 ## Consecuencias
 
-- Los consumidores alinean a `repo-standard ≥2.0` y pinean el SHA del tag.
+- Los consumidores alinean al canon (autoworkspace) ≥2.0 y pinean el SHA del tag.
 - Drift de snippets desaparece: el cuerpo de CI vive en los reusable.
 - Un pin `@v2` flotante se descarta (pin por SHA completo).
 
@@ -61,3 +61,7 @@ priority: "P1"
 - [ADR-0013](./ADR-0013-check-unico-ci-gate.md)
 - [ADR-0008](./ADR-0008-snippets-reales-post-oleada.md)
 - [CHANGELOG.md](../../../CHANGELOG.md)
+
+## Enmienda (ADR-0016, 25/10/2026)
+
+El host del canon es `Soluciones-Alexendros/autoworkspace` ([ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md)). Las rutas de callers y la declaración de alineación de este ADR se actualizan en consecuencia: `uses: …/autoworkspace/.github/workflows/reusable-<stack>.yml@<SHA> # vX.Y.Z` y «Cumple el canon (autoworkspace) ≥x.y».
