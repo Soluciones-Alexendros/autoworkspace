@@ -1,7 +1,7 @@
 ---
 version: "1.0.0"
 date: "2026-09-24"
-status: "Proposed"
+status: "Superseded by templates/repo (ADR-0016)"
 adr_id: "ADR-0011"
 priority: "P1"
 ---
@@ -9,7 +9,7 @@ priority: "P1"
 # ADR-0011: Bootstrap al usar la plantilla
 
 **Fecha:** 2026-09-24
-**Estado:** Proposed
+**Estado:** Superseded — sustituido por `templates/repo/` y [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md) (sin script `bootstrap-from-template.sh` en P11)
 **Prioridad:** P1
 
 ### Propósito de este documento

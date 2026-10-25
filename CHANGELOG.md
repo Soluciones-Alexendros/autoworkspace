@@ -193,7 +193,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
   | —                     | `web-fullaudit`     | nueva (orquestador de auditoría web)  |
   | `web-playwright`      | —                   | suprimida                             |
   | `webapp-testing`      | —                   | suprimida                             |
-- Canon `docs/repo-standard/` (solo lectura): `structure.md`, `ci-cd.md`, `release.md`, `security.md`, `templates/` (PR, issues, commitlint)
+- Canon `docs/architecture/ + docs/REUTILIZACION.md (P11) ` (solo lectura): `structure.md`, `ci-cd.md`, `release.md`, `security.md`, `templates/` (PR, issues, commitlint)
 - Autoversionado semver por magnitud: `tools/version/bump.py`.
 
 ## [0.1.0] - 2026-09-26

@@ -1,14 +1,14 @@
 ---
 version: "1.0.0"
 date: "2026-09-24"
-status: "Accepted"
+status: "Superseded in part by ADR-0016"
 adr_id: "ADR-0001"
 ---
 
 # ADR-0001: Canon de flota en `repo-standard`
 
 **Fecha:** 2026-09-24
-**Estado:** Accepted
+**Estado:** Accepted (host: **Superseded in part by [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md)** — el canon vive en `autoworkspace`; «repo-standard» queda como nombre de la norma)
 
 ### Propósito de este documento
 

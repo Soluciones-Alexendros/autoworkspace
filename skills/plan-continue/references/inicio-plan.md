@@ -19,7 +19,7 @@ No autoriza: commits, PRs, tags, borrar ramas, `git clean`, ni implementar el tr
 - Hay un directorio de trabajo. Si no es git, el tablero lo dice y el semáforo queda amarillo.
 - `gh auth status` mejora el camino del producto (issues, PRs, runs); sin `gh` esas filas son `n/d`.
 - Repo no archivado. Si lo es: parar y preguntar.
-- Canon: [structure.md](../../../docs/repo-standard/structure.md).
+- Canon: [structure.md](../../../docs/REUTILIZACION.md).
 
 ## Secuencia
 
