@@ -31,21 +31,21 @@ Repo nuevo desde esqueleto: `gh repo create Soluciones-Alexendros/<n> --private 
 
 ## Qué copiar vs qué adaptar
 
-| Pieza | Acción |
-|-------|--------|
-| `AGENTS.md` (secciones 1–8) | Copiar; reescribe «Hechos del workspace» |
-| `ARCHITECTURE.md` | Reescribir: 1–2 páginas del *producto* + link a `docs/architecture/` |
-| `docs/architecture/decisions/template.md` | Copiar |
-| `docs/guides/*` | Adaptar comandos al stack |
-| `docs/runbooks/*` | Adaptar a hosting / secretos reales (sigue sin commitear valores) |
-| `.github/workflows/ci.yml` | **No** copies el de este canon tal cual: usa `stacks/<stack>/ci.yml` (pin SHA del reusable) |
-| `.github/renovate.json` | Copiar base; quita reglas que no apliquen |
-| `scripts/check-structure.sh` | Opcional en producto. Si lo usas, cambia la lista de archivos a los del producto |
-| `scripts/smoke.sh` | Sustituye el demo por health/rutas/`--help` |
-| `Makefile` | Conserva targets `lint` `test` `smoke` `validate`; cambia el cuerpo |
-| `LICENSE` | No pises una licencia ya elegida (dual Apache/MIT, GPL, privativa) |
-| `CODE_OF_CONDUCT.md` | Obligatorio en P2; recomendado en P1 |
-| `SUPPORT.md` | Solo P2 / SaaS |
+| Pieza                                     | Acción                                                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `AGENTS.md` (secciones 1–8)               | Copiar; reescribe «Hechos del workspace»                                                    |
+| `ARCHITECTURE.md`                         | Reescribir: 1–2 páginas del _producto_ + link a `docs/architecture/`                        |
+| `docs/architecture/decisions/template.md` | Copiar                                                                                      |
+| `docs/guides/*`                           | Adaptar comandos al stack                                                                   |
+| `docs/runbooks/*`                         | Adaptar a hosting / secretos reales (sigue sin commitear valores)                           |
+| `.github/workflows/ci.yml`                | **No** copies el de este canon tal cual: usa `stacks/<stack>/ci.yml` (pin SHA del reusable) |
+| `.github/renovate.json`                   | Copiar base; quita reglas que no apliquen                                                   |
+| `scripts/check-structure.sh`              | Opcional en producto. Si lo usas, cambia la lista de archivos a los del producto            |
+| `scripts/smoke.sh`                        | Sustituye el demo por health/rutas/`--help`                                                 |
+| `Makefile`                                | Conserva targets `lint` `test` `smoke` `validate`; cambia el cuerpo                         |
+| `LICENSE`                                 | No pises una licencia ya elegida (dual Apache/MIT, GPL, privativa)                          |
+| `CODE_OF_CONDUCT.md`                      | Obligatorio en P2; recomendado en P1                                                        |
+| `SUPPORT.md`                              | Solo P2 / SaaS                                                                              |
 
 ## Meta-sección obligatoria en docs de producto
 
@@ -53,6 +53,7 @@ Al alinear o crear desde plantilla, **cada** markdown contractual debe incluir, 
 
 ```markdown
 ### Propósito de este documento
+
 - **Objetivos:** …
 - **Estructura:** …
 - **Contenido a integrar según contexto:** …
@@ -64,7 +65,7 @@ Aplica a: raíz (`README`, `AGENTS`, `ARCHITECTURE`, `SECURITY`, `CONTRIBUTING`,
 
 **Excepción:** `CHANGELOG.md` sigue Keep a Changelog. No insertes una sección larga: un párrafo breve al inicio o ninguna. Documenta la excepción en el PR si omites el párrafo.
 
-La meta-sección es de **plantilla usable**: corta, accionable. Si el doc ya tenía intro, fusiónala aquí. No copies el texto de este canon: rellena objetivos/estructura/placeholders del *producto* (web vs CLI vs skills vs infra). Qué no copiar tal cual: el `ci.yml` estático de este canon, runbooks de «este repo no se despliega», §9 de AGENTS ajeno.
+La meta-sección es de **plantilla usable**: corta, accionable. Si el doc ya tenía intro, fusiónala aquí. No copies el texto de este canon: rellena objetivos/estructura/placeholders del _producto_ (web vs CLI vs skills vs infra). Qué no copiar tal cual: el `ci.yml` estático de este canon, runbooks de «este repo no se despliega», §9 de AGENTS ajeno.
 
 ## Dependabot → Renovate
 

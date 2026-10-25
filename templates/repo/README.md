@@ -4,7 +4,7 @@
 
 - **Objetivos:** Puerta de entrada del esqueleto que se copia a un repo nuevo: qué es, cómo arrancar y dónde está el resto de la docs del canon.
 - **Estructura:** Esta meta-sección → Qué hace / no hace → Crear repo → Scripts → índice → decisiones cerradas → licencia.
-- **Contenido a integrar según contexto:** Sustituye el H1 y «Qué hace» por el *producto*. Enlaza el contrato vigente en autoworkspace ([ADR-0010](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md)). Ajusta badges, description y topics.
+- **Contenido a integrar según contexto:** Sustituye el H1 y «Qué hace» por el _producto_. Enlaza el contrato vigente en autoworkspace ([ADR-0010](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md)). Ajusta badges, description y topics.
 
 Esqueleto P0/P1 de **Soluciones-Alexendros**. El canon vivo (ADRs, reusables, stacks) está en [`Soluciones-Alexendros/autoworkspace`](https://github.com/Soluciones-Alexendros/autoworkspace).
 
@@ -38,24 +38,24 @@ Para **alinear un repo existente**: checklist en [`docs/REUTILIZACION.md`](https
 
 ## Scripts / Makefile
 
-| Comando | En esta plantilla | En un repo de producto |
-| --- | --- | --- |
-| `make validate` | stub / estructura | integridad / schemas |
-| `make lint` | stub documentado | format + lint + types |
-| `make test` | placeholder | unit/function + coverage |
-| `make smoke` | contrato documentado | health / `--help` |
+| Comando         | En esta plantilla    | En un repo de producto   |
+| --------------- | -------------------- | ------------------------ |
+| `make validate` | stub / estructura    | integridad / schemas     |
+| `make lint`     | stub documentado     | format + lint + types    |
+| `make test`     | placeholder          | unit/function + coverage |
+| `make smoke`    | contrato documentado | health / `--help`        |
 
 ## Documentación (canon en autoworkspace)
 
-| Doc | Para quién |
-| --- | --- |
-| [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md) | Mantenedor que alinea un repo existente |
-| [`docs/architecture/overview.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/overview.md) | Diseño del canon |
-| [`docs/guides/`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/guides/) | Setup, estilo, tests |
-| [`docs/runbooks/`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/runbooks/) | Deploy, rollback, secretos |
-| [`AGENTS.md`](AGENTS.md) | Agentes IA / Mantenedor (viaja con la plantilla) |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Resumen de 1 página (viaja con la plantilla) |
-| [`docs/README.md`](docs/README.md) | Índice local de esta plantilla |
+| Doc                                                                                                                               | Para quién                                       |
+| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md)                 | Mantenedor que alinea un repo existente          |
+| [`docs/architecture/overview.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/overview.md) | Diseño del canon                                 |
+| [`docs/guides/`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/guides/)                                   | Setup, estilo, tests                             |
+| [`docs/runbooks/`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/runbooks/)                               | Deploy, rollback, secretos                       |
+| [`AGENTS.md`](AGENTS.md)                                                                                                          | Agentes IA / Mantenedor (viaja con la plantilla) |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                                              | Resumen de 1 página (viaja con la plantilla)     |
+| [`docs/README.md`](docs/README.md)                                                                                                | Índice local de esta plantilla                   |
 
 ## Decisiones cerradas (no reabrir)
 

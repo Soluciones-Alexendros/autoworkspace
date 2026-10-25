@@ -141,12 +141,12 @@ Las flechas (`→ otra-skill`) de las descripciones deben apuntar a una skill ex
 
 Este repositorio aloja el contrato P0/P1 de la flota. Índice rápido:
 
-| Pieza | Ruta |
-| --- | --- |
-| ADRs | [`docs/architecture/decisions/`](docs/architecture/decisions/) (ADR-0001…; host: ADR-0016) |
-| Reutilización | [`docs/REUTILIZACION.md`](docs/REUTILIZACION.md) |
-| Callers por stack | [`stacks/`](stacks/) |
-| Reusables CI | [`.github/workflows/reusable-*.yml`](.github/workflows/) |
+| Pieza                 | Ruta                                                                                        |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| ADRs                  | [`docs/architecture/decisions/`](docs/architecture/decisions/) (ADR-0001…; host: ADR-0016)  |
+| Reutilización         | [`docs/REUTILIZACION.md`](docs/REUTILIZACION.md)                                            |
+| Callers por stack     | [`stacks/`](stacks/)                                                                        |
+| Reusables CI          | [`.github/workflows/reusable-*.yml`](.github/workflows/)                                    |
 | Plantilla de producto | [`templates/repo/`](templates/repo/) — `gh repo create … && cp -a templates/repo/. <repo>/` |
 
 Norma de planes (`docs/plan-template.md`) y `docs/plans/` llegan en T2. Rulesets como código llegan con P2/P10 (`rulesets/`).

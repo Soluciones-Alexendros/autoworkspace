@@ -4,7 +4,7 @@
 
 - **Objetivos:** Qué hacer si se filtra un token y cómo rotar secretos de producto. Prevención (scanning org).
 - **Estructura:** Esta meta-sección → filtración GitHub/Renovate/Actions → tabla de secretos de producto → pasos genéricos → Prevención.
-- **Contenido a integrar según contexto:** Rellena la tabla con *nombres* de variables del producto (sin valores). Indica dónde viven (Environment, 1Password). No pongas tokens de ejemplo realistas. Secret scanning + push protection son P0 de org ([ADR-0005](../architecture/decisions/ADR-0005-secret-scanning-org.md)).
+- **Contenido a integrar según contexto:** Rellena la tabla con _nombres_ de variables del producto (sin valores). Indica dónde viven (Environment, 1Password). No pongas tokens de ejemplo realistas. Secret scanning + push protection son P0 de org ([ADR-0005](../architecture/decisions/ADR-0005-secret-scanning-org.md)).
 
 Este canon no guarda secretos reales. El archivo `.env.example` solo tiene placeholders.
 
@@ -18,11 +18,11 @@ Este canon no guarda secretos reales. El archivo `.env.example` solo tiene place
 
 ## Producto (plantilla para copiar)
 
-| Secreto | Dónde vive | Rotación |
-|---------|------------|----------|
-| `DATABASE_URL` | Environment `production` | nuevo rol/password en el proveedor → actualizar secret → redeploy |
-| API keys de terceros | Environment + `.env` local | revocar en el panel del proveedor primero |
-| `AUTH_SECRET` / JWT | Environment | rotar implica invalidar sesiones; avisa |
+| Secreto              | Dónde vive                 | Rotación                                                          |
+| -------------------- | -------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`       | Environment `production`   | nuevo rol/password en el proveedor → actualizar secret → redeploy |
+| API keys de terceros | Environment + `.env` local | revocar en el panel del proveedor primero                         |
+| `AUTH_SECRET` / JWT  | Environment                | rotar implica invalidar sesiones; avisa                           |
 
 Pasos genéricos:
 

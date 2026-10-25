@@ -22,7 +22,7 @@ priority: "P1"
 
 Hoy `stacks/` tiene fragmentos TypeScript genérico, Rust e infra. La oleada 1–2 incluye webs Astro (landing, miwebsite) y repos de agents/skills con Python `validate`. Copiar el snippet TS genérico obliga a reescribir pnpm/Vercel o el entrypoint de skills en cada PR, que es justo lo que el canon quería ahorrar.
 
-`website-landingpage-template` es **plantilla de producto**, no el meta-estándar: los snippets viven aquí, extraídos *después* de la oleada (cuando haya un gold ya alineado), no al revés.
+`website-landingpage-template` es **plantilla de producto**, no el meta-estándar: los snippets viven aquí, extraídos _después_ de la oleada (cuando haya un gold ya alineado), no al revés.
 
 ## Decisión
 
