@@ -43,6 +43,11 @@ def main() -> int:
         and "__pycache__" not in p.parts
         and ".archivado" not in str(p)
         and "node_modules" not in p.parts
+        # P11 T0: exclusión temporal — templates/repo se valida in situ tras
+        # el git mv; se retira en T1 cuando los enlaces al canon sean URLs
+        # absolutas y los de la plantilla resuelvan dentro de templates/repo/.
+        and not str(p.relative_to(ROOT)).startswith("templates/repo/")
+        and str(p.relative_to(ROOT)) != "templates/repo"
     )
     for md in mds:
         check_md(md)

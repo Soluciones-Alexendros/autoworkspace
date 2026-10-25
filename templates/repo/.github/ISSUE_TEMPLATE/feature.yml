@@ -1,0 +1,34 @@
+name: Propuesta de mejora
+description: Sugiere un cambio del estándar o de su documentación
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema o necesidad
+      description: Qué problema resuelve esta propuesta en la flota.
+    validations:
+      required: true
+  - type: textarea
+    id: solucion
+    attributes:
+      label: Solución propuesta
+      description: Cómo lo abordarías (archivos, perfil P0/P1/P2, stack).
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+      description: Incluye por qué no basta con un ADR existente.
+    validations:
+      required: false
+  - type: checkboxes
+    id: decisiones
+    attributes:
+      label: Decisiones cerradas
+      description: No reabrir estos puntos salvo un ADR nuevo que las sustituya.
+      options:
+        - label: Entiendo que Renovate es el único bot de version-updates
+        - label: Entiendo que el único check required es ci-gate (auto-merge squash, 0 approvals)
+        - label: Entiendo que la cobertura por defecto es ≥70% (80% en críticos / reusable)

@@ -1,0 +1,41 @@
+name: Reporte de bug
+description: Informa de un comportamiento incorrecto en el canon o en su aplicación
+labels: [bug]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: Qué ocurre y qué esperabas que ocurriera.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduccion
+    attributes:
+      label: Pasos para reproducir
+      description: Lista numerada de pasos.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: dropdown
+    id: perfil
+    attributes:
+      label: Perfil afectado
+      options:
+        - P0 Base
+        - P1 Producto
+        - P2 Público
+        - Este canon (repo-standard)
+        - No lo sé
+    validations:
+      required: true
+  - type: input
+    id: entorno
+    attributes:
+      label: Entorno
+      description: Repo, rama, commit, SO.
+    validations:
+      required: false

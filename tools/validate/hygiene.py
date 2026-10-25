@@ -42,6 +42,9 @@ def check_tracked(root: Path) -> None:
             ERRORS.append(f"residuo rastreado: {rel}")
         if path.name.startswith(".archivado"):
             ERRORS.append(f"residuo rastreado: {rel}")
+        # *.example (p. ej. .env.example) es plantilla versionada, no secreto.
+        if path.suffix == ".example":
+            continue
         if path.name == ".env" or path.name.startswith(".env.") or path.suffix in SECRET_NAMES:
             ERRORS.append(f"secreto rastreado: {rel}")
 

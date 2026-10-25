@@ -121,6 +121,12 @@ def check_workflows(root: Path) -> None:
         for name, job in jobs.items():
             if not isinstance(job, dict):
                 continue
+            # P11 T0: jobs llamadores de reusable (jobs.<id>.uses) no admiten
+            # timeout-minutes en Actions (solo name/uses/with/secrets/needs/if/
+            # permissions/concurrency/strategy). Los jobs con steps: y los de
+            # reusable-*.yml siguen exigiendo timeout-minutes.
+            if "uses" in job and "steps" not in job:
+                continue
             if "timeout-minutes" not in job:
                 err(f"{rel}: job '{name}' sin timeout-minutes")
         for match in USES_RE.findall(text):

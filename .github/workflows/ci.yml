@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pipeline:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/reusable-static.yml
+    with:
+      quality-command: |
+        set -euo pipefail
+        tmpdir="$(mktemp -d)"
+        (
+          cd "$tmpdir"
+          curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
+        )
+        "$tmpdir/actionlint" -color
+        bash scripts/check-structure.sh templates/repo
+      test-command: make -f templates/repo/Makefile test
+      smoke-command: bash scripts/smoke.sh
+
+  # Jobs de quality.yml / validate.yml (required clásicos hasta P9) también en ci-gate.
+  hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Hygiene
+        run: python3 tools/validate/hygiene.py
+      - name: bash -n global
+        run: |
+          find skills tools -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: bash run-validation.sh
+
+  ci-gate:
+    name: ci-gate
+    needs: [pipeline, hygiene, validate]
+    if: always()
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluar needs y hold
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          ALLOWED_SKIPS: ""
+          HOLD: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hold') }}
+        run: |
+          set -euo pipefail
+          if [[ "${HOLD}" == "true" ]]; then
+            echo "::error::PR con etiqueta hold: ci-gate falla a propósito (quita hold para auto-merge)."
+            exit 1
+          fi
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          fi
+          echo "$NEEDS_JSON" | jq -e --argjson skips "$(printf '%s\n' "${ALLOWED_SKIPS}" | jq -R 'split(" ") | map(select(length>0))')" '
+            to_entries
+            | map(select(.value.result != "success" and ((.key as $k | $skips | index($k)) | not)))
+            | if length == 0 then true else
+                error("ci-gate: jobs no success: " + (map(.key + "=" + .value.result) | join(", ")))
+              end
+          ' >/dev/null
