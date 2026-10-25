@@ -1,6 +1,6 @@
 # Changelog
 
-Registro SemVer del **contrato** de `repo-standard` (no de un runtime). Keep a Changelog no admite una sección larga «Propósito de este documento»: el propósito es solo listar cambios del estándar; el versionado y qué cuenta como breaking están en [ADR-0010](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md).
+Registro SemVer de `<repo>`.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y el versionado [Semantic Versioning](https://semver.org/lang/es/).
 

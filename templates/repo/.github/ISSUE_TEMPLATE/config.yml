@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Reporte de seguridad
-    url: https://github.com/Iniciativas-Alexendros/repo-standard/security/advisories/new
+    url: https://github.com/Soluciones-Alexendros/<repo>/security/advisories/new
     about: No abras un issue público para vulnerabilidades. Usa Security Advisories o SECURITY.md.
   - name: Cómo aplicar el estándar a un repo existente
-    url: https://github.com/Iniciativas-Alexendros/repo-standard/blob/main/docs/REUTILIZACION.md
+    url: https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md
     about: Checklist P0/P1/P2 y orden de alineación.

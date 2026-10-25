@@ -1,4 +1,4 @@
-# Contribuir a repo-standard
+# Contribuir a `<repo>`
 
 ### Propósito de este documento
 
