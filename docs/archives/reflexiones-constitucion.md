@@ -76,7 +76,7 @@ Su nombre queda invalidado bajo I.5; su función, admitida bajo VII.
 
 ## IV. Pendientes
 
-- Instalar este fichero en `/home/alexendros/.agents/skills/ALIGNUX.constitucion/` _(ejemplo: ruta histórica; el slug actual en este repo es `alignux-constitucion`)_
+- Instalar este fichero en `$HOME/.agents/skills/ALIGNUX.constitucion/` _(ejemplo: ruta histórica; el slug actual en este repo es `alignux-constitucion`)_
   (comando abajo). El staging anterior (`ALIGNUX.constitucion.SKILL.md`,
   con la propuesta `trap` ya invalidada) se elimina en el mismo comando.
 - Pipeline keybackcon en cola: fix `avanzar()` a suelo/techo estrictos +

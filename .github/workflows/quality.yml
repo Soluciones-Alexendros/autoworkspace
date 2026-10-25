@@ -19,6 +19,26 @@ jobs:
           python-version: "3.12"
       - name: Hygiene
         run: python3 tools/validate/hygiene.py
+      - name: Private patterns denylist (HYGIENE_DENYLIST)
+        env:
+          HYGIENE_DENYLIST: ${{ secrets.HYGIENE_DENYLIST }}
+          AUTOWORKSPACE_PRIVATE_PATTERNS: ${{ secrets.HYGIENE_DENYLIST }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HYGIENE_DENYLIST:-}" ]; then
+            echo "::warning::HYGIENE_DENYLIST secret absent — step not_run (never false green). Task for Alejandro."
+            echo "not_run: HYGIENE_DENYLIST secret not configured"
+            exit 0
+          fi
+          echo "$HYGIENE_DENYLIST" | while IFS= read -r pat; do
+            [ -z "$pat" ] && continue
+            if git grep -nEe "$pat" -- . ':(exclude).git' >/dev/null 2>&1; then
+              echo "::error::denylist pattern matched in tree: $pat"
+              git grep -nEe "$pat" -- . ':(exclude).git' || true
+              exit 1
+            fi
+          done
+          echo "denylist OK"
       - name: bash -n global
         run: |
           find skills tools -name '*.sh' -print0 | xargs -0 -n1 bash -n

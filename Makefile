@@ -1,5 +1,11 @@
 .PHONY: quality validate lint test smoke help
 
+# Carga .env local si existe (sin commitear; ver .env.example / docs/USAGE.md).
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
+
 help:
 	@echo "Targets:"
 	@echo "  make validate  — run-validation.sh (canonical gate)"

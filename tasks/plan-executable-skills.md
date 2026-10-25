@@ -14,7 +14,7 @@ Comprobado por Cursor el 2026-10-17T23:25:19+02:00. No es un hecho permanente. T
 
 Comandos: `git rev-parse --show-toplevel`, `git rev-parse HEAD`, `git branch --show-current`, `git status --short --untracked-files=all`, `git branch --list feat/executable-skills`, existencia de este destino.
 
-- toplevel observado: `/home/alexendros/Aplicaciones/Repertorio/autoworkspace`. Es una observación local. El producto resuelve la raíz con Git.
+- toplevel observado: `$HOME/…/autoworkspace` (ruta local; el producto resuelve con Git). Es una observación local. El producto resuelve la raíz con Git.
 - HEAD observado: `ecc5a97654d79cc924dfe5364c92e7c2bd1af7a6`
 - rama observada: `main`
 - `git status --short` vacío en ese instante
