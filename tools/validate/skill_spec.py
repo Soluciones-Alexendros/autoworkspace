@@ -15,7 +15,7 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:
-    print("ERROR: PyYAML no instalado. pip install -r requirements-dev.txt")
+    print("ERROR: PyYAML no instalado. uv sync --frozen")
     sys.exit(1)
 
 ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else Path(__file__).resolve().parents[2]

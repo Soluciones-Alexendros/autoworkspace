@@ -14,7 +14,7 @@ except ImportError as exc:  # pragma: no cover
 try:
     import jsonschema
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("jsonschema required: pip install -r requirements-dev.txt") from exc
+    raise SystemExit("jsonschema required: uv sync --frozen") from exc
 
 DIALECT = "autoworkspace.execution"
 SCHEMA_VERSION = 1

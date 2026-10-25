@@ -10,7 +10,7 @@ from typing import Any
 try:
     import yaml
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("PyYAML required: pip install -r requirements-dev.txt") from exc
+    raise SystemExit("PyYAML required: uv sync --frozen") from exc
 
 PHASES = ("DEFINE", "SCHEMAS", "IMPLEMENT", "VALIDATE", "INTEGRATE", "STATUS")
 PHASE_INDEX = {p: i for i, p in enumerate(PHASES)}
