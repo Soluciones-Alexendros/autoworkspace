@@ -4,6 +4,7 @@
 Stdlib + pyyaml only (no python-frontmatter dependency).
 Idempotent: safe to re-run.
 """
+
 import pathlib
 import sys
 
@@ -31,8 +32,11 @@ def split_frontmatter(text: str, path: pathlib.Path):
 
 def dump_frontmatter(fm: dict) -> str:
     body = yaml.safe_dump(
-        fm, default_flow_style=False, allow_unicode=True,
-        sort_keys=False, width=1024,
+        fm,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+        width=1024,
     )
     return f"---\n{body}---"
 

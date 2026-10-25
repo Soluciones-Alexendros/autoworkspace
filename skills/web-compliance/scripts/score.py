@@ -15,6 +15,7 @@ resultados de scripts/audit_page.py se aceptan directamente.)
 Uso:
     python3 score.py resultados.json [--config DIR_CONFIGS] [--json salida.json]
 """
+
 import argparse
 import json
 import logging
@@ -90,12 +91,19 @@ def score(resultados, config_dir=None):
             p["fail"] += 1
             horas = c.get("esfuerzo_h") or thresholds["severidad_horas_defecto"].get(c["severidad"], 4)
             deuda_horas += horas
-            hallazgos.append({
-                "id": cid, "pilar": c["pilar"], "criterio": c["criterio"],
-                "estandar": c["estandar"], "severidad": c["severidad"],
-                "resultado": estado, "evidencia": r.get("evidencia", ""),
-                "accion": r.get("accion", ""), "esfuerzo_h": horas,
-            })
+            hallazgos.append(
+                {
+                    "id": cid,
+                    "pilar": c["pilar"],
+                    "criterio": c["criterio"],
+                    "estandar": c["estandar"],
+                    "severidad": c["severidad"],
+                    "resultado": estado,
+                    "evidencia": r.get("evidencia", ""),
+                    "accion": r.get("accion", ""),
+                    "esfuerzo_h": horas,
+                }
+            )
 
     por_pilar = {}
     global_pass = global_eval = 0
@@ -104,12 +112,22 @@ def score(resultados, config_dir=None):
         pct = round(100 * p["pass"] / evaluables) if evaluables else None
         meta = registry["pilares"][pid]
         por_pilar[pid] = {
-            "nombre": meta["nombre"], "peso": meta["peso"],
-            "pass": p["pass"], "fail": p["fail"], "na": p["na"], "pending": p["pending"],
+            "nombre": meta["nombre"],
+            "peso": meta["peso"],
+            "pass": p["pass"],
+            "fail": p["fail"],
+            "na": p["na"],
+            "pending": p["pending"],
             "pct": pct,
-            "semaforo": ("SIN DATOS" if pct is None else
-                         "VERDE" if pct >= thresholds["semaforo"]["verde"] else
-                         "AMBAR" if pct >= thresholds["semaforo"]["ambar"] else "ROJO"),
+            "semaforo": (
+                "SIN DATOS"
+                if pct is None
+                else "VERDE"
+                if pct >= thresholds["semaforo"]["verde"]
+                else "AMBAR"
+                if pct >= thresholds["semaforo"]["ambar"]
+                else "ROJO"
+            ),
         }
         global_pass += p["pass"]
         global_eval += evaluables
@@ -118,26 +136,27 @@ def score(resultados, config_dir=None):
 
     # Dictamen
     reglas = thresholds["dictamen"]["positivo"]
-    fails_criticos = [h for h in hallazgos
-                      if h["severidad"] == "Crítico" and h["resultado"] == "FAIL"]
+    fails_criticos = [h for h in hallazgos if h["severidad"] == "Crítico" and h["resultado"] == "FAIL"]
     if fails_criticos:
         dictamen = "NEGATIVO"
-        motivo = (f"{len(fails_criticos)} FAIL crítico(s): "
-                  + ", ".join(h["id"] for h in fails_criticos))
+        motivo = f"{len(fails_criticos)} FAIL crítico(s): " + ", ".join(h["id"] for h in fails_criticos)
     elif pct_global is None:
         dictamen = "SIN DATOS"
         motivo = "No hay checks evaluables"
     else:
-        incumple_pilar = [pid for pid, umbral in reglas["min_pct_pilar"].items()
-                          if por_pilar.get(pid, {}).get("pct") is not None
-                          and por_pilar[pid]["pct"] < umbral]
+        incumple_pilar = [
+            pid
+            for pid, umbral in reglas["min_pct_pilar"].items()
+            if por_pilar.get(pid, {}).get("pct") is not None and por_pilar[pid]["pct"] < umbral
+        ]
         if pct_global >= reglas["min_pct_global"] and not incumple_pilar:
             dictamen = "POSITIVO"
             motivo = "0 FAIL críticos y umbrales por pilar superados"
         elif pct_global >= thresholds["dictamen"]["parcial"]["min_pct_global"]:
             dictamen = "PARCIAL"
-            motivo = (f"Global {pct_global}% bajo umbral {reglas['min_pct_global']}%"
-                      + (f"; pilares bajo umbral: {', '.join(incumple_pilar)}" if incumple_pilar else ""))
+            motivo = f"Global {pct_global}% bajo umbral {reglas['min_pct_global']}%" + (
+                f"; pilares bajo umbral: {', '.join(incumple_pilar)}" if incumple_pilar else ""
+            )
         else:
             dictamen = "NEGATIVO"
             motivo = f"Cumplimiento global {pct_global}% bajo mínimo"
@@ -160,8 +179,7 @@ def score(resultados, config_dir=None):
 
 
 def main(argv=None) -> int:
-    logging.basicConfig(stream=sys.stderr, level=logging.WARNING,
-                        format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Scoring de compliance Auditoría 360°")
     ap.add_argument("resultados", help="JSON con checks evaluados")
     ap.add_argument("--config", help="Directorio de configs (por defecto ../configs)")
@@ -176,8 +194,11 @@ def main(argv=None) -> int:
         return 2
     if not isinstance(data, dict):
         logger.error("formato inválido en %s: se esperaba objeto con 'checks'", args.resultados)
-        print(json.dumps({"error": f"Formato inválido en {args.resultados}: se esperaba objeto con 'checks'"},
-                         ensure_ascii=False))
+        print(
+            json.dumps(
+                {"error": f"Formato inválido en {args.resultados}: se esperaba objeto con 'checks'"}, ensure_ascii=False
+            )
+        )
         return 2
     try:
         out = score(data.get("checks", []), config_dir=args.config)

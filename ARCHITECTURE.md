@@ -12,16 +12,16 @@
 
 ## Tree
 
-| Path | Role |
-| --- | --- |
-| `skills/<name>/` | One skill per folder; `SKILL.md` is the contract |
-| `tools/` | Routers, validators, versioning, execution layer |
-| `docs/` | Product docs + fleet ADRs, guides, runbooks, REUTILIZACION |
-| `docs/architecture/decisions/` | ADR-0001… (fleet) + ADR-0016 (host) |
-| `stacks/` | CI callers per runtime (pin reusable by SHA) |
-| `.github/workflows/` | `ci.yml` + reusables + quality/validate/version/release |
-| `templates/repo/` | Product P0/P1 skeleton (copy into a new repo) |
-| `templates/autoworkspace/` | Scaffolding for `.autoworkspace/` |
+| Path                           | Role                                                       |
+| ------------------------------ | ---------------------------------------------------------- |
+| `skills/<name>/`               | One skill per folder; `SKILL.md` is the contract           |
+| `tools/`                       | Routers, validators, versioning, execution layer           |
+| `docs/`                        | Product docs + fleet ADRs, guides, runbooks, REUTILIZACION |
+| `docs/architecture/decisions/` | ADR-0001… (fleet) + ADR-0016 (host)                        |
+| `stacks/`                      | CI callers per runtime (pin reusable by SHA)               |
+| `.github/workflows/`           | `ci.yml` + reusables + quality/validate/version/release    |
+| `templates/repo/`              | Product P0/P1 skeleton (copy into a new repo)              |
+| `templates/autoworkspace/`     | Scaffolding for `.autoworkspace/`                          |
 
 Sixteen skills in five domains: `plan`, `local`, `project`, `web`, `role`.
 
@@ -49,14 +49,14 @@ Per-task role selection (backend / front / design / clean-code) is mandatory whe
 
 ## Continuous integration
 
-| Workflow | Job(s) | Role |
-| --- | --- | --- |
-| `ci.yml` | `pipeline`, `hygiene`, `validate`, **`ci-gate`** | Canon caller + gate agregado |
-| `quality.yml` | `hygiene` | Required clásico hasta P9 |
-| `validate.yml` | `validate` | Required clásico hasta P9 |
-| `version.yml` | `check-bump` | Skill `metadata.version` bump on PRs (hasta P2) |
-| `release.yml` | `publish` (+ provenance) | Tag cut and GitHub Release on `main` |
-| `security.yml` | `actionlint` | Workflow lint |
+| Workflow       | Job(s)                                           | Role                                            |
+| -------------- | ------------------------------------------------ | ----------------------------------------------- |
+| `ci.yml`       | `pipeline`, `hygiene`, `validate`, **`ci-gate`** | Canon caller + gate agregado                    |
+| `quality.yml`  | `hygiene`                                        | Required clásico hasta P9                       |
+| `validate.yml` | `validate`                                       | Required clásico hasta P9                       |
+| `version.yml`  | `check-bump`                                     | Skill `metadata.version` bump on PRs (hasta P2) |
+| `release.yml`  | `publish` (+ provenance)                         | Tag cut and GitHub Release on `main`            |
+| `security.yml` | `actionlint`                                     | Workflow lint                                   |
 
 Local equivalents: `make validate`, `make lint`, `make test`, `make smoke`.
 

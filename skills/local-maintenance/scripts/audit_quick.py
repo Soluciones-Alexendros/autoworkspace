@@ -41,6 +41,7 @@ def _setup_logging(verbose: bool = False) -> None:
     else:
         logging.getLogger().setLevel(level)
 
+
 log_tag = color("[AUDIT-QUICK]", BLUE)
 
 
@@ -102,7 +103,9 @@ def main(argv: list[str] | None = None) -> int:
     duration = int(time.time() - start_time)
 
     try:
-        output = collector.build_output("audit-quick", distro_id, distro_family, running_kernel, duration, version_id, version_codename)
+        output = collector.build_output(
+            "audit-quick", distro_id, distro_family, running_kernel, duration, version_id, version_codename
+        )
     except (ValueError, TypeError, OSError) as exc:
         logger.error("no se pudo construir salida de auditoria: %s", exc)
         return 1
@@ -117,8 +120,12 @@ def main(argv: list[str] | None = None) -> int:
 
     hs = output["health_score"]
     print(f"{log_tag} Auditoria rapida completada en {duration}s")
-    print(f"{log_tag} Health Score: {hs['overall']} (Security: {hs['security']}, Updates: {hs['updates']}, Hygiene: {hs['hygiene']}, Resources: {hs['resources']}, Stability: {hs['stability']})")
-    print(f"{log_tag} Resultados: {collector.passed} passed, {collector.failed} failed, {collector.warned} warned, {collector.skipped} skipped, {collector.errors} errors")
+    print(
+        f"{log_tag} Health Score: {hs['overall']} (Security: {hs['security']}, Updates: {hs['updates']}, Hygiene: {hs['hygiene']}, Resources: {hs['resources']}, Stability: {hs['stability']})"
+    )
+    print(
+        f"{log_tag} Resultados: {collector.passed} passed, {collector.failed} failed, {collector.warned} warned, {collector.skipped} skipped, {collector.errors} errors"
+    )
     print(f"{log_tag} Guardado en: {output_file}")
     return 0
 

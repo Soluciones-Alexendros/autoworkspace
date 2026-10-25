@@ -4,6 +4,7 @@
 Uso: python3 tools/validate/hygiene.py [--root DIR]
 Exit 0 si limpio; 1 si hay fallos.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -65,7 +66,13 @@ def check_trailing(root: Path) -> None:
             rel = path.relative_to(root)
         except ValueError:
             continue
-        if str(rel).startswith("skills/") or str(rel).startswith("tools/") or str(rel).startswith("docs/") or str(rel).startswith(".github/") or path.name == "run-validation.sh":
+        if (
+            str(rel).startswith("skills/")
+            or str(rel).startswith("tools/")
+            or str(rel).startswith("docs/")
+            or str(rel).startswith(".github/")
+            or path.name == "run-validation.sh"
+        ):
             for i, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
                 if line.endswith(" ") or line.endswith("\t"):
                     ERRORS.append(f"trailing whitespace {rel}:{i}")

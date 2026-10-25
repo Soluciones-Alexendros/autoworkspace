@@ -32,6 +32,7 @@ def _setup_logging(verbose: bool = False) -> None:
     else:
         logging.getLogger().setLevel(level)
 
+
 COMPONENT_VERSION = "2.1.0"
 
 
@@ -280,11 +281,23 @@ def read_os_release() -> dict[str, str]:
 
 _ARCH_IDS = {"arch", "endeavouros", "cachyos", "manjaro", "garuda", "artix"}
 _DEBIAN_IDS = {
-    "debian", "ubuntu", "linuxmint", "pop", "elementary",
-    "kali", "parrot", "zorin",
+    "debian",
+    "ubuntu",
+    "linuxmint",
+    "pop",
+    "elementary",
+    "kali",
+    "parrot",
+    "zorin",
 }
 _RHEL_IDS = {
-    "fedora", "rhel", "centos", "almalinux", "rocky", "ol", "scientific",
+    "fedora",
+    "rhel",
+    "centos",
+    "almalinux",
+    "rocky",
+    "ol",
+    "scientific",
 }
 _SUSE_IDS = {"opensuse", "opensuse-leap", "opensuse-tumbleweed", "sles"}
 
@@ -312,16 +325,15 @@ def detect_distro() -> dict[str, str]:
         family, pkg_mgr = "rhel", "dnf"
     elif any(distro_id.startswith(prefix) for prefix in ("opensuse",)) or distro_id == "sles":
         family, pkg_mgr = "suse", "zypper"
-    else:
-        # Fallback por gestor de paquetes
-        if which("pacman"):
-            family, pkg_mgr = "arch", "pacman"
-        elif which("apt"):
-            family, pkg_mgr = "debian", "apt"
-        elif which("dnf"):
-            family, pkg_mgr = "rhel", "dnf"
-        elif which("zypper"):
-            family, pkg_mgr = "suse", "zypper"
+    # Fallback por gestor de paquetes
+    elif which("pacman"):
+        family, pkg_mgr = "arch", "pacman"
+    elif which("apt"):
+        family, pkg_mgr = "debian", "apt"
+    elif which("dnf"):
+        family, pkg_mgr = "rhel", "dnf"
+    elif which("zypper"):
+        family, pkg_mgr = "suse", "zypper"
 
     return {
         "distro_id": distro_id,
@@ -356,7 +368,13 @@ def load_profile_family(profile_file: str) -> tuple[str, str, str, str, str]:
         except (OSError, json.JSONDecodeError):
             pass
     distro = detect_distro()
-    return distro["family"], distro["package_manager"], distro["distro_id"], distro["version_id"], distro["version_codename"]
+    return (
+        distro["family"],
+        distro["package_manager"],
+        distro["distro_id"],
+        distro["version_id"],
+        distro["version_codename"],
+    )
 
 
 # --- Recolección de hallazgos y Health Score (compartido audit_quick/full) ---
@@ -478,10 +496,7 @@ class FindingCollector:
         }
 
     def summary(self) -> dict[str, object]:
-        by_severity = {
-            sev: sum(1 for f in self.findings if f["severity"] == sev)
-            for sev in SEVERITIES
-        }
+        by_severity = {sev: sum(1 for f in self.findings if f["severity"] == sev) for sev in SEVERITIES}
         coverage = {cat: self.category_coverage(cat) for cat in CATEGORIES}
         return {
             "total_checks": self.total,
@@ -550,10 +565,7 @@ def sshd_effective() -> str:
         return output
 
     files = ["/etc/ssh/sshd_config"]
-    files += sorted(
-        f
-        for f in glob_sorted("/etc/ssh/sshd_config.d/*.conf")
-    )
+    files += sorted(f for f in glob_sorted("/etc/ssh/sshd_config.d/*.conf"))
     lines: list[str] = []
     for path in files:
         try:
@@ -625,34 +637,101 @@ def check_pkg_01(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
             logger.warning("fallo verificando updates pacman (se asume 0): %s", exc)
             sec_updates = 0
         if sec_updates > 0:
-            collector.add("PKG-01", "updates", "P1", f"{sec_updates} actualizaciones de seguridad pendientes",
-                          "Paquetes con actualizaciones de seguridad disponibles", "PKG-01", "FAIL",
-                          f"News check -> {sec_updates}", "Ejecutar pacman -Syu tras leer noticias Arch", "R2")
+            collector.add(
+                "PKG-01",
+                "updates",
+                "P1",
+                f"{sec_updates} actualizaciones de seguridad pendientes",
+                "Paquetes con actualizaciones de seguridad disponibles",
+                "PKG-01",
+                "FAIL",
+                f"News check -> {sec_updates}",
+                "Ejecutar pacman -Syu tras leer noticias Arch",
+                "R2",
+            )
         else:
-            collector.add("PKG-01", "updates", "P1", "Sin actualizaciones de seguridad pendientes",
-                          "Sistema actualizado en seguridad", "PKG-01", "PASS", "0 actualizaciones de seguridad", "", "R0")
+            collector.add(
+                "PKG-01",
+                "updates",
+                "P1",
+                "Sin actualizaciones de seguridad pendientes",
+                "Sistema actualizado en seguridad",
+                "PKG-01",
+                "PASS",
+                "0 actualizaciones de seguridad",
+                "",
+                "R0",
+            )
     elif pkg_mgr == "apt":
         pkg_updates = _run_with(runner, "apt list --upgradable 2>/dev/null | grep -vE '^(Listing|Listando)' ", 60)
         sec_updates = count_nonempty(pkg_updates)
         if sec_updates > 0:
-            collector.add("PKG-01", "updates", "P1", f"{sec_updates} actualizaciones pendientes",
-                          "Actualizaciones disponibles", "PKG-01", "FAIL",
-                          f"apt list --upgradable -> {sec_updates}", "Ejecutar apt full-upgrade", "R2")
+            collector.add(
+                "PKG-01",
+                "updates",
+                "P1",
+                f"{sec_updates} actualizaciones pendientes",
+                "Actualizaciones disponibles",
+                "PKG-01",
+                "FAIL",
+                f"apt list --upgradable -> {sec_updates}",
+                "Ejecutar apt full-upgrade",
+                "R2",
+            )
         else:
-            collector.add("PKG-01", "updates", "P1", "Sin actualizaciones pendientes",
-                          "Sistema actualizado", "PKG-01", "PASS", "0 actualizaciones", "", "R0")
+            collector.add(
+                "PKG-01",
+                "updates",
+                "P1",
+                "Sin actualizaciones pendientes",
+                "Sistema actualizado",
+                "PKG-01",
+                "PASS",
+                "0 actualizaciones",
+                "",
+                "R0",
+            )
     elif pkg_mgr == "dnf":
         sec_updates = to_int(_run_with(runner, "dnf check-update --security 2>/dev/null | grep -v '^$' | wc -l", 60))
         if sec_updates > 0:
-            collector.add("PKG-01", "updates", "P1", f"{sec_updates} actualizaciones de seguridad pendientes",
-                          "Paquetes con actualizaciones de seguridad disponibles", "PKG-01", "FAIL",
-                          f"dnf check-update --security -> {sec_updates}", "Ejecutar dnf upgrade --security", "R2")
+            collector.add(
+                "PKG-01",
+                "updates",
+                "P1",
+                f"{sec_updates} actualizaciones de seguridad pendientes",
+                "Paquetes con actualizaciones de seguridad disponibles",
+                "PKG-01",
+                "FAIL",
+                f"dnf check-update --security -> {sec_updates}",
+                "Ejecutar dnf upgrade --security",
+                "R2",
+            )
         else:
-            collector.add("PKG-01", "updates", "P1", "Sin actualizaciones de seguridad pendientes",
-                          "Sistema actualizado en seguridad", "PKG-01", "PASS", "0 actualizaciones de seguridad", "", "R0")
+            collector.add(
+                "PKG-01",
+                "updates",
+                "P1",
+                "Sin actualizaciones de seguridad pendientes",
+                "Sistema actualizado en seguridad",
+                "PKG-01",
+                "PASS",
+                "0 actualizaciones de seguridad",
+                "",
+                "R0",
+            )
     else:
-        collector.add("PKG-01", "updates", "P1", "Gestor de paquetes desconocido", "No se pudo verificar",
-                      "PKG-01", "SKIP", f"pkg_mgr={pkg_mgr}", "", "R0")
+        collector.add(
+            "PKG-01",
+            "updates",
+            "P1",
+            "Gestor de paquetes desconocido",
+            "No se pudo verificar",
+            "PKG-01",
+            "SKIP",
+            f"pkg_mgr={pkg_mgr}",
+            "",
+            "R0",
+        )
 
 
 def check_pkg_03(collector: FindingCollector, pkg_mgr: str, runner=None) -> str:
@@ -671,25 +750,55 @@ def check_pkg_03(collector: FindingCollector, pkg_mgr: str, runner=None) -> str:
         installed_base = installed_kernel.split("-")[0] if "-" in installed_kernel else installed_kernel
         mismatch = running_base != installed_base
     elif pkg_mgr == "apt":
-        installed_kernel = _run_with(runner,
+        installed_kernel = _run_with(
+            runner,
             "dpkg -l 'linux-image-*' 2>/dev/null | grep '^ii' | awk '{print $2}' "
-            "| grep -E '^linux-image-[0-9]' | sed 's/linux-image-//' | sort -Vr | head -1").strip()
+            "| grep -E '^linux-image-[0-9]' | sed 's/linux-image-//' | sort -Vr | head -1",
+        ).strip()
         mismatch = bool(installed_kernel) and running_kernel != installed_kernel
     elif pkg_mgr == "dnf":
         installed_kernel = _run_with(runner, "rpm -q kernel 2>/dev/null | tail -1 | sed 's/kernel-//'").strip()
         mismatch = bool(installed_kernel) and running_kernel != installed_kernel
     else:
-        collector.add("PKG-03", "updates", "P1", "Gestor de paquetes desconocido", "No se pudo verificar",
-                      "PKG-03", "SKIP", f"pkg_mgr={pkg_mgr}", "", "R0")
+        collector.add(
+            "PKG-03",
+            "updates",
+            "P1",
+            "Gestor de paquetes desconocido",
+            "No se pudo verificar",
+            "PKG-03",
+            "SKIP",
+            f"pkg_mgr={pkg_mgr}",
+            "",
+            "R0",
+        )
         return running_kernel
     if mismatch:
-        collector.add("PKG-03", "updates", "P1", f"Kernel running ({running_kernel}) != installed ({installed_kernel})",
-                      "Reinicio pendiente para cargar nuevo kernel", "PKG-03", "FAIL",
-                      f"uname -r: {running_kernel}, instalado: {installed_kernel}", "Reiniciar sistema", "R2")
+        collector.add(
+            "PKG-03",
+            "updates",
+            "P1",
+            f"Kernel running ({running_kernel}) != installed ({installed_kernel})",
+            "Reinicio pendiente para cargar nuevo kernel",
+            "PKG-03",
+            "FAIL",
+            f"uname -r: {running_kernel}, instalado: {installed_kernel}",
+            "Reiniciar sistema",
+            "R2",
+        )
     else:
-        collector.add("PKG-03", "updates", "P1", "Kernel running coincide con instalado",
-                      "No hay reinicio pendiente de kernel", "PKG-03", "PASS",
-                      f"running: {running_kernel}, installed: {installed_kernel}", "", "R0")
+        collector.add(
+            "PKG-03",
+            "updates",
+            "P1",
+            "Kernel running coincide con instalado",
+            "No hay reinicio pendiente de kernel",
+            "PKG-03",
+            "PASS",
+            f"running: {running_kernel}, installed: {installed_kernel}",
+            "",
+            "R0",
+        )
     return running_kernel
 
 
@@ -698,8 +807,7 @@ def check_pkg_05(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
     if pkg_mgr == "pacman":
         orphans = _run_with(runner, "pacman -Qtdq 2>/dev/null", 60)
         orphan_count = count_nonempty(orphans)
-        detail, fix = (f"pacman -Qtdq -> {orphan_count} paquetes",
-                       "Revisar y eliminar con pacman -Rns $(pacman -Qtdq)")
+        detail, fix = (f"pacman -Qtdq -> {orphan_count} paquetes", "Revisar y eliminar con pacman -Rns $(pacman -Qtdq)")
     elif pkg_mgr == "apt":
         orphans = _run_with(runner, "apt autoremove --dry-run 2>/dev/null | grep '^Remv'", 120)
         orphan_count = count_nonempty(orphans)
@@ -709,15 +817,36 @@ def check_pkg_05(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         orphan_count = count_nonempty(orphans)
         detail, fix = (f"dnf repoquery --unneeded -> {orphan_count}", "Ejecutar dnf autoremove")
     else:
-        collector.add("PKG-05", "hygiene", "P3", "Gestor desconocido", "No se pudo verificar",
-                      "PKG-05", "SKIP", f"pkg_mgr={pkg_mgr}", "", "R0")
+        collector.add(
+            "PKG-05",
+            "hygiene",
+            "P3",
+            "Gestor desconocido",
+            "No se pudo verificar",
+            "PKG-05",
+            "SKIP",
+            f"pkg_mgr={pkg_mgr}",
+            "",
+            "R0",
+        )
         return
     if orphan_count > 0:
-        collector.add("PKG-05", "hygiene", "P3", f"{orphan_count} paquetes huerfanos detectados",
-                      "Paquetes sin dependientes que pueden limpiarse", "PKG-05", "WARN", detail, fix, "R1")
+        collector.add(
+            "PKG-05",
+            "hygiene",
+            "P3",
+            f"{orphan_count} paquetes huerfanos detectados",
+            "Paquetes sin dependientes que pueden limpiarse",
+            "PKG-05",
+            "WARN",
+            detail,
+            fix,
+            "R1",
+        )
     else:
-        collector.add("PKG-05", "hygiene", "P3", "Sin paquetes huerfanos", "Limpio",
-                      "PKG-05", "PASS", "0 huerfanos", "", "R0")
+        collector.add(
+            "PKG-05", "hygiene", "P3", "Sin paquetes huerfanos", "Limpio", "PKG-05", "PASS", "0 huerfanos", "", "R0"
+        )
 
 
 def check_pkg_07(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
@@ -726,23 +855,56 @@ def check_pkg_07(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         pending = _run_with(runner, "find /etc -name '*.pacnew' -o -name '*.pacsave' 2>/dev/null", 30)
         fix = "Ejecutar pacdiff y fusionar cambios"
     elif pkg_mgr == "apt":
-        pending = _run_with(runner, "find /etc -name '*.dpkg-new' -o -name '*.dpkg-old' -o -name '*.ucf-new' -o -name '*.ucf-old' 2>/dev/null", 30)
+        pending = _run_with(
+            runner,
+            "find /etc -name '*.dpkg-new' -o -name '*.dpkg-old' -o -name '*.ucf-new' -o -name '*.ucf-old' 2>/dev/null",
+            30,
+        )
         fix = "Revisar con ucf o dpkg-reconfigure"
     elif pkg_mgr == "dnf":
         pending = _run_with(runner, "find /etc -name '*.rpmnew' -o -name '*.rpmsave' 2>/dev/null", 30)
         fix = "Revisar con rpmconf"
     else:
-        collector.add("PKG-07", "hygiene", "P2", "Gestor desconocido", "No se pudo verificar",
-                      "PKG-07", "SKIP", f"pkg_mgr={pkg_mgr}", "", "R0")
+        collector.add(
+            "PKG-07",
+            "hygiene",
+            "P2",
+            "Gestor desconocido",
+            "No se pudo verificar",
+            "PKG-07",
+            "SKIP",
+            f"pkg_mgr={pkg_mgr}",
+            "",
+            "R0",
+        )
         return
     pending_count = count_nonempty(pending)
     if pending_count > 0:
-        collector.add("PKG-07", "hygiene", "P2", f"{pending_count} archivos de configuracion pendientes",
-                      "Configuraciones nuevas de paquetes no fusionadas", "PKG-07", "FAIL",
-                      f"find /etc -> {pending_count}", fix, "R2")
+        collector.add(
+            "PKG-07",
+            "hygiene",
+            "P2",
+            f"{pending_count} archivos de configuracion pendientes",
+            "Configuraciones nuevas de paquetes no fusionadas",
+            "PKG-07",
+            "FAIL",
+            f"find /etc -> {pending_count}",
+            fix,
+            "R2",
+        )
     else:
-        collector.add("PKG-07", "hygiene", "P2", "Sin archivos de configuracion pendientes",
-                      "Configuraciones al dia", "PKG-07", "PASS", "0 pendientes", "", "R0")
+        collector.add(
+            "PKG-07",
+            "hygiene",
+            "P2",
+            "Sin archivos de configuracion pendientes",
+            "Configuraciones al dia",
+            "PKG-07",
+            "PASS",
+            "0 pendientes",
+            "",
+            "R0",
+        )
 
 
 def check_pkg_06(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
@@ -778,17 +940,46 @@ def check_pkg_06(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         foreign_count = count_nonempty(_run_with(runner, "dnf list extras 2>/dev/null | tail -n +2", 60))
         detail = f"dnf list extras -> {foreign_count}"
     else:
-        collector.add("PKG-06", "hygiene", "P3", "Gestor desconocido", "No se pudo verificar",
-                      "PKG-06", "SKIP", f"pkg_mgr={pkg_mgr}", "", "R0")
+        collector.add(
+            "PKG-06",
+            "hygiene",
+            "P3",
+            "Gestor desconocido",
+            "No se pudo verificar",
+            "PKG-06",
+            "SKIP",
+            f"pkg_mgr={pkg_mgr}",
+            "",
+            "R0",
+        )
         return
     threshold = 20 if pkg_mgr == "pacman" else 50
     if foreign_count > threshold:
-        collector.add("PKG-06", "hygiene", "P3", f"{foreign_count} paquetes foraneos (fuera de repos oficiales)",
-                      "Muchos paquetes fuera de repositorios oficiales", "PKG-06", "WARN",
-                      detail, "Revisar y limitar paquetes foraneos/manuales", "R1")
+        collector.add(
+            "PKG-06",
+            "hygiene",
+            "P3",
+            f"{foreign_count} paquetes foraneos (fuera de repos oficiales)",
+            "Muchos paquetes fuera de repositorios oficiales",
+            "PKG-06",
+            "WARN",
+            detail,
+            "Revisar y limitar paquetes foraneos/manuales",
+            "R1",
+        )
     else:
-        collector.add("PKG-06", "hygiene", "P3", f"{foreign_count} paquetes foraneos",
-                      "Cantidad dentro de rango aceptable", "PKG-06", "PASS", detail, "", "R0")
+        collector.add(
+            "PKG-06",
+            "hygiene",
+            "P3",
+            f"{foreign_count} paquetes foraneos",
+            "Cantidad dentro de rango aceptable",
+            "PKG-06",
+            "PASS",
+            detail,
+            "",
+            "R0",
+        )
 
 
 def check_pkg_09(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
@@ -803,50 +994,136 @@ def check_pkg_09(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         cache_size = to_int(_run_with(runner, "du -sm /var/cache/dnf 2>/dev/null | cut -f1", 30))
         limit, fix = 1000, "Limpiar cache: dnf clean packages"
     else:
-        collector.add("PKG-09", "hygiene", "P4", "Gestor desconocido", "No se pudo verificar",
-                      "PKG-09", "SKIP", f"pkg_mgr={pkg_mgr}", "", "R0")
+        collector.add(
+            "PKG-09",
+            "hygiene",
+            "P4",
+            "Gestor desconocido",
+            "No se pudo verificar",
+            "PKG-09",
+            "SKIP",
+            f"pkg_mgr={pkg_mgr}",
+            "",
+            "R0",
+        )
         return
     if cache_size > limit:
-        collector.add("PKG-09", "hygiene", "P4", f"Cache de paquetes: {cache_size}MB (> {limit}MB)",
-                      "Cache de paquetes muy grande", "PKG-09", "WARN",
-                      f"du -sm -> {cache_size}MB", fix, "R1")
+        collector.add(
+            "PKG-09",
+            "hygiene",
+            "P4",
+            f"Cache de paquetes: {cache_size}MB (> {limit}MB)",
+            "Cache de paquetes muy grande",
+            "PKG-09",
+            "WARN",
+            f"du -sm -> {cache_size}MB",
+            fix,
+            "R1",
+        )
     else:
-        collector.add("PKG-09", "hygiene", "P4", f"Cache de paquetes: {cache_size}MB",
-                      "Tamano de cache aceptable", "PKG-09", "PASS", f"du -sm -> {cache_size}MB", "", "R0")
+        collector.add(
+            "PKG-09",
+            "hygiene",
+            "P4",
+            f"Cache de paquetes: {cache_size}MB",
+            "Tamano de cache aceptable",
+            "PKG-09",
+            "PASS",
+            f"du -sm -> {cache_size}MB",
+            "",
+            "R0",
+        )
 
 
 def check_pkg_04(collector: FindingCollector, runner=None) -> None:
     """PKG-04: firmware actualizable (fwupd). Solo audit_full."""
     if which("fwupdmgr") is None:
-        collector.add("PKG-04", "updates", "P2", "fwupd no instalado", "No se puede verificar firmware",
-                      "PKG-04", "SKIP", "fwupdmgr no encontrado", "Instalar fwupd para verificar firmware", "R0")
+        collector.add(
+            "PKG-04",
+            "updates",
+            "P2",
+            "fwupd no instalado",
+            "No se puede verificar firmware",
+            "PKG-04",
+            "SKIP",
+            "fwupdmgr no encontrado",
+            "Instalar fwupd para verificar firmware",
+            "R0",
+        )
         return
     fw_updates = to_int(_run_with(runner, "fwupdmgr get-updates 2>/dev/null | grep -c 'Device:'", 60))
     if fw_updates > 0:
-        collector.add("PKG-04", "updates", "P2", f"{fw_updates} actualizaciones de firmware disponibles",
-                      "Dispositivos con firmware actualizable", "PKG-04", "WARN",
-                      f"fwupdmgr get-updates -> {fw_updates} dispositivos", "Ejecutar: fwupdmgr update", "R2")
+        collector.add(
+            "PKG-04",
+            "updates",
+            "P2",
+            f"{fw_updates} actualizaciones de firmware disponibles",
+            "Dispositivos con firmware actualizable",
+            "PKG-04",
+            "WARN",
+            f"fwupdmgr get-updates -> {fw_updates} dispositivos",
+            "Ejecutar: fwupdmgr update",
+            "R2",
+        )
     else:
-        collector.add("PKG-04", "updates", "P2", "Sin actualizaciones de firmware", "Firmware al dia",
-                      "PKG-04", "PASS", "0 actualizaciones", "", "R0")
+        collector.add(
+            "PKG-04",
+            "updates",
+            "P2",
+            "Sin actualizaciones de firmware",
+            "Firmware al dia",
+            "PKG-04",
+            "PASS",
+            "0 actualizaciones",
+            "",
+            "R0",
+        )
 
 
 def check_arc_07(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
     """ARC-07: actualizaciones parciales peligrosas (Arch). Solo audit_full."""
     if pkg_mgr != "pacman":
-        collector.add("ARC-07", "updates", "P4", "Verificacion de actualizaciones parciales N/A",
-                      "Solo aplicable a Arch Linux", "ARC-07", "SKIP", f"PKG_MGR={pkg_mgr}", "", "R0")
+        collector.add(
+            "ARC-07",
+            "updates",
+            "P4",
+            "Verificacion de actualizaciones parciales N/A",
+            "Solo aplicable a Arch Linux",
+            "ARC-07",
+            "SKIP",
+            f"PKG_MGR={pkg_mgr}",
+            "",
+            "R0",
+        )
         return
     partial = _run_with(runner, "grep 'pacman -Sy$' /var/log/pacman.log 2>/dev/null | tail -5", 30)
     partial_count = count_nonempty(partial)
     if partial_count > 0:
-        collector.add("ARC-07", "updates", "P1", "Actualizaciones parciales detectadas en log",
-                      "Se detecto 'pacman -Sy' sin '-u' (actualizacion parcial peligrosa)", "ARC-07", "WARN",
-                      f"grep 'pacman -Sy$' /var/log/pacman.log -> {partial_count}",
-                      "Usar siempre 'pacman -Syu' para actualizaciones completas", "R2")
+        collector.add(
+            "ARC-07",
+            "updates",
+            "P1",
+            "Actualizaciones parciales detectadas en log",
+            "Se detecto 'pacman -Sy' sin '-u' (actualizacion parcial peligrosa)",
+            "ARC-07",
+            "WARN",
+            f"grep 'pacman -Sy$' /var/log/pacman.log -> {partial_count}",
+            "Usar siempre 'pacman -Syu' para actualizaciones completas",
+            "R2",
+        )
     else:
-        collector.add("ARC-07", "updates", "P1", "Sin actualizaciones parciales detectadas", "Correcto",
-                      "ARC-07", "PASS", "0 actualizaciones parciales", "", "R0")
+        collector.add(
+            "ARC-07",
+            "updates",
+            "P1",
+            "Sin actualizaciones parciales detectadas",
+            "Correcto",
+            "ARC-07",
+            "PASS",
+            "0 actualizaciones parciales",
+            "",
+            "R0",
+        )
 
 
 def check_deb_04(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
@@ -854,14 +1131,31 @@ def check_deb_04(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
     if pkg_mgr != "apt":
         return
     if service_active("unattended-upgrades"):
-        collector.add("DEB-04", "updates", "P2", "unattended-upgrades activo",
-                      "Actualizaciones automaticas de seguridad habilitadas", "DEB-04", "PASS",
-                      "systemctl is-active unattended-upgrades -> active", "", "R0")
+        collector.add(
+            "DEB-04",
+            "updates",
+            "P2",
+            "unattended-upgrades activo",
+            "Actualizaciones automaticas de seguridad habilitadas",
+            "DEB-04",
+            "PASS",
+            "systemctl is-active unattended-upgrades -> active",
+            "",
+            "R0",
+        )
     else:
-        collector.add("DEB-04", "updates", "P2", "unattended-upgrades INACTIVO",
-                      "Sin actualizaciones automaticas de seguridad", "DEB-04", "WARN",
-                      "systemctl is-active unattended-upgrades -> inactive",
-                      "Activar: systemctl enable --now unattended-upgrades", "R2")
+        collector.add(
+            "DEB-04",
+            "updates",
+            "P2",
+            "unattended-upgrades INACTIVO",
+            "Sin actualizaciones automaticas de seguridad",
+            "DEB-04",
+            "WARN",
+            "systemctl is-active unattended-upgrades -> inactive",
+            "Activar: systemctl enable --now unattended-upgrades",
+            "R2",
+        )
 
 
 def check_fs_09(collector: FindingCollector, runner=None) -> None:
@@ -869,19 +1163,29 @@ def check_fs_09(collector: FindingCollector, runner=None) -> None:
     broken = _run_with(runner, "find /etc /usr /boot -xtype l 2>/dev/null | head -20", 120)
     symlink_count = count_nonempty(broken)
     if symlink_count > 0:
-        collector.add("FS-09", "hygiene", "P3", f"{symlink_count} symlinks rotos en /etc, /usr, /boot",
-                      "Enlaces simbolicos que apuntan a archivos inexistentes", "FS-09", "WARN",
-                      f"find /etc /usr /boot -xtype l -> {symlink_count}",
-                      "Investigar y eliminar symlinks rotos (no borrar ciegamente)", "R1")
+        collector.add(
+            "FS-09",
+            "hygiene",
+            "P3",
+            f"{symlink_count} symlinks rotos en /etc, /usr, /boot",
+            "Enlaces simbolicos que apuntan a archivos inexistentes",
+            "FS-09",
+            "WARN",
+            f"find /etc /usr /boot -xtype l -> {symlink_count}",
+            "Investigar y eliminar symlinks rotos (no borrar ciegamente)",
+            "R1",
+        )
     else:
-        collector.add("FS-09", "hygiene", "P3", "Sin symlinks rotos", "Correcto",
-                      "FS-09", "PASS", "0 symlinks rotos", "", "R0")
+        collector.add(
+            "FS-09", "hygiene", "P3", "Sin symlinks rotos", "Correcto", "FS-09", "PASS", "0 symlinks rotos", "", "R0"
+        )
 
 
 def check_fs_10_disk(collector: FindingCollector, runner=None) -> None:
     """FS-10: uso de disco critico (higiene)."""
-    df_out = _run_with(runner,
-        "df -h -x tmpfs -x devtmpfs -x squashfs --output=source,target,pcent 2>/dev/null | tail -n +2", 15)
+    df_out = _run_with(
+        runner, "df -h -x tmpfs -x devtmpfs -x squashfs --output=source,target,pcent 2>/dev/null | tail -n +2", 15
+    )
     seen = set()
     for line in df_out.splitlines():
         parts = line.split()
@@ -897,17 +1201,44 @@ def check_fs_10_disk(collector: FindingCollector, runner=None) -> None:
             continue
         use_pcent_i = int(use_pcent)
         if use_pcent_i >= 90:
-            collector.add("FS-10", "resources", "P1", f"Disco {mountpoint} al {use_pcent_i}%",
-                          "Espacio critico, riesgo de fallo", "FS-10", "FAIL",
-                          f"df -h {mountpoint} -> {use_pcent_i}%", "Limpiar espacio o expandir particion", "R2")
+            collector.add(
+                "FS-10",
+                "resources",
+                "P1",
+                f"Disco {mountpoint} al {use_pcent_i}%",
+                "Espacio critico, riesgo de fallo",
+                "FS-10",
+                "FAIL",
+                f"df -h {mountpoint} -> {use_pcent_i}%",
+                "Limpiar espacio o expandir particion",
+                "R2",
+            )
         elif use_pcent_i >= 80:
-            collector.add("FS-10", "resources", "P2", f"Disco {mountpoint} al {use_pcent_i}%",
-                          "Espacio bajo, planificar limpieza", "FS-10", "WARN",
-                          f"df -h {mountpoint} -> {use_pcent_i}%", "Ejecutar rutina de limpieza", "R1")
+            collector.add(
+                "FS-10",
+                "resources",
+                "P2",
+                f"Disco {mountpoint} al {use_pcent_i}%",
+                "Espacio bajo, planificar limpieza",
+                "FS-10",
+                "WARN",
+                f"df -h {mountpoint} -> {use_pcent_i}%",
+                "Ejecutar rutina de limpieza",
+                "R1",
+            )
         else:
-            collector.add("FS-10", "resources", "P4", f"Disco {mountpoint} al {use_pcent_i}%",
-                          "Espacio adecuado", "FS-10", "PASS",
-                          f"df -h {mountpoint} -> {use_pcent_i}%", "", "R0")
+            collector.add(
+                "FS-10",
+                "resources",
+                "P4",
+                f"Disco {mountpoint} al {use_pcent_i}%",
+                "Espacio adecuado",
+                "FS-10",
+                "PASS",
+                f"df -h {mountpoint} -> {use_pcent_i}%",
+                "",
+                "R0",
+            )
 
 
 def check_fs_11_inodes(collector: FindingCollector, runner=None) -> None:
@@ -923,38 +1254,96 @@ def check_fs_11_inodes(collector: FindingCollector, runner=None) -> None:
             continue
         inode_pcent_i = int(inode_pcent)
         if inode_pcent_i >= 90:
-            collector.add("FS-11", "resources", "P2", f"Inodos {mountpoint} al {inode_pcent_i}%",
-                          "Inodos casi agotados", "FS-11", "FAIL",
-                          f"df -i {mountpoint} -> {inode_pcent_i}%", "Eliminar archivos pequenos innecesarios", "R2")
+            collector.add(
+                "FS-11",
+                "resources",
+                "P2",
+                f"Inodos {mountpoint} al {inode_pcent_i}%",
+                "Inodos casi agotados",
+                "FS-11",
+                "FAIL",
+                f"df -i {mountpoint} -> {inode_pcent_i}%",
+                "Eliminar archivos pequenos innecesarios",
+                "R2",
+            )
         elif inode_pcent_i >= 80:
-            collector.add("FS-11", "resources", "P3", f"Inodos {mountpoint} al {inode_pcent_i}%",
-                          "Uso de inodos elevado", "FS-11", "WARN",
-                          f"df -i {mountpoint} -> {inode_pcent_i}%", "Monitorear uso de inodos", "R1")
+            collector.add(
+                "FS-11",
+                "resources",
+                "P3",
+                f"Inodos {mountpoint} al {inode_pcent_i}%",
+                "Uso de inodos elevado",
+                "FS-11",
+                "WARN",
+                f"df -i {mountpoint} -> {inode_pcent_i}%",
+                "Monitorear uso de inodos",
+                "R1",
+            )
         else:
-            collector.add("FS-11", "resources", "P4", f"Inodos {mountpoint} al {inode_pcent_i}%",
-                          "Uso de inodos adecuado", "FS-11", "PASS",
-                          f"df -i {mountpoint} -> {inode_pcent_i}%", "", "R0")
+            collector.add(
+                "FS-11",
+                "resources",
+                "P4",
+                f"Inodos {mountpoint} al {inode_pcent_i}%",
+                "Uso de inodos adecuado",
+                "FS-11",
+                "PASS",
+                f"df -i {mountpoint} -> {inode_pcent_i}%",
+                "",
+                "R0",
+            )
 
 
 def check_log_06(collector: FindingCollector, runner=None) -> None:
     """LOG-06: errores en journal ultimas 24h."""
-    emerg = to_int(_run_with(runner, "journalctl -p emerg --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60))
-    alert = to_int(_run_with(runner, "journalctl -p alert --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60))
+    emerg = to_int(
+        _run_with(runner, "journalctl -p emerg --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60)
+    )
+    alert = to_int(
+        _run_with(runner, "journalctl -p alert --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60)
+    )
     crit = to_int(_run_with(runner, "journalctl -p crit --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60))
     err = to_int(_run_with(runner, "journalctl -p err --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60))
     journal_errors = emerg + alert + crit + err
     if journal_errors > 50:
-        collector.add("LOG-06", "stability", "P2", f"{journal_errors} errores (prioridad 0-3) en ultimas 24h",
-                      "Alto volumen de errores en logs", "LOG-06", "WARN",
-                      f"journalctl -p 0..3 --since '24h' -> {journal_errors} lineas",
-                      "Investigar errores recurrentes", "R0")
+        collector.add(
+            "LOG-06",
+            "stability",
+            "P2",
+            f"{journal_errors} errores (prioridad 0-3) en ultimas 24h",
+            "Alto volumen de errores en logs",
+            "LOG-06",
+            "WARN",
+            f"journalctl -p 0..3 --since '24h' -> {journal_errors} lineas",
+            "Investigar errores recurrentes",
+            "R0",
+        )
     elif journal_errors > 0:
-        collector.add("LOG-06", "stability", "P3", f"{journal_errors} errores (prioridad 0-3) en ultimas 24h",
-                      "Algunos errores en logs", "LOG-06", "PASS",
-                      f"journalctl -p 0..3 --since '24h' -> {journal_errors} lineas", "Monitorear", "R0")
+        collector.add(
+            "LOG-06",
+            "stability",
+            "P3",
+            f"{journal_errors} errores (prioridad 0-3) en ultimas 24h",
+            "Algunos errores en logs",
+            "LOG-06",
+            "PASS",
+            f"journalctl -p 0..3 --since '24h' -> {journal_errors} lineas",
+            "Monitorear",
+            "R0",
+        )
     else:
-        collector.add("LOG-06", "stability", "P4", "Sin errores criticos en journal 24h", "Logs limpios",
-                      "LOG-06", "PASS", "0 errores", "", "R0")
+        collector.add(
+            "LOG-06",
+            "stability",
+            "P4",
+            "Sin errores criticos en journal 24h",
+            "Logs limpios",
+            "LOG-06",
+            "PASS",
+            "0 errores",
+            "",
+            "R0",
+        )
 
 
 def check_log_08(collector: FindingCollector, runner=None) -> None:
@@ -965,17 +1354,44 @@ def check_log_08(collector: FindingCollector, runner=None) -> None:
     err = to_int(_run_with(runner, "journalctl -b -p err --no-pager 2>/dev/null | grep -c .", 60))
     boot_failures = emerg + alert + crit + err
     if boot_failures > 20:
-        collector.add("LOG-08", "stability", "P2", f"{boot_failures} errores en arranque actual",
-                      "Muchos errores durante el arranque", "LOG-08", "WARN",
-                      f"journalctl -b -p 0..3 -> {boot_failures} lineas",
-                      "Investigar errores de arranque con journalctl -b", "R0")
+        collector.add(
+            "LOG-08",
+            "stability",
+            "P2",
+            f"{boot_failures} errores en arranque actual",
+            "Muchos errores durante el arranque",
+            "LOG-08",
+            "WARN",
+            f"journalctl -b -p 0..3 -> {boot_failures} lineas",
+            "Investigar errores de arranque con journalctl -b",
+            "R0",
+        )
     elif boot_failures > 0:
-        collector.add("LOG-08", "stability", "P3", f"{boot_failures} errores en arranque actual",
-                      "Algunos errores durante el arranque", "LOG-08", "PASS",
-                      f"journalctl -b -p 0..3 -> {boot_failures} lineas", "Monitorear", "R0")
+        collector.add(
+            "LOG-08",
+            "stability",
+            "P3",
+            f"{boot_failures} errores en arranque actual",
+            "Algunos errores durante el arranque",
+            "LOG-08",
+            "PASS",
+            f"journalctl -b -p 0..3 -> {boot_failures} lineas",
+            "Monitorear",
+            "R0",
+        )
     else:
-        collector.add("LOG-08", "stability", "P4", "Sin errores en arranque actual", "Arranque limpio",
-                      "LOG-08", "PASS", "0 errores", "", "R0")
+        collector.add(
+            "LOG-08",
+            "stability",
+            "P4",
+            "Sin errores en arranque actual",
+            "Arranque limpio",
+            "LOG-08",
+            "PASS",
+            "0 errores",
+            "",
+            "R0",
+        )
 
 
 def check_srv_02(collector: FindingCollector, runner=None) -> None:
@@ -983,13 +1399,31 @@ def check_srv_02(collector: FindingCollector, runner=None) -> None:
     failed_svcs = _run_with(runner, "systemctl --failed --no-legend --no-pager 2>/dev/null", 15)
     failed_count = count_nonempty(failed_svcs)
     if failed_count > 0:
-        collector.add("SRV-02", "resources", "P1", f"{failed_count} servicios systemd fallidos",
-                      "Servicios que no iniciaron correctamente — riesgo de disponibilidad", "SRV-02", "FAIL",
-                      f"systemctl --failed -> {failed_count}",
-                      "Investigar con systemctl status <servicio> y journalctl -u <servicio>", "R2")
+        collector.add(
+            "SRV-02",
+            "resources",
+            "P1",
+            f"{failed_count} servicios systemd fallidos",
+            "Servicios que no iniciaron correctamente — riesgo de disponibilidad",
+            "SRV-02",
+            "FAIL",
+            f"systemctl --failed -> {failed_count}",
+            "Investigar con systemctl status <servicio> y journalctl -u <servicio>",
+            "R2",
+        )
     else:
-        collector.add("SRV-02", "resources", "P1", "Sin servicios fallidos", "Todos los servicios activos",
-                      "SRV-02", "PASS", "0 fallidos", "", "R0")
+        collector.add(
+            "SRV-02",
+            "resources",
+            "P1",
+            "Sin servicios fallidos",
+            "Todos los servicios activos",
+            "SRV-02",
+            "PASS",
+            "0 fallidos",
+            "",
+            "R0",
+        )
 
 
 def check_net_04(collector: FindingCollector, runner=None) -> None:
@@ -997,18 +1431,44 @@ def check_net_04(collector: FindingCollector, runner=None) -> None:
     ssh_listening = _run_with(runner, "ss -tuln 2>/dev/null | grep ':22 '", 10)
     if ssh_listening.strip():
         if "0.0.0.0:22" in ssh_listening or ":::22" in ssh_listening:
-            collector.add("NET-04", "security", "P0", "SSH escuchando en todas las interfaces (0.0.0.0/::)",
-                          "SSH expuesto a Internet potencialmente", "NET-04", "WARN",
-                          f"ss -tuln | grep :22 -> {ssh_listening.strip()}",
-                          "Restringir SSH a interfaces internas o usar firewall", "R2")
+            collector.add(
+                "NET-04",
+                "security",
+                "P0",
+                "SSH escuchando en todas las interfaces (0.0.0.0/::)",
+                "SSH expuesto a Internet potencialmente",
+                "NET-04",
+                "WARN",
+                f"ss -tuln | grep :22 -> {ssh_listening.strip()}",
+                "Restringir SSH a interfaces internas o usar firewall",
+                "R2",
+            )
         else:
-            collector.add("NET-04", "security", "P0", "SSH escuchando en interfaz especifica",
-                          "No expuesto a todas las interfaces", "NET-04", "PASS",
-                          f"ss -tuln | grep :22 -> {ssh_listening.strip()}", "", "R0")
+            collector.add(
+                "NET-04",
+                "security",
+                "P0",
+                "SSH escuchando en interfaz especifica",
+                "No expuesto a todas las interfaces",
+                "NET-04",
+                "PASS",
+                f"ss -tuln | grep :22 -> {ssh_listening.strip()}",
+                "",
+                "R0",
+            )
     else:
-        collector.add("NET-04", "security", "P0", "SSH no esta escuchando en puerto 22",
-                      "Puerto SSH no estandar o servicio detenido", "NET-04", "PASS",
-                      "ss -tuln | grep :22 -> (none)", "", "R0")
+        collector.add(
+            "NET-04",
+            "security",
+            "P0",
+            "SSH no esta escuchando en puerto 22",
+            "Puerto SSH no estandar o servicio detenido",
+            "NET-04",
+            "PASS",
+            "ss -tuln | grep :22 -> (none)",
+            "",
+            "R0",
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

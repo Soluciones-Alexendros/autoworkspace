@@ -1,4 +1,5 @@
 """Tests for project_load."""
+
 from __future__ import annotations
 
 import sys

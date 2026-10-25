@@ -107,7 +107,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--journal-time", default="7d", help="Vacuum time del journal (defecto 7d)")
     parser.add_argument("--journal-size", default="500M", help="Vacuum size del journal (defecto 500M)")
     parser.add_argument("--json", nargs="?", const="", default=None, help="Generar JSON (opcional fichero)")
-    parser.add_argument("--firmware", action="store_true", default=False, help="Incluir fwupdmgr update (R2, solo con --execute)")
+    parser.add_argument(
+        "--firmware", action="store_true", default=False, help="Incluir fwupdmgr update (R2, solo con --execute)"
+    )
     parser.add_argument("--verbose", action="store_true", help="Logging verboso a stderr")
     return parser
 
@@ -135,9 +137,7 @@ def apply_args(args: argparse.Namespace) -> None:
 
 
 def _record(action: str, status: str, rc: int = 0, detail: str = "") -> None:
-    ACTION_RESULTS.append(
-        {"action": action, "status": status, "rc": rc, "detail": detail}
-    )
+    ACTION_RESULTS.append({"action": action, "status": status, "rc": rc, "detail": detail})
 
 
 def _snapshot_dir() -> str:
@@ -262,7 +262,7 @@ def _handle_create_snapshot(params: dict) -> int:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
-    import snapshot_state as snap  # noqa: WPS433
+    import snapshot_state as snap
 
     base_dir = params.get("snapshot_dir") or _snapshot_dir()
     rc = snap.create_snapshot_backend(sid, base_dir)
@@ -451,7 +451,10 @@ def verify_clean() -> None:
 
 
 def generate_json_output() -> None:
-    json_file = JSON_OUTPUT or f"clean-routine-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}.json"
+    json_file = (
+        JSON_OUTPUT
+        or f"clean-routine-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}.json"
+    )
     actions = list(ACTION_RESULTS)
     if not actions:
         for name in CLEAN_OPS:
@@ -565,7 +568,7 @@ def main(argv: list[str] | None = None) -> int:
         # Post-clean verify is read-only
         try:
             verify_clean()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log_warn(f"verify_clean: {exc}")
 
     failed = sum(1 for a in ACTION_RESULTS if a.get("status") in ("failed", "blocked"))

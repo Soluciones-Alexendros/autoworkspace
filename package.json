@@ -1,6 +1,6 @@
 {
   "name": "autoworkspace",
-  "version": "5.1.0",
+  "version": "6.0.0",
   "description": "Autoworkspace \u2014 agentic pipeline: spec \u2192 schemas/tests \u2192 code \u2192 validate \u2192 integrate \u2192 declarative status",
   "private": true,
   "scripts": {
@@ -9,7 +9,8 @@
     "typecheck": "npm run syntax-check",
     "test": "bash run-validation.sh --pytest-only --smoke-only",
     "lint": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "husky": "^9.1.6",

@@ -1,4 +1,5 @@
 """Load and validate .autoworkspace/project.yaml."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import Any
 try:
     import yaml
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("PyYAML required: pip install -r requirements-dev.txt") from exc
+    raise SystemExit("PyYAML required: uv sync --frozen") from exc
 
 PHASES = ("DEFINE", "SCHEMAS", "IMPLEMENT", "VALIDATE", "INTEGRATE", "STATUS")
 PROFILES = ("P0", "P1", "P2")

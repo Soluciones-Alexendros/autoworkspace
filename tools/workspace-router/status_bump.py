@@ -1,4 +1,5 @@
 """Declarative status bump for .autoworkspace/status.yaml — transactional."""
+
 from __future__ import annotations
 
 import fcntl
@@ -10,7 +11,7 @@ from typing import Any
 try:
     import yaml
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("PyYAML required: pip install -r requirements-dev.txt") from exc
+    raise SystemExit("PyYAML required: uv sync --frozen") from exc
 
 PHASES = ("DEFINE", "SCHEMAS", "IMPLEMENT", "VALIDATE", "INTEGRATE", "STATUS")
 PHASE_INDEX = {p: i for i, p in enumerate(PHASES)}
@@ -80,17 +81,14 @@ def _assert_phase_transition(
         # STATUS → DEFINE only as explicit restart
         return
     if tgt_i < cur_i:
-        raise ValueError(
-            f"phase regress {current} → {target} rejected; "
-            "use explicit restart operation if authorized"
-        )
+        raise ValueError(f"phase regress {current} → {target} rejected; use explicit restart operation if authorized")
     raise ValueError(
         f"invalid phase jump {current} → {target}; "
         f"next allowed is {PHASES[cur_i + 1] if cur_i + 1 < len(PHASES) else current}"
     )
 
 
-def _with_status_lock(root: Path, fn):  # noqa: ANN001
+def _with_status_lock(root: Path, fn):
     """Acquire exclusive lock, load status, run fn(data) -> data, write, release."""
     path = status_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -247,9 +245,7 @@ def advance_status(
 
         cur_rev = int(data.get("state_revision") or 0)
         if expected_revision is not None and expected_revision != cur_rev:
-            raise ValueError(
-                f"stale state_revision: expected {expected_revision}, have {cur_rev}"
-            )
+            raise ValueError(f"stale state_revision: expected {expected_revision}, have {cur_rev}")
 
         product_version = str(data.get("version") or "0.1.0")
         if bump_product_version:
@@ -360,9 +356,7 @@ def resolve_awaiting_agent(
             return data
         awaiting_phase = str(data.get("awaiting_phase") or phase)
         if awaiting_phase != phase:
-            raise ValueError(
-                f"awaiting_phase mismatch: status has {awaiting_phase}, got {phase}"
-            )
+            raise ValueError(f"awaiting_phase mismatch: status has {awaiting_phase}, got {phase}")
         # Validate evidence under lock
         evidence = load_evidence(
             root,

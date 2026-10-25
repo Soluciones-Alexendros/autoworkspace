@@ -41,8 +41,14 @@ def which(cmd: str) -> str | None:
 def run_cmd(cmd: str, timeout: int = 300) -> tuple[int, str]:
     try:
         proc = subprocess.run(
-            cmd, shell=True, executable="/bin/bash", stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, timeout=timeout, text=True, check=False,
+            cmd,
+            shell=True,
+            executable="/bin/bash",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            text=True,
+            check=False,
         )
         return proc.returncode, proc.stdout
     except (subprocess.TimeoutExpired, OSError) as exc:
@@ -68,8 +74,11 @@ def scan_clamav() -> dict:
     if which("clamscan") is None and which("clamdscan") is None:
         return {"status": "skip", "reason": "clamscan no instalado"}
     _, sig = run_cmd("freshclam --stdout 2>/dev/null | tail -1", timeout=60)
-    return {"status": "ok", "signatures": sig.strip() or "desconocido",
-            "note": "lanzar clamscan -r -i sobre el objetivo aprobado (R1)"}
+    return {
+        "status": "ok",
+        "signatures": sig.strip() or "desconocido",
+        "note": "lanzar clamscan -r -i sobre el objetivo aprobado (R1)",
+    }
 
 
 def scan_rkhunter() -> dict:
@@ -77,9 +86,12 @@ def scan_rkhunter() -> dict:
         return {"status": "skip", "reason": "rkhunter no instalado"}
     rc, out = run_cmd("rkhunter --check --sk --rwo 2>/dev/null", timeout=600)
     warnings = [l for l in out.splitlines() if l.strip()]
-    return {"status": "ok" if rc == 0 else "warnings", "warnings": len(warnings),
-            "sample": warnings[:10],
-            "note": "tras upgrades legitimos, --propupd solo en sistema sano"}
+    return {
+        "status": "ok" if rc == 0 else "warnings",
+        "warnings": len(warnings),
+        "sample": warnings[:10],
+        "note": "tras upgrades legitimos, --propupd solo en sistema sano",
+    }
 
 
 def scan_aide() -> dict:
@@ -88,8 +100,12 @@ def scan_aide() -> dict:
     _, timers = run_cmd("systemctl list-timers --all --no-pager 2>/dev/null | grep -i aide", timeout=15)
     rc, out = run_cmd("aide --check --config=/etc/aide/aide.conf 2>/dev/null | tail -30", timeout=600)
     changed = "Changed entries" in out
-    return {"status": "ok", "timer": bool(timers.strip()), "changed_entries": changed,
-            "tail": out.strip().splitlines()[-10:] if out.strip() else []}
+    return {
+        "status": "ok",
+        "timer": bool(timers.strip()),
+        "changed_entries": changed,
+        "tail": out.strip().splitlines()[-10:] if out.strip() else [],
+    }
 
 
 def scan_debsums() -> dict:
@@ -104,8 +120,11 @@ def scan_lynis() -> dict:
     if which("lynis") is None:
         return {"status": "skip", "reason": "lynis no instalado"}
     _, out = run_cmd("lynis audit system --quick --no-log 2>/dev/null | tail -20", timeout=600)
-    return {"status": "ok", "tail": out.strip().splitlines()[-20:] if out.strip() else [],
-            "note": "suggestions != hallazgos: filtrar por contexto"}
+    return {
+        "status": "ok",
+        "tail": out.strip().splitlines()[-20:] if out.strip() else [],
+        "note": "suggestions != hallazgos: filtrar por contexto",
+    }
 
 
 def cross_validate(results: dict) -> dict:

@@ -16,9 +16,9 @@
 6. Pass local validation green before the PR:
 
 ```bash
-pip install -r requirements-dev.txt
+uv sync --frozen
 make validate
-# equivalent: bash run-validation.sh
+# equivalent: uv run bash run-validation.sh
 ```
 
 ## Severity levels (`metadata.version` bump)

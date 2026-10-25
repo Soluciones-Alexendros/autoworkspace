@@ -1,4 +1,5 @@
 """Tests del autoversionado (tools/version/bump.py). Sin dependencias externas."""
+
 import importlib.util
 import subprocess
 from pathlib import Path
@@ -95,8 +96,6 @@ def test_main_unknown_skill_tmp_root(tmp_path):
 
 
 def test_bump_cli_help():
-    r = subprocess.run(
-        ["python3", str(BUMP), "--help"], capture_output=True, text=True, check=False
-    )
+    r = subprocess.run(["python3", str(BUMP), "--help"], capture_output=True, text=True, check=False)
     assert r.returncode == 0
     assert "--type" in r.stdout

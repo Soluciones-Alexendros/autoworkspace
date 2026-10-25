@@ -10,13 +10,13 @@
 
 ## Para quién
 
-| Eres… | Empieza por |
-|-------|-------------|
-| Mantenedor alineando un repo existente | [REUTILIZACION.md](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md) |
-| Alguien que crea un repo nuevo | [README raíz](../README.md) → Quickstart A |
-| Agente / Mantenedor implementando | [AGENTS.md](../AGENTS.md) + [guides/](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/guides/) |
-| Ops / incidente | [runbooks/](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/runbooks/) |
-| Diseño del estándar | [architecture/overview.md](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/overview.md) y [decisions/](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/) |
+| Eres…                                  | Empieza por                                                                                                                                                                                                                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mantenedor alineando un repo existente | [REUTILIZACION.md](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md)                                                                                                                               |
+| Alguien que crea un repo nuevo         | [README raíz](../README.md) → Quickstart A                                                                                                                                                                                               |
+| Agente / Mantenedor implementando      | [AGENTS.md](../AGENTS.md) + [guides/](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/guides/)                                                                                                                     |
+| Ops / incidente                        | [runbooks/](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/runbooks/)                                                                                                                                             |
+| Diseño del estándar                    | [architecture/overview.md](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/overview.md) y [decisions/](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/) |
 
 ## Mapa
 

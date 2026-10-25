@@ -1,4 +1,5 @@
 """Tests risk_gate.py: --help, inválidos, error R1/R3, doradas clasificación."""
+
 import subprocess
 import sys
 
@@ -10,7 +11,10 @@ SCRIPT = "risk_gate.py"
 def _run(*args, stdin_text=None):
     return subprocess.run(
         [sys.executable, SCRIPT, *args],
-        capture_output=True, text=True, cwd=".", input=stdin_text,
+        capture_output=True,
+        text=True,
+        cwd=".",
+        input=stdin_text,
     )
 
 

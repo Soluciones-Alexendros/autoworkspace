@@ -2,7 +2,7 @@
 
 ### Propósito de este documento
 
-- **Objetivos:** Diseño del sistema: límites, flujos y relación con stacks/gold. En producto, overview del *producto*.
+- **Objetivos:** Diseño del sistema: límites, flujos y relación con stacks/gold. En producto, overview del _producto_.
 - **Estructura:** Esta meta-sección → diagrama → Límites (dentro/fuera) → Flujos → Relación con gold (canon) o cajas (producto) → Stacks.
 - **Contenido a integrar según contexto:** Reescribe límites y flujos del producto. No copies la tabla de gold ni el diagrama del meta-estándar. Enlaza ADRs propios.
 
@@ -48,22 +48,22 @@
 
 El diseño fusiona lo que ya funciona:
 
-| Fuente | Qué se hereda |
-|--------|----------------|
-| `website-landingpage-template` | Template GitHub, CI limpio, idea de `REUTILIZACION.md` |
-| `zedazo` | Governance: AGENTS, ARCHITECTURE, CoC, CODEOWNERS, ADRs |
-| `saas-afiladocs` | `check:env`, actionlint, runbooks, SUPPORT (P2) |
-| `miwebsite-alexendrosdev` | SECURITY + CONTRIBUTING + AGENTS + issue forms |
-| `infraestructura-stack` | Makefile fachada, ADRs, runbooks de infra |
+| Fuente                         | Qué se hereda                                           |
+| ------------------------------ | ------------------------------------------------------- |
+| `website-landingpage-template` | Template GitHub, CI limpio, idea de `REUTILIZACION.md`  |
+| `zedazo`                       | Governance: AGENTS, ARCHITECTURE, CoC, CODEOWNERS, ADRs |
+| `saas-afiladocs`               | `check:env`, actionlint, runbooks, SUPPORT (P2)         |
+| `miwebsite-alexendrosdev`      | SECURITY + CONTRIBUTING + AGENTS + issue forms          |
+| `infraestructura-stack`        | Makefile fachada, ADRs, runbooks de infra               |
 
 ## Stacks
 
 Los jobs se llaman igual; los comandos no:
 
-| Stack | Quality típico | Smoke típico |
-|-------|----------------|--------------|
-| TypeScript / pnpm | format, lint, typecheck | URL `/` o `/api/health` |
-| Rust / Cargo | fmt, clippy `-D warnings` | binario `--help` / `version` |
-| Infra / Makefile | `make lint` `typecheck` `actionlint` | `make validate` + dry-run |
+| Stack             | Quality típico                       | Smoke típico                 |
+| ----------------- | ------------------------------------ | ---------------------------- |
+| TypeScript / pnpm | format, lint, typecheck              | URL `/` o `/api/health`      |
+| Rust / Cargo      | fmt, clippy `-D warnings`            | binario `--help` / `version` |
+| Infra / Makefile  | `make lint` `typecheck` `actionlint` | `make validate` + dry-run    |
 
 Fragmentos listos para copiar: [`stacks/`](../../stacks/).

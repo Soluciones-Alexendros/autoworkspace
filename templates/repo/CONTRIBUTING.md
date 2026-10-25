@@ -4,7 +4,7 @@
 
 - **Objetivos:** Cómo se contribuye: ramas, commits, calidad local, checklist de PR y dónde vive cada tipo de cambio.
 - **Estructura:** Esta meta-sección → intro → Flujo → Commits → Calidad local → Checklist → Dónde va cada cosa → Issues.
-- **Contenido a integrar según contexto:** Conserva Conventional Commits y squash. Sustituye los comandos stub por los del stack. En producto, el H1 y el primer párrafo hablan del *producto*, no del canon. Merge: [ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md).
+- **Contenido a integrar según contexto:** Conserva Conventional Commits y squash. Sustituye los comandos stub por los del stack. En producto, el H1 y el primer párrafo hablan del _producto_, no del canon. Merge: [ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md).
 
 Gracias por mejorar el canon de la flota Soluciones-Alexendros.
 
@@ -51,15 +51,15 @@ En un repo de producto el mismo Makefile debe llamar a los scripts reales del st
 
 ## Dónde va cada cosa
 
-| Cambio | Sitio |
-|--------|--------|
-| Contrato para agentes | `AGENTS.md` |
-| Arquitectura del estándar | `ARCHITECTURE.md` + `docs/architecture/` |
-| Cómo aplicar a un repo ya existente | `docs/REUTILIZACION.md` |
-| Caller CI por stack | `stacks/<stack>/ci.yml` |
-| Workflows reutilizables | `.github/workflows/reusable-*.yml` |
-| Gates CI de este canon | `.github/workflows/ci.yml` (`pipeline` + `ci-gate`) |
-| Decisión de diseño | `docs/architecture/decisions/` |
+| Cambio                              | Sitio                                               |
+| ----------------------------------- | --------------------------------------------------- |
+| Contrato para agentes               | `AGENTS.md`                                         |
+| Arquitectura del estándar           | `ARCHITECTURE.md` + `docs/architecture/`            |
+| Cómo aplicar a un repo ya existente | `docs/REUTILIZACION.md`                             |
+| Caller CI por stack                 | `stacks/<stack>/ci.yml`                             |
+| Workflows reutilizables             | `.github/workflows/reusable-*.yml`                  |
+| Gates CI de este canon              | `.github/workflows/ci.yml` (`pipeline` + `ci-gate`) |
+| Decisión de diseño                  | `docs/architecture/decisions/`                      |
 
 ## Issues
 

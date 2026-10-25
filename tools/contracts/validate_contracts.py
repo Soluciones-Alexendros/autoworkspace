@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate execution.yaml for every skill that has one; require pilots."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,18 +9,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from contracts.loader import ContractError, load_execution_contract, load_yaml, validate_contract  # noqa: E402
+from contracts.loader import ContractError, load_execution_contract, load_yaml, validate_contract
 
 REQUIRED_PILOTS = ("local-maintenance", "plan-continue", "web-compliance")
 
 
 def catalog(root: Path) -> set[str]:
     skills = root / "skills"
-    return {
-        p.name
-        for p in skills.iterdir()
-        if p.is_dir() and (p / "SKILL.md").is_file()
-    }
+    return {p.name for p in skills.iterdir() if p.is_dir() and (p / "SKILL.md").is_file()}
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -48,6 +48,7 @@ Ejemplo (hypothesis):
 from collections import Counter
 from hypothesis import given, strategies as st
 
+
 @given(st.lists(st.integers()))
 def test_ordenar_es_idempotente_y_conserva_multiconjunto(xs):
     ordenado = sorted(xs)

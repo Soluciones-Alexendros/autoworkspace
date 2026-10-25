@@ -1,4 +1,5 @@
 """Tests check_deps.py: --help, inválidos, falta requerida -> 1, dorada check_cmd."""
+
 import subprocess
 import sys
 
@@ -9,7 +10,10 @@ SCRIPT = "check_deps.py"
 
 def _run(*args):
     return subprocess.run(
-        [sys.executable, SCRIPT, *args], capture_output=True, text=True, cwd=".",
+        [sys.executable, SCRIPT, *args],
+        capture_output=True,
+        text=True,
+        cwd=".",
     )
 
 

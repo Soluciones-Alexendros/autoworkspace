@@ -20,6 +20,10 @@ on:
         type: boolean
         required: false
         default: true
+      run-test:
+        type: boolean
+        required: false
+        default: true
       run-smoke:
         type: boolean
         required: false
@@ -130,6 +134,7 @@ jobs:
           if [[ "$PM" == "pnpm" ]]; then pnpm typecheck; else npm run typecheck; fi
 
   test:
+    if: inputs.run-test
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -195,7 +200,7 @@ jobs:
           fi
 
   build:
-    if: inputs.run-build
+    if: ${{ !cancelled() && inputs.run-build && needs.quality.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     needs: [quality, test]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -252,10 +257,10 @@ jobs:
 
   smoke:
     if: |
-      always() &&
+      !cancelled() &&
       inputs.run-smoke &&
       needs.quality.result == 'success' &&
-      needs.test.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
       (needs.build.result == 'success' || needs.build.result == 'skipped')
     needs: [quality, test, build]
     runs-on: ubuntu-latest
@@ -313,10 +318,10 @@ jobs:
 
   e2e:
     if: |
-      always() &&
+      !cancelled() &&
       inputs.e2e &&
       needs.quality.result == 'success' &&
-      needs.test.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
       (needs.build.result == 'success' || needs.build.result == 'skipped')
     needs: [quality, test, build]
     runs-on: ubuntu-latest

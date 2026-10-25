@@ -2,7 +2,7 @@
 
 ### Propósito de este documento
 
-- **Objetivos:** Contrato operativo para agentes y Mantenedor: fuentes de verdad, autonomía, gates, DoD. En un producto, el mismo contrato de flota + hechos de *ese* workspace.
+- **Objetivos:** Contrato operativo para agentes y Mantenedor: fuentes de verdad, autonomía, gates, DoD. En un producto, el mismo contrato de flota + hechos de _ese_ workspace.
 - **Estructura:** Esta meta-sección → §1 Rol → §2 Fuentes → §3 Ficha → §4 Autonomía → §5 Working agreement → §6 Comandos → §7 Zonas prohibidas → §8 Definition of Done → §9 Hechos del workspace.
 - **Contenido a integrar según contexto:** Copia §1–8. Reescribe **solo** §9 (stack, validador, CODEOWNERS, perfiles). No reabras decisiones cerradas. No pegues secretos ni URLs de prod reales.
 

@@ -1,4 +1,5 @@
 """Typed operation runner: registry-only; no free-form argv/effect from callers."""
+
 from __future__ import annotations
 
 import os
@@ -17,9 +18,7 @@ from execution.approval import (
 )
 from execution.registry import get_handler, get_operation, resolve_argv
 
-RESERVED_PARAM_KEYS = frozenset(
-    {"effect", "require_approval", "argv", "executable_id", "handler", "cwd_override"}
-)
+RESERVED_PARAM_KEYS = frozenset({"effect", "require_approval", "argv", "executable_id", "handler", "cwd_override"})
 
 
 @dataclass
@@ -206,7 +205,7 @@ def run_registered(
                 run_id=run_id,
                 plan_digest=digest,
             )
-        except Exception as exc:  # noqa: BLE001 — boundary
+        except Exception as exc:
             return OpResult(
                 operation_id,
                 "failed",

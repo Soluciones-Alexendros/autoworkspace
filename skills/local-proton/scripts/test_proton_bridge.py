@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests hardening para proton_bridge.py (sin red real: monkeypatch IMAP/SMTP)."""
+
 from __future__ import annotations
 
 import sys

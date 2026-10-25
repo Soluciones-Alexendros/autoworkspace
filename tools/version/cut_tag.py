@@ -10,6 +10,7 @@ Exit 1 en error de entorno git/FS.
 Notas ausentes con --apply no fallan el job de release en main: se omite el corte
 hasta que CHANGELOG tenga la sección fechada de package.json.
 """
+
 from __future__ import annotations
 
 import argparse

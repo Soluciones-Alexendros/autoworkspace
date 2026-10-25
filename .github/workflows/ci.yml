@@ -13,7 +13,30 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  pipeline:
+  pipeline-python:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/reusable-python.yml
+    with:
+      python-version: "3.12"
+      coverage-threshold: "77"
+      run-build: false
+
+  pipeline-node:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/reusable-node.yml
+    with:
+      node-version: "22"
+      package-manager: npm
+      run-build: false
+      run-test: false
+      run-smoke: false
+      e2e: false
+
+  canon:
     permissions:
       contents: read
       pull-requests: read
@@ -31,7 +54,18 @@ jobs:
       test-command: make -f templates/repo/Makefile test
       smoke-command: bash scripts/smoke.sh
 
-  # Jobs de quality.yml / validate.yml (required clásicos hasta P9) también en ci-gate.
+  # Verifica el direccionamiento que usarán los callers (ruta completa + SHA).
+  # SHA se actualiza al tip de esta rama tras el push de T5.
+  caller-reusable-path:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-static.yml@c6674366d2e4e7bfa8a2ba0a5cdaea06ff795ee4
+    with:
+      quality-command: "echo caller-path-ok"
+      test-command: "echo caller-path-ok"
+      smoke-command: "echo caller-path-ok"
+
   hygiene:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -41,11 +75,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
           python-version: "3.12"
+      - run: uv sync --frozen
       - name: Hygiene
-        run: python3 tools/validate/hygiene.py
+        run: uv run python3 tools/validate/hygiene.py
       - name: Private patterns denylist (HYGIENE_DENYLIST)
         env:
           HYGIENE_DENYLIST: ${{ secrets.HYGIENE_DENYLIST }}
@@ -80,15 +115,44 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
           python-version: "3.12"
-      - run: pip install -r requirements-dev.txt
-      - run: bash run-validation.sh
+      - run: uv sync --frozen
+      - run: uv run bash run-validation.sh
+
+  check-bump:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Exigir bump de metadata.version en skills cambiadas
+        run: uv run python3 tools/version/bump.py --check --auto --base origin/${{ github.event.pull_request.base.ref || 'main' }}
+      - name: Exigir package.json por delante del tag si cambia el circuito de release
+        run: uv run python3 tools/version/cut_tag.py --check-repo --base origin/${{ github.event.pull_request.base.ref || 'main' }}
 
   ci-gate:
     name: ci-gate
-    needs: [pipeline, hygiene, validate]
+    needs:
+      [
+        pipeline-python,
+        pipeline-node,
+        canon,
+        caller-reusable-path,
+        hygiene,
+        validate,
+        check-bump,
+      ]
     if: always()
     permissions: {}
     runs-on: ubuntu-latest
@@ -97,7 +161,8 @@ jobs:
       - name: Evaluar needs y hold
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
-          ALLOWED_SKIPS: ""
+          # check-bump only runs on pull_request; allow skip on push to main
+          ALLOWED_SKIPS: ${{ github.event_name != 'pull_request' && 'check-bump' || '' }}
           HOLD: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hold') }}
         run: |
           set -euo pipefail

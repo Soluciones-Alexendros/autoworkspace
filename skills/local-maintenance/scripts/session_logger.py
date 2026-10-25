@@ -26,8 +26,12 @@ def _setup_logging(verbose: bool = False) -> None:
     else:
         logging.getLogger().setLevel(level)
 
+
 LOG_DIR = os.environ.get("LOG_DIR", "/var/log/mantenimiento-linux")
-SESSION_ID = os.environ.get("SESSION_ID", "") or f"session-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
+SESSION_ID = (
+    os.environ.get("SESSION_ID", "")
+    or f"session-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
+)
 LOG_FILE = os.path.join(LOG_DIR, f"{SESSION_ID}.log")
 
 
@@ -86,7 +90,9 @@ def init_log() -> None:
         raise
 
 
-def log_event(type_: str = "INFO", risk_level: str = "R0", command: str = "", status: str = "", details: str = "") -> None:
+def log_event(
+    type_: str = "INFO", risk_level: str = "R0", command: str = "", status: str = "", details: str = ""
+) -> None:
     _ensure_log_dir()
     timestamp = utcnow_iso()
     lines = [f"[{timestamp}] [{type_}] [{risk_level}] {status}"]

@@ -1,4 +1,5 @@
 """Tests de tools/validate/release_coherence.py y cut_tag.py."""
+
 import importlib.util
 from pathlib import Path
 
@@ -35,12 +36,7 @@ def test_yanked_section():
 
 def test_extract_notes_ok():
     cut = load(CUT, "cut_tag")
-    text = (
-        "## [Unreleased]\n\n"
-        "## [2.2.0] - 2026-09-30\n\n"
-        "### Added\n\n- foo\n\n"
-        "## [2.0.0] - 2026-09-27\n\n- old\n"
-    )
+    text = "## [Unreleased]\n\n## [2.2.0] - 2026-09-30\n\n### Added\n\n- foo\n\n## [2.0.0] - 2026-09-27\n\n- old\n"
     notes = cut.extract_notes(text, "2.2.0")
     assert "foo" in notes
     assert "old" not in notes
@@ -59,9 +55,7 @@ def test_cmd_cut_apply_skips_when_notes_missing(tmp_path, monkeypatch):
     import json
 
     cut = load(CUT, "cut_tag")
-    (tmp_path / "package.json").write_text(
-        json.dumps({"name": "t", "version": "5.1.0"}), encoding="utf-8"
-    )
+    (tmp_path / "package.json").write_text(json.dumps({"name": "t", "version": "5.1.0"}), encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text(
         "# Changelog\n\n## [Unreleased]\n\n- pending\n\n## [5.0.0] - 2026-10-17\n\n- old\n",
         encoding="utf-8",

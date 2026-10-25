@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: Soluciones-Alexendros/repo-standard/.github/workflows/reusable-node.yml@edf4145316d35fd58d3d1b98d631ca9d726a95e2 # v2.0.0
+    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-node.yml@c6674366d2e4e7bfa8a2ba0a5cdaea06ff795ee4 # v6.0.0
     with:
       node-version: "22"
       package-manager: auto

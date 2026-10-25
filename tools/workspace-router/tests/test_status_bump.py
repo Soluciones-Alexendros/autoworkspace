@@ -1,4 +1,5 @@
 """Tests for status_bump."""
+
 from __future__ import annotations
 
 import sys
@@ -67,9 +68,7 @@ class TestStatusBump(unittest.TestCase):
             root = Path(tmp)
             (root / ".autoworkspace").mkdir()
             with self.assertRaises(ValueError):
-                advance_status(
-                    root, phase="DEFINE", skill="plan-specification", evidence_ok=True
-                )
+                advance_status(root, phase="DEFINE", skill="plan-specification", evidence_ok=True)
 
     def test_define_to_integrate_invalid(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -153,9 +152,7 @@ class TestStatusBump(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / ".autoworkspace").mkdir()
-            data = advance_status(
-                root, phase="IMPLEMENT", evidence_ok=False, allow_awaiting=True
-            )
+            data = advance_status(root, phase="IMPLEMENT", evidence_ok=False, allow_awaiting=True)
             self.assertTrue(data.get("awaiting_agent"))
             self.assertEqual(data.get("phase", "DEFINE"), "DEFINE")  # not completed
 

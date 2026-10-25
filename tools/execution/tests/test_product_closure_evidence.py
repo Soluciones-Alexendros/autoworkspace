@@ -1,4 +1,5 @@
 """Product closure V01–V12: strict evidence, phase semantics, content confinement."""
+
 from __future__ import annotations
 
 import json
@@ -51,9 +52,7 @@ def test_v01_succeeded_only_rejected(tmp_path):
     ed = tmp_path / ".autoworkspace" / "evidence"
     ed.mkdir()
     # Hand-craft minimal JSON (succeeded + uuid filename, no bindings)
-    (ed / f"{rid}.json").write_text(
-        json.dumps({"outcome": "succeeded", "run_id": rid, "schema_version": 1})
-    )
+    (ed / f"{rid}.json").write_text(json.dumps({"outcome": "succeeded", "run_id": rid, "schema_version": 1}))
     with pytest.raises(ValueError, match="missing required|schema|plan_digest|phase"):
         load_evidence(tmp_path, rid, revalidate_content=False)
 

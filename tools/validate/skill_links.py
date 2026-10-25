@@ -7,6 +7,7 @@ Comprueba que todo enlace relativo [t](ruta) apunte a un fichero existente
 Cubre: skills/, docs/, .github/, tools/, README.md y CHANGELOG.md.
 Exit 0 sin rotos; 1 con rotos.
 """
+
 import re
 import sys
 from pathlib import Path
@@ -109,7 +110,8 @@ def check_md(md: Path) -> None:
 
 def main() -> int:
     mds = sorted(
-        p for p in ROOT.rglob("*.md")
+        p
+        for p in ROOT.rglob("*.md")
         if ".git" not in p.parts
         and "__pycache__" not in p.parts
         and ".archivado" not in str(p)

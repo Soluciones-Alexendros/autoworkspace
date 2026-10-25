@@ -1,4 +1,5 @@
 """Tests session_logger.py: --help, inválidos, error I/O -> 1, dorada log_event."""
+
 import os
 import subprocess
 import sys
@@ -11,11 +12,16 @@ SCRIPT = "session_logger.py"
 
 def _run(*args, env=None):
     import os as _os
+
     e = dict(_os.environ)
     if env:
         e.update(env)
     return subprocess.run(
-        [sys.executable, SCRIPT, *args], capture_output=True, text=True, cwd=".", env=e,
+        [sys.executable, SCRIPT, *args],
+        capture_output=True,
+        text=True,
+        cwd=".",
+        env=e,
     )
 
 
@@ -43,6 +49,7 @@ def test_main_crea_log_en_tmp(tmp_path):
 def test_error_io_exit1(monkeypatch):
     def _boom(*a, **k):
         raise OSError("disco simulado")
+
     monkeypatch.setattr(session_logger.os, "makedirs", _boom)
     assert session_logger.main(["--log-dir", "/tmp/irrelevante-xyz", "--session-id", "s"]) == 1
 
@@ -60,6 +67,7 @@ def test_log_event_golden(tmp_path, monkeypatch):
 
 
 # --- session_logger additional tests for coverage ---
+
 
 def test_session_logger_init_log(tmp_path, monkeypatch):
     logdir = str(tmp_path / "logs3")
@@ -81,6 +89,7 @@ def test_session_logger_init_log(tmp_path, monkeypatch):
 def test_session_logger_ensure_log_dir_fallback(tmp_path, monkeypatch):
     def _boom(*a, **k):
         raise OSError("disco simulado")
+
     monkeypatch.setattr(session_logger, "LOG_DIR", "/invalid/path")
     monkeypatch.setattr(session_logger.os, "makedirs", _boom)
     # Should fallback to /tmp/mantenimiento-linux/logs

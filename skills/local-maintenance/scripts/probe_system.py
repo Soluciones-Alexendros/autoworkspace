@@ -115,12 +115,10 @@ def get_systemd_info() -> dict:
 
     failed_services = unit_names("systemctl --failed --no-legend --no-pager 2>/dev/null")
     enabled_services = unit_names(
-        "systemctl list-unit-files --type=service --state=enabled "
-        "--no-legend --no-pager 2>/dev/null"
+        "systemctl list-unit-files --type=service --state=enabled --no-legend --no-pager 2>/dev/null"
     )
     running_services = unit_names(
-        "systemctl list-units --type=service --state=running "
-        "--no-legend --no-pager 2>/dev/null"
+        "systemctl list-units --type=service --state=running --no-legend --no-pager 2>/dev/null"
     )
     boot_time = run("systemd-analyze 2>/dev/null | head -1", timeout=15).strip()
     blame_out = run("systemd-analyze blame --no-pager 2>/dev/null | head -20", timeout=15)
@@ -159,11 +157,7 @@ def get_network_info() -> dict:
         try:
             data = json.loads(ip_out)
             for iface in data:
-                addrs = [
-                    a.get("local")
-                    for a in iface.get("addr_info", [])
-                    if a.get("family") in ("inet", "inet6")
-                ]
+                addrs = [a.get("local") for a in iface.get("addr_info", []) if a.get("family") in ("inet", "inet6")]
                 interfaces.append({"name": iface.get("ifname"), "addr": addrs})
         except json.JSONDecodeError:
             interfaces = []
@@ -197,12 +191,8 @@ def get_package_info(pkg_mgr: str) -> dict:
         cache_size_mb = to_int(run("du -sm /var/cache/pacman/pkg 2>/dev/null | cut -f1", timeout=30).strip())
     elif pkg_mgr == "apt":
         pkg_count = to_int(run("dpkg -l 2>/dev/null | grep '^ii' | wc -l", timeout=30).strip())
-        orphan_count = to_int(
-            run("apt autoremove --dry-run 2>/dev/null | grep '^Remv' | wc -l", timeout=60).strip()
-        )
-        foreign_count = to_int(
-            run("apt list --manual-installed 2>/dev/null | tail -n +2 | wc -l", timeout=60).strip()
-        )
+        orphan_count = to_int(run("apt autoremove --dry-run 2>/dev/null | grep '^Remv' | wc -l", timeout=60).strip())
+        foreign_count = to_int(run("apt list --manual-installed 2>/dev/null | tail -n +2 | wc -l", timeout=60).strip())
         pacnew_count = to_int(
             run("find /etc -name '*.dpkg-*' -o -name '*.ucf-*' 2>/dev/null | wc -l", timeout=30).strip()
         )
@@ -237,9 +227,7 @@ def get_journal_info() -> dict:
         run("journalctl -p 0..3 --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", timeout=30).strip()
     )
 
-    coredumps = to_int(
-        run("coredumpctl list 2>/dev/null | tail -1 | awk '{print $1}'", timeout=15).strip()
-    )
+    coredumps = to_int(run("coredumpctl list 2>/dev/null | tail -1 | awk '{print $1}'", timeout=15).strip())
 
     return {"disk_usage": disk_usage, "errors_24h": errors_24h, "coredumps": coredumps}
 
@@ -249,14 +237,9 @@ def get_firmware_info() -> dict:
     updates_available = 0
     devices = 0
     if fwupd_available:
-        updates_available = to_int(
-            run("fwupdmgr get-updates 2>/dev/null | grep -c '^Device:'", timeout=30).strip()
-        )
-        devices = to_int(
-            run("fwupdmgr get-devices 2>/dev/null | grep -c '^Device:'", timeout=30).strip()
-        )
-    return {"fwupd_available": fwupd_available, "updates_available": updates_available,
-            "devices": devices}
+        updates_available = to_int(run("fwupdmgr get-updates 2>/dev/null | grep -c '^Device:'", timeout=30).strip())
+        devices = to_int(run("fwupdmgr get-devices 2>/dev/null | grep -c '^Device:'", timeout=30).strip())
+    return {"fwupd_available": fwupd_available, "updates_available": updates_available, "devices": devices}
 
 
 def get_modern_stack() -> dict:

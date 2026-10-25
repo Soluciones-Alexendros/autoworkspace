@@ -3,16 +3,18 @@
 Exit codes: 0 OK · 1 error de datos/render · 2 error de uso/IO/red.
 Degradación documentada: HTML corrupto no aborta (checks parciales, error None).
 """
+
+import importlib.util
 import json
 import os
 import sys
 import urllib.error
-import importlib.util
 
 import pytest
 
 # Cargar módulos desde scripts/ explícitamente para evitar colisiones con web-compliance
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "..", "scripts")
+
 
 def _load_module(name):
     path = os.path.join(SCRIPTS_DIR, f"{name}.py")
@@ -23,6 +25,7 @@ def _load_module(name):
     sys.modules[f"web_compliance_{name}"] = module
     spec.loader.exec_module(module)
     return module
+
 
 audit_page = _load_module("audit_page")
 contrast = _load_module("contrast")
@@ -59,6 +62,7 @@ def test_contrast_selftest_interno_pasa():
 
 # ---------------------------------------------------------------- score
 
+
 def test_score_page_pass_dorado():
     res = audit_page.audit(file=os.path.join(FIX, "page_pass.html"))
     assert res["error"] is None
@@ -79,14 +83,14 @@ def test_score_page_pass_dorado():
 def test_score_fail_critico_dorado():
     reg, _ = score_mod.load_configs()
     crit = next(c for c in reg["checks"] if c["severidad"] == "Crítico")
-    checks = [{"id": c["id"], "resultado": "FAIL" if c["id"] == crit["id"] else "PASS"}
-              for c in reg["checks"]]
+    checks = [{"id": c["id"], "resultado": "FAIL" if c["id"] == crit["id"] else "PASS"} for c in reg["checks"]]
     sc = score_mod.score(checks)
     assert sc["dictamen"] == "NEGATIVO"
     assert sc["fails_criticos"] == 1
 
 
 # ---------------------------------------------------------------- errores
+
 
 def test_audit_html_corrupto_degrada_sin_abortar():
     res = audit_page.audit(file=os.path.join(FIX, "page_corrupt.html"))
@@ -97,6 +101,7 @@ def test_audit_html_corrupto_degrada_sin_abortar():
 def test_audit_timeout_simulado_exit_2(monkeypatch, capsys):
     def _boom(url, timeout=20):
         raise TimeoutError("timed out (simulado)")
+
     monkeypatch.setattr(audit_page, "fetch", _boom)
     res = audit_page.audit(url="https://ejemplo.test/")
     assert res["error"] is not None and "TimeoutError" in res["error"]
@@ -107,6 +112,7 @@ def test_audit_timeout_simulado_exit_2(monkeypatch, capsys):
 def test_audit_dns_simulado_exit_2(monkeypatch):
     def _boom(url, timeout=20):
         raise urllib.error.URLError("Name or service not known (simulado)")
+
     monkeypatch.setattr(audit_page, "fetch", _boom)
     res = audit_page.audit(url="https://ejemplo.test/")
     assert "URLError" in res["error"]

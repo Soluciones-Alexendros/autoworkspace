@@ -4,7 +4,7 @@
 
 - **Objetivos:** Resumen de 1–2 páginas del sistema (canon o producto) y puntero al detalle en `docs/architecture/`.
 - **Estructura:** Esta meta-sección → qué hay aquí → perfiles / cajas → gates → qué no unifica → enlace a reutilización.
-- **Contenido a integrar según contexto:** En producto, **reescribe** el cuerpo: límites del *producto*, cajas reales, gates del stack. No dejes el texto «esto es el canon». Enlaza overview + ADRs propios.
+- **Contenido a integrar según contexto:** En producto, **reescribe** el cuerpo: límites del _producto_, cajas reales, gates del stack. No dejes el texto «esto es el canon». Enlaza overview + ADRs propios.
 
 Este repositorio es el **canon de plataforma** de Soluciones-Alexendros: un contrato reutilizable, no un runtime.
 
@@ -22,11 +22,11 @@ contrato de flota (docs + AGENTS + CI names)
 
 Tres perfiles, un esqueleto:
 
-| Perfil | Para quién | Extra sobre el anterior |
-|--------|------------|-------------------------|
-| **P0 Base** | Todo repo activo | README, LICENSE, SECURITY, CONTRIBUTING, CHANGELOG, CI `pipeline`+`ci-gate`, CODEOWNERS, metadatos |
-| **P1 Producto** | Webs, SaaS, apps, CLIs | `docs/`, AGENTS, ARCHITECTURE, `.env.example`, `smoke`, Renovate, issue/PR templates |
-| **P2 Público** | Contribución externa | CoC, SUPPORT, topics ricos, `security.yml` / audit, coverage publicado |
+| Perfil          | Para quién             | Extra sobre el anterior                                                                            |
+| --------------- | ---------------------- | -------------------------------------------------------------------------------------------------- |
+| **P0 Base**     | Todo repo activo       | README, LICENSE, SECURITY, CONTRIBUTING, CHANGELOG, CI `pipeline`+`ci-gate`, CODEOWNERS, metadatos |
+| **P1 Producto** | Webs, SaaS, apps, CLIs | `docs/`, AGENTS, ARCHITECTURE, `.env.example`, `smoke`, Renovate, issue/PR templates               |
+| **P2 Público**  | Contribución externa   | CoC, SUPPORT, topics ricos, `security.yml` / audit, coverage publicado                             |
 
 ## Gates
 

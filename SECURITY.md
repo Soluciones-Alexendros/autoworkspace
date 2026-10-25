@@ -16,10 +16,10 @@ Do not open a public issue for an exploitable finding in a script that runs on a
 
 ## Response windows
 
-| Step | Target |
-| --- | --- |
-| Acknowledgement | ≤ 48 business hours (Europe/Madrid) |
-| Initial assessment | ≤ 5 business days |
+| Step                            | Target                                                     |
+| ------------------------------- | ---------------------------------------------------------- |
+| Acknowledgement                 | ≤ 48 business hours (Europe/Madrid)                        |
+| Initial assessment              | ≤ 5 business days                                          |
 | Patch / disclosure coordination | By severity; no exploitable detail until mitigation exists |
 
 We acknowledge reports and, when a fix ships, credit the reporter in the changelog if they want that.
