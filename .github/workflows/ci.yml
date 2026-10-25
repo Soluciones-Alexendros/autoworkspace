@@ -17,7 +17,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: Soluciones-Alexendros/repo-standard/.github/workflows/reusable-static.yml@edf4145316d35fd58d3d1b98d631ca9d726a95e2 # v2.0.0
+    uses: ./.github/workflows/reusable-static.yml
     with:
       quality-command: |
         set -euo pipefail
@@ -27,13 +27,48 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
         )
         "$tmpdir/actionlint" -color
-        bash scripts/check-structure.sh
-      test-command: make test
+        bash scripts/check-structure.sh templates/repo
+      test-command: make -f templates/repo/Makefile test
       smoke-command: bash scripts/smoke.sh
+
+  # Jobs de quality.yml / validate.yml (required clásicos hasta P9) también en ci-gate.
+  hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Hygiene
+        run: python3 tools/validate/hygiene.py
+      - name: bash -n global
+        run: |
+          find skills tools -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: bash run-validation.sh
 
   ci-gate:
     name: ci-gate
-    needs: [pipeline]
+    needs: [pipeline, hygiene, validate]
     if: always()
     permissions: {}
     runs-on: ubuntu-latest

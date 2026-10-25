@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# Valida que el árbol canónico P0+P1 de ESTE repo existe.
-# En repos de producto, o bien no copies este script, o bien cambia REQUIRED_FILES.
+# Valida el esqueleto P0+P1 en templates/repo/ (parámetro de raíz) y el
+# árbol del canon (ADRs, stacks, reusables) en la raíz del host.
 
 set -euo pipefail
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$root"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+template_root="${1:-templates/repo}"
+if [[ ! -d "$template_root" ]]; then
+  echo "FALTA directorio de plantilla: $template_root"
+  exit 1
+fi
 
 missing=0
 errors=0
@@ -26,24 +32,31 @@ require_dir() {
   fi
 }
 
-echo "check-structure: validando canon P0+P1 en $root"
+echo "check-structure: validando plantilla P0+P1 en $template_root"
+echo "check-structure: validando canon en $repo_root"
 
-# P0
-require_file "README.md"
-require_file "LICENSE"
-require_file "CHANGELOG.md"
-require_file "SECURITY.md"
-require_file "CONTRIBUTING.md"
+# --- Plantilla de producto (templates/repo) ---
+require_file "$template_root/README.md"
+require_file "$template_root/LICENSE"
+require_file "$template_root/CHANGELOG.md"
+require_file "$template_root/SECURITY.md"
+require_file "$template_root/CONTRIBUTING.md"
+require_file "$template_root/.github/CODEOWNERS"
+require_file "$template_root/AGENTS.md"
+require_file "$template_root/ARCHITECTURE.md"
+require_file "$template_root/CODE_OF_CONDUCT.md"
+require_file "$template_root/Makefile"
+require_file "$template_root/.env.example"
+require_file "$template_root/docs/README.md"
+require_file "$template_root/.github/renovate.json"
+require_file "$template_root/.github/PULL_REQUEST_TEMPLATE.md"
+require_file "$template_root/.github/ISSUE_TEMPLATE/bug.yml"
+require_file "$template_root/.github/ISSUE_TEMPLATE/feature.yml"
+require_file "$template_root/.github/ISSUE_TEMPLATE/config.yml"
+require_dir "$template_root/.github/ISSUE_TEMPLATE"
+
+# --- Canon en la raíz del host ---
 require_file ".github/workflows/ci.yml"
-require_file ".github/CODEOWNERS"
-
-# P1 + piezas de este canon
-require_file "AGENTS.md"
-require_file "ARCHITECTURE.md"
-require_file "CODE_OF_CONDUCT.md"
-require_file "Makefile"
-require_file ".env.example"
-require_file "docs/README.md"
 require_file "docs/REUTILIZACION.md"
 require_file "docs/architecture/overview.md"
 require_file "docs/architecture/decisions/README.md"
@@ -78,11 +91,6 @@ require_file "stacks/infra/README.md"
 require_file "stacks/infra/ci.yml"
 require_file "stacks/python/README.md"
 require_file "stacks/python/ci.yml"
-require_file ".github/renovate.json"
-require_file ".github/PULL_REQUEST_TEMPLATE.md"
-require_file ".github/ISSUE_TEMPLATE/bug.yml"
-require_file ".github/ISSUE_TEMPLATE/feature.yml"
-require_file ".github/ISSUE_TEMPLATE/config.yml"
 require_file ".github/workflows/security.yml"
 require_file ".github/workflows/reusable-node.yml"
 require_file ".github/workflows/reusable-rust.yml"
@@ -96,7 +104,6 @@ require_dir "docs/guides"
 require_dir "docs/runbooks"
 require_dir "stacks"
 require_dir ".github/workflows"
-require_dir ".github/ISSUE_TEMPLATE"
 
 # Caller canónico: pipeline + ci-gate (fases viven en el reusable)
 ci=".github/workflows/ci.yml"
@@ -114,13 +121,13 @@ fi
 # Meta-sección contractual (excepto CHANGELOG: Keep a Changelog)
 purpose_heading="### Propósito de este documento"
 purpose_files=(
-  "README.md"
-  "AGENTS.md"
-  "ARCHITECTURE.md"
-  "SECURITY.md"
-  "CONTRIBUTING.md"
-  "CODE_OF_CONDUCT.md"
-  "docs/README.md"
+  "$template_root/README.md"
+  "$template_root/AGENTS.md"
+  "$template_root/ARCHITECTURE.md"
+  "$template_root/SECURITY.md"
+  "$template_root/CONTRIBUTING.md"
+  "$template_root/CODE_OF_CONDUCT.md"
+  "$template_root/docs/README.md"
   "docs/REUTILIZACION.md"
   "docs/architecture/overview.md"
   "docs/architecture/decisions/README.md"
@@ -149,7 +156,7 @@ purpose_files=(
   "stacks/rust/README.md"
   "stacks/infra/README.md"
   "stacks/python/README.md"
-  ".github/PULL_REQUEST_TEMPLATE.md"
+  "$template_root/.github/PULL_REQUEST_TEMPLATE.md"
 )
 for path in "${purpose_files[@]}"; do
   if [[ -f "$path" ]] && ! grep -Fq "$purpose_heading" "$path"; then
@@ -164,8 +171,8 @@ if [[ -f ".github/dependabot.yml" ]] || [[ -f "dependabot.yml" ]]; then
   errors=$((errors + 1))
 fi
 
-if [[ ! -s ".github/renovate.json" ]]; then
-  echo "FALTA o vacío: .github/renovate.json"
+if [[ ! -s "$template_root/.github/renovate.json" ]]; then
+  echo "FALTA o vacío: $template_root/.github/renovate.json"
   errors=$((errors + 1))
 fi
 
