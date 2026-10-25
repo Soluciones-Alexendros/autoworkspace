@@ -15,10 +15,10 @@ help:
 	@echo "  make smoke     — scripts/smoke.sh (canon contract)"
 
 quality:
-	uv run uv run python3 tools/validate/hygiene.py
+	uv run python3 tools/validate/hygiene.py
 
 validate:
-	bash run-validation.sh
+	uv run bash run-validation.sh
 
 lint: quality
 
