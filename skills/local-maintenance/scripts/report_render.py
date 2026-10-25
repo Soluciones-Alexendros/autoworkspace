@@ -499,13 +499,12 @@ def main(argv: list[str] | None = None) -> int:
 
         output = "\n".join(lines)
         ext = ".md"
+    elif args.format == "html":
+        output = render_html(data, history, prev_data)
+        ext = ".html"
     else:
-        if args.format == "html":
-            output = render_html(data, history, prev_data)
-            ext = ".html"
-        else:
-            output = render_markdown(data, history, prev_data)
-            ext = ".md"
+        output = render_markdown(data, history, prev_data)
+        ext = ".md"
 
     # Asegurar extensión correcta
     out_path = args.output

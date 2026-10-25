@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from contracts.loader import ContractError, load_execution_contract, load_yaml, validate_contract  # noqa: E402
+from contracts.loader import ContractError, load_execution_contract, load_yaml, validate_contract
 
 REQUIRED_PILOTS = ("local-maintenance", "plan-continue", "web-compliance")
 

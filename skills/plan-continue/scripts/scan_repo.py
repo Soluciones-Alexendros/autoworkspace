@@ -38,7 +38,7 @@ logger = logging.getLogger("scan_repo")
 
 def _pattern_hit(tipo: str, fichero: str, linea: int, confianza: str) -> dict:
     """Metadatos de hallazgo sin valor ni snippet (anti clear-text storage)."""
-    fp_src = f"{fichero}:{linea}:{tipo}".encode("utf-8")
+    fp_src = f"{fichero}:{linea}:{tipo}".encode()
     return {
         "tipo": tipo,
         "fichero": fichero,

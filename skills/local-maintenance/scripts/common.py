@@ -325,16 +325,15 @@ def detect_distro() -> dict[str, str]:
         family, pkg_mgr = "rhel", "dnf"
     elif any(distro_id.startswith(prefix) for prefix in ("opensuse",)) or distro_id == "sles":
         family, pkg_mgr = "suse", "zypper"
-    else:
-        # Fallback por gestor de paquetes
-        if which("pacman"):
-            family, pkg_mgr = "arch", "pacman"
-        elif which("apt"):
-            family, pkg_mgr = "debian", "apt"
-        elif which("dnf"):
-            family, pkg_mgr = "rhel", "dnf"
-        elif which("zypper"):
-            family, pkg_mgr = "suse", "zypper"
+    # Fallback por gestor de paquetes
+    elif which("pacman"):
+        family, pkg_mgr = "arch", "pacman"
+    elif which("apt"):
+        family, pkg_mgr = "debian", "apt"
+    elif which("dnf"):
+        family, pkg_mgr = "rhel", "dnf"
+    elif which("zypper"):
+        family, pkg_mgr = "suse", "zypper"
 
     return {
         "distro_id": distro_id,

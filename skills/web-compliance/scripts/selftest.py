@@ -16,7 +16,6 @@ se ejecutan en tiempo de importación por diseño.
 """
 
 import argparse
-import json
 import logging
 import os
 import sys

@@ -4,11 +4,11 @@ Exit codes: 0 OK · 1 error de datos/render · 2 error de uso/IO/red.
 Degradación documentada: HTML corrupto no aborta (checks parciales, error None).
 """
 
+import importlib.util
 import json
 import os
 import sys
 import urllib.error
-import importlib.util
 
 import pytest
 

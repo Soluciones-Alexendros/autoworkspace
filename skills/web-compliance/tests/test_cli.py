@@ -1,9 +1,8 @@
 """CLI: --help exit 0 y args inválidos exit 2 en los 4 scripts (sin red)."""
 
-import pytest
-
 import audit_page
 import contrast
+import pytest
 import report as report_mod
 import score as score_mod
 

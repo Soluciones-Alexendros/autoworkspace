@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tempfile
 import threading
 import time
 from pathlib import Path
@@ -378,7 +377,7 @@ def test_a28_concurrent_writers(tmp_path):
                 run_id=rid,
             )
             results.append(s.get("state_revision"))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(str(exc))
 
     # Sequential unique run_ids under lock — both should serialize without lost update
@@ -396,7 +395,7 @@ def test_a28_concurrent_writers(tmp_path):
                 run_id=rid,
             )
             results.append(int(s.get("state_revision") or 0))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(str(exc))
 
     t1 = threading.Thread(target=w, args=(rids[0],))
@@ -487,7 +486,7 @@ def test_content_manifest_schema(tmp_path):
 def test_v02_dispatch_plan_includes_effective_params(monkeypatch):
     """Approved plan must include keep_versions/journal/pkg_mgr used by cleaners."""
     sys.path.insert(0, str(ROOT / "skills" / "local-maintenance" / "scripts"))
-    import clean_routine as cr  # noqa: WPS433
+    import clean_routine as cr
 
     monkeypatch.setattr(cr, "SNAPSHOT_ID", "snap-v02")
     monkeypatch.setattr(cr, "PKG_MGR", "apt")
@@ -521,7 +520,7 @@ def test_v02_dispatch_plan_includes_effective_params(monkeypatch):
 def test_v02_handler_uses_plan_params_not_stale_globals(monkeypatch):
     """After approval, handler must apply keep_versions from params even if global differs."""
     sys.path.insert(0, str(ROOT / "skills" / "local-maintenance" / "scripts"))
-    import clean_routine as cr  # noqa: WPS433
+    import clean_routine as cr
 
     monkeypatch.setattr(cr, "KEEP_VERSIONS", 99)  # stale global
     monkeypatch.setattr(cr, "PKG_MGR", "wrong")

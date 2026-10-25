@@ -262,7 +262,7 @@ def _handle_create_snapshot(params: dict) -> int:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
-    import snapshot_state as snap  # noqa: WPS433
+    import snapshot_state as snap
 
     base_dir = params.get("snapshot_dir") or _snapshot_dir()
     rc = snap.create_snapshot_backend(sid, base_dir)
@@ -568,7 +568,7 @@ def main(argv: list[str] | None = None) -> int:
         # Post-clean verify is read-only
         try:
             verify_clean()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log_warn(f"verify_clean: {exc}")
 
     failed = sum(1 for a in ACTION_RESULTS if a.get("status") in ("failed", "blocked"))

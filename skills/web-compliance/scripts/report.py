@@ -39,10 +39,10 @@ SPRINT = {
 def render(sc):
     fecha = datetime.date.today().isoformat()
     L = []
-    L.append(f"# INFORME DE CIERRE — AUDITORÍA 360°")
+    L.append("# INFORME DE CIERRE — AUDITORÍA 360°")
     L.append(f"**Objetivo:** {sc.get('target') or '(sin especificar)'}  ")
     L.append(f"**Fecha:** {fecha}  ")
-    L.append(f"**Estándares:** WCAG 2.2 AA · EN 301 549 · Google Search Essentials · Consent Mode v2 · RGPD\n")
+    L.append("**Estándares:** WCAG 2.2 AA · EN 301 549 · Google Search Essentials · Consent Mode v2 · RGPD\n")
 
     L.append("## 1. Resumen ejecutivo\n")
     pct = sc["pct_global"]

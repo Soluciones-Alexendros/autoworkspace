@@ -88,7 +88,7 @@ def _assert_phase_transition(
     )
 
 
-def _with_status_lock(root: Path, fn):  # noqa: ANN001
+def _with_status_lock(root: Path, fn):
     """Acquire exclusive lock, load status, run fn(data) -> data, write, release."""
     path = status_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)

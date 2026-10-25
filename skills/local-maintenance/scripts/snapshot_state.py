@@ -257,7 +257,7 @@ def _safe_tar_members(tarball: str, restore_root: str) -> list[str] | None:
     return safe
 
 
-def _tar_data_filter(member, dest_path):  # noqa: ANN001
+def _tar_data_filter(member, dest_path):
     """Explicit extract filter for Python 3.12+; reject links/specials."""
     import tarfile
 
@@ -283,7 +283,6 @@ def rollback_snapshot(
     (tempfile under control). Absolute / caller-supplied privileged roots rejected.
     """
     import tempfile
-    import tarfile
 
     if "/" in snapshot_id or snapshot_id in ("", ".", ".."):
         logger.error("snapshot_id inválido: %r", snapshot_id)

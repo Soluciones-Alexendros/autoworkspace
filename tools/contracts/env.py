@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import NoReturn
 
 
 def require_env(name: str, help_text: str) -> str:

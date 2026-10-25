@@ -9,7 +9,6 @@ import threading
 import uuid
 from pathlib import Path
 
-import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -68,7 +67,7 @@ def test_v26_concurrent_no_lost_update(tmp_path):
                 target="/fixture",
             )
             results.append(int(s["state_revision"]))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(str(exc))
 
     ts = [threading.Thread(target=w, args=(r,)) for r in rids]

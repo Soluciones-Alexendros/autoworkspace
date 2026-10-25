@@ -10,6 +10,5 @@ SCRIPTS_PATH = os.path.join(ROOT, "scripts")
 sys.path.insert(0, SCRIPTS_PATH)
 
 # Guardar referencia para imports explícitos
-import importlib.util
 
 _WEB_COMPLIANCE_SCRIPTS = SCRIPTS_PATH

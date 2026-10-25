@@ -205,7 +205,7 @@ def run_registered(
                 run_id=run_id,
                 plan_digest=digest,
             )
-        except Exception as exc:  # noqa: BLE001 — boundary
+        except Exception as exc:
             return OpResult(
                 operation_id,
                 "failed",

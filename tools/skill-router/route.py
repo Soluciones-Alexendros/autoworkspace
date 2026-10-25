@@ -7,7 +7,12 @@ Usage:
   python tools/skill-router/route.py --interactive
 """
 
-import json, re, math, sys, pathlib, argparse
+import argparse
+import json
+import math
+import pathlib
+import re
+import sys
 from collections import Counter
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
