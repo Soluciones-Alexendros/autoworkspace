@@ -44,7 +44,9 @@ The agent must load `opencode.json` for `skills.paths` (OpenCode ≥1.18; not th
 
 ## Language
 
-Skill bodies and technical contracts are written in English. Frontmatter `description` is bilingual (EN + ES triggers) for discovery. Operator-facing plans and reports in this repo may be Spanish. Canonical detail: `docs/STANDARD.md` and `docs/repo-standard/`.
+Skill bodies and technical contracts are written in English. Frontmatter `description` is bilingual (EN + ES triggers) for discovery. Operator-facing plans and reports in this repo may be Spanish. Canonical detail: `docs/STANDARD.md` and the fleet canon under `docs/architecture/`, `docs/REUTILIZACION.md`, `stacks/`, and `templates/repo/`.
+
+This repository **complies with the fleet contract** in `templates/repo/AGENTS.md` §1–8 (ci-gate, squash auto-merge, Renovate-only, plan/* flow when adopted).
 
 ## Progressive Disclosure
 
@@ -53,7 +55,7 @@ SKILL.md body should stay focused (repo gate: ≤500 lines / token budget in `to
 ## Learned User Preferences
 
 - Al cerrar el modo BUILD de un plan (implementación completa): validar en local (pre-commit / que el proyecto monte) antes de sincronizar; crear el commit sin esperar a que el usuario diga «commit»; crear el PR según el plan; el verde local debe anticipar CI verde.
-- Tras abrir el PR: `gh pr merge <n> --auto --merge --delete-branch` (merge commit; nunca squash/rebase/`--admin`). Suscribir `subscribe_github_ci` (rama head) + `subscribe_github_pr` (scope pr), declarar qué se espera y terminar el turno — escuchar notificaciones de fallo o merge; no hacer polling/babysitting.
+- Tras abrir el PR: `gh pr merge <n> --auto --squash --delete-branch`. Prohibido `--merge`, `--rebase` y `--admin`. Flujo `plan/*`: PRs de tarea → rama `plan/<id>-<slug>`; el PR del plan → `main`. Suscribir `subscribe_github_ci` (rama head) + `subscribe_github_pr` (scope pr), declarar qué se espera y terminar el turno — escuchar notificaciones de fallo o merge; no hacer polling/babysitting.
 - Revisar o adjuntar un plan no autoriza implementación ni publicación: hace falta orden explícita del operador. Commit, push, PR, merge, tag, release y mutaciones de host requieren autorización específica; si el plan las excluye, prevalecen esos límites sobre el cierre BUILD habitual.
 - Un incremento lleva un único plan canónico (p. ej. `tasks/plan-*.md`) como fuente de verdad; no crear trackers paralelos (`SPEC.md`, `tasks/todo.md`) ni sobrescribir planes históricos. Los todos internos solo reflejan ese documento.
 - No crear skills de lenguajes de programación ni nuevas familias de skills; para dudas o fallos de lenguaje usar Context7 / documentación oficial vigente.

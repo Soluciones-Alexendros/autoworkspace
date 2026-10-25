@@ -38,7 +38,7 @@ Este código de conducta aplica tanto en espacios del proyecto como cuando una p
 
 ## Aplicación
 
-Las instancias de comportamiento abusivo, acosador o inaceptable pueden reportarse a través del [aviso privado de vulnerabilidades](https://github.com/Soluciones-Alexendros/autoworkspace/security/advisories/new) descrito en [SECURITY.md](SECURITY.md), o contactando a los mantenedores vía el canal de discusión privado del repositorio. Todas las quejas serán revisadas e investigadas de manera rápida y justa.
+Las instancias de comportamiento abusivo, acosador o inaceptable pueden reportarse en privado a **operaciones@alexendros.dev**, a [@Alexendros](https://github.com/Alexendros), o a través del [aviso privado de vulnerabilidades](https://github.com/Soluciones-Alexendros/autoworkspace/security/advisories/new) descrito en [SECURITY.md](SECURITY.md). No uses un issue público para acoso o datos sensibles. Todas las quejas serán revisadas e investigadas de manera rápida y justa.
 
 Todos los administradores de la comunidad están obligados a respetar la privacidad y la seguridad de quien reporte un incidente.
 

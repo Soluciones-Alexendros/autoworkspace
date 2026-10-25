@@ -9,7 +9,7 @@
 ## Este canon
 
 ```bash
-git clone https://github.com/Iniciativas-Alexendros/repo-standard.git
+git clone https://github.com/Soluciones-Alexendros/repo-standard.git
 cd repo-standard
 make validate
 make test

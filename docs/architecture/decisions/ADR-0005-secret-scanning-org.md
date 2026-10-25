@@ -26,7 +26,7 @@ Este ADR no introduce secretos reales ni tokens de ejemplo realistas. Tampoco pi
 
 ## Decisión
 
-1. **P0 de flota:** GitHub Secret scanning y **Push protection** están ON a nivel **organización** `Iniciativas-Alexendros` (todos los repos, incluidos privados). Validity checks ON si el plan lo permite.
+1. **P0 de flota:** GitHub Secret scanning y **Push protection** están ON a nivel **organización** `Soluciones-Alexendros` (todos los repos, incluidos privados). Validity checks ON si el plan lo permite.
 2. Repos que por plan no hereden el default de org: el Mantenedor los activa a mano; el scorecard los marca en rojo hasta entonces.
 3. Complementos recomendados (P1, no bloquean este ADR): `gitleaks` u equivalente en pre-commit; job de scan en `security.yml` si el producto ya lo tiene.
 4. Si push protection bloquea un falso positivo: bypass documentado (motivo + issue), nunca «apagar para el repo».
