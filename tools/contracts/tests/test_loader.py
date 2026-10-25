@@ -1,4 +1,5 @@
 """Contract loader and result schema tests."""
+
 from __future__ import annotations
 
 import sys
@@ -9,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from contracts.loader import ContractError, load_execution_contract, validate_contract  # noqa: E402
+from contracts.loader import load_execution_contract, validate_contract  # noqa: E402
 from contracts.result import build_result, exit_code_for, validate_result  # noqa: E402
 
 

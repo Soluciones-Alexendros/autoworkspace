@@ -1,4 +1,5 @@
 """Tests common.py: --help, args inválidos, self-check, doradas puras."""
+
 import json
 import subprocess
 import sys
@@ -11,7 +12,9 @@ SCRIPT = "common.py"
 def _run(*args):
     return subprocess.run(
         [sys.executable, SCRIPT, *args],
-        capture_output=True, text=True, cwd=".",
+        capture_output=True,
+        text=True,
+        cwd=".",
     )
 
 
@@ -64,10 +67,7 @@ def test_finding_collector_health_score_golden():
     assert hs["hygiene"] is None
     assert hs["resources"] is None
     assert hs["stability"] is None
-    covered = (
-        50 * common.CATEGORY_WEIGHTS["security"]
-        + 100 * common.CATEGORY_WEIGHTS["updates"]
-    )
+    covered = 50 * common.CATEGORY_WEIGHTS["security"] + 100 * common.CATEGORY_WEIGHTS["updates"]
     weight = common.CATEGORY_WEIGHTS["security"] + common.CATEGORY_WEIGHTS["updates"]
     assert hs["overall"] == covered // weight
     s = c.summary()
@@ -167,8 +167,11 @@ def test_check_pkg_06_si_gestor_desconocido_skip():
 def test_load_profile_family_tmp(tmp_path):
     prof = {
         "distro": {
-            "family": "debian", "package_manager": "apt",
-            "distro_id": "ubuntu", "version_id": "22.04", "version_codename": "jammy",
+            "family": "debian",
+            "package_manager": "apt",
+            "distro_id": "ubuntu",
+            "version_id": "22.04",
+            "version_codename": "jammy",
         }
     }
     p = tmp_path / "profile.json"

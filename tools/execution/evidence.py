@@ -1,4 +1,5 @@
 """Evidence store: content digests (bytes), confined artifacts, phase binding."""
+
 from __future__ import annotations
 
 import hashlib
@@ -194,9 +195,7 @@ def evidence_dir(repo: Path) -> Path:
 
 def _validate_run_id(run_id: str) -> str:
     if not run_id or not _RUN_ID_RE.match(run_id):
-        raise ValueError(
-            f"run_id must be a UUID (got {run_id!r}); path separators and free-form ids rejected"
-        )
+        raise ValueError(f"run_id must be a UUID (got {run_id!r}); path separators and free-form ids rejected")
     if "/" in run_id or "\\" in run_id or ".." in run_id:
         raise ValueError("run_id path traversal rejected")
     return run_id
@@ -334,9 +333,7 @@ def _require_nonempty_str(data: dict[str, Any], key: str) -> str:
 
 def _validate_succeeded_payload(data: dict[str, Any], *, for_complete: bool = False) -> None:
     if data.get("schema_version") != SCHEMA_VERSION:
-        raise ValueError(
-            f"evidence schema_version must be {SCHEMA_VERSION}, got {data.get('schema_version')!r}"
-        )
+        raise ValueError(f"evidence schema_version must be {SCHEMA_VERSION}, got {data.get('schema_version')!r}")
     for key in REQUIRED_SUCCEEDED_FIELDS:
         if key in ("schema_version", "outcome"):
             continue
@@ -361,11 +358,7 @@ def _validate_succeeded_payload(data: dict[str, Any], *, for_complete: bool = Fa
         verifications = data.get("verifications")
         if not isinstance(verifications, list) or not verifications:
             raise ValueError("evidence verifications required and non-empty for complete")
-        kinds = {
-            str(v.get("kind"))
-            for v in verifications
-            if isinstance(v, dict) and v.get("ok") is True
-        }
+        kinds = {str(v.get("kind")) for v in verifications if isinstance(v, dict) and v.get("ok") is True}
         missing = required_v - kinds
         if missing:
             raise ValueError(f"evidence missing required verifications: {sorted(missing)}")
@@ -538,9 +531,7 @@ def load_evidence(
             raise ValueError(f"unknown phase: {expected_phase}")
         # Exact match only — no permissive prefixes (H02)
         if op not in allowed:
-            raise ValueError(
-                f"evidence operation {op!r} cannot complete phase {expected_phase}"
-            )
+            raise ValueError(f"evidence operation {op!r} cannot complete phase {expected_phase}")
 
     if expected_skill is not None:
         if not data.get("skill"):
@@ -556,9 +547,7 @@ def load_evidence(
         if not data.get("operation_id"):
             raise ValueError("evidence missing operation_id")
         if data["operation_id"] != expected_operation:
-            raise ValueError(
-                f"evidence operation mismatch: {data['operation_id']} != {expected_operation}"
-            )
+            raise ValueError(f"evidence operation mismatch: {data['operation_id']} != {expected_operation}")
 
     return data
 

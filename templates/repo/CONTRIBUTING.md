@@ -4,9 +4,9 @@
 
 - **Objetivos:** Cómo se contribuye: ramas, commits, calidad local, checklist de PR y dónde vive cada tipo de cambio.
 - **Estructura:** Esta meta-sección → intro → Flujo → Commits → Calidad local → Checklist → Dónde va cada cosa → Issues.
-- **Contenido a integrar según contexto:** Conserva Conventional Commits y squash. Sustituye los comandos stub por los del stack. En producto, el H1 y el primer párrafo hablan del *producto*, no del canon. Merge: [ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md).
+- **Contenido a integrar según contexto:** Conserva Conventional Commits y squash. Sustituye los comandos stub por los del stack. En producto, el H1 y el primer párrafo hablan del _producto_, no del canon. Merge: [ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md).
 
-Gracias por mejorar el canon de la flota Iniciativas-Alexendros.
+Gracias por mejorar el canon de la flota Soluciones-Alexendros.
 
 Este repositorio **no es una aplicación**. Cambia contratos que otros repos copiarán: docs, CI, perfiles P0/P1/P2 y convenciones de stacks. Trata cada PR como un cambio de plataforma.
 
@@ -15,7 +15,7 @@ Este repositorio **no es una aplicación**. Cambia contratos que otros repos cop
 - `main` es sagrada: solo entra código vía PR con `ci-gate` verde.
 - Ramas: `feat/…`, `fix/…`, `docs/…`, `chore/…`, `ci/…`, `deps/…`.
 - Merge: **squash** automático. Historia lineal. Sin force-push a `main`. 0 approvals. Sin bypass admin.
-- Auto-merge humano/agente: `gh pr merge --auto --squash` cuando `ci-gate` está verde ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+- Auto-merge humano/agente: `gh pr merge --auto --squash` cuando `ci-gate` está verde ([ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
 - Etiqueta opcional **`hold`**: el job `ci-gate` falla a propósito; quítala para permitir el merge.
 - Auto-merge de Renovate: `patch` y `minor` con CI verde (clave `automerge` en renovate.json, no una etiqueta de PR). Los `major` son revisión humana.
 
@@ -51,15 +51,15 @@ En un repo de producto el mismo Makefile debe llamar a los scripts reales del st
 
 ## Dónde va cada cosa
 
-| Cambio | Sitio |
-|--------|--------|
-| Contrato para agentes | `AGENTS.md` |
-| Arquitectura del estándar | `ARCHITECTURE.md` + `docs/architecture/` |
-| Cómo aplicar a un repo ya existente | `docs/REUTILIZACION.md` |
-| Caller CI por stack | `stacks/<stack>/ci.yml` |
-| Workflows reutilizables | `.github/workflows/reusable-*.yml` |
-| Gates CI de este canon | `.github/workflows/ci.yml` (`pipeline` + `ci-gate`) |
-| Decisión de diseño | `docs/architecture/decisions/` |
+| Cambio                              | Sitio                                               |
+| ----------------------------------- | --------------------------------------------------- |
+| Contrato para agentes               | `AGENTS.md`                                         |
+| Arquitectura del estándar           | `ARCHITECTURE.md` + `docs/architecture/`            |
+| Cómo aplicar a un repo ya existente | `docs/REUTILIZACION.md`                             |
+| Caller CI por stack                 | `stacks/<stack>/ci.yml`                             |
+| Workflows reutilizables             | `.github/workflows/reusable-*.yml`                  |
+| Gates CI de este canon              | `.github/workflows/ci.yml` (`pipeline` + `ci-gate`) |
+| Decisión de diseño                  | `docs/architecture/decisions/`                      |
 
 ## Issues
 

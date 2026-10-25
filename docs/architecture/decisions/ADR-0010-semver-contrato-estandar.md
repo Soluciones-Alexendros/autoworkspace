@@ -14,17 +14,17 @@ priority: "P1"
 
 ### Propósito de este documento
 
-- **Objetivos:** Versionar el *contrato* de `repo-standard` (no un runtime) y exigir que los repos declaren `repo-standard ≥x.y`.
+- **Objetivos:** Versionar el _contrato_ de `repo-standard` (no un runtime) y exigir que los repos declaren `repo-standard ≥x.y`.
 - **Estructura:** Frontmatter → H1 → esta meta-sección → Contexto, Decisión, Consecuencias, Prioridad, Checklist, Alternativas, Relacionados.
 - **Contenido a integrar según contexto:** No copies este ADR. En producto: una línea en README o `docs/REUTILIZACION.md` («cumple repo-standard ≥x.y»). No inventes versiones; usa el tag publicado de este canon.
 
 ## Contexto
 
-El CHANGELOG ya cita Keep a Changelog y SemVer, pero no hay tag ni regla de *qué* es breaking. Renombrar el job `quality` a `lint`, o exigir un job nuevo como required, rompe protection y CI de toda la flota sin que nadie sepa qué versión del canon siguen.
+El CHANGELOG ya cita Keep a Changelog y SemVer, pero no hay tag ni regla de _qué_ es breaking. Renombrar el job `quality` a `lint`, o exigir un job nuevo como required, rompe protection y CI de toda la flota sin que nadie sepa qué versión del canon siguen.
 
 ## Decisión
 
-1. Este repo publica **SemVer del contrato** (tags `vX.Y.Z`). El CHANGELOG de raíz es la fuente (Keep a Changelog). El esqueleto inicial ([#1](https://github.com/Iniciativas-Alexendros/repo-standard/pull/1)) es la línea base **1.0.0** cuando se etiquete.
+1. Este repo publica **SemVer del contrato** (tags `vX.Y.Z`). El CHANGELOG de raíz es la fuente (Keep a Changelog). El esqueleto inicial ([#1](https://github.com/Soluciones-Alexendros/repo-standard/pull/1)) es la línea base **1.0.0** cuando se etiquete.
 2. **Breaking (MAJOR):**
    - Renombrar o eliminar el job **required** `ci-gate` ([ADR-0013](./ADR-0013-check-unico-ci-gate.md))
    - Quitar un archivo P0 del árbol contractual o cambiar su nombre canónico

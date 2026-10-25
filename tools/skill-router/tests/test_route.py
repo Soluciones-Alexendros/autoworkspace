@@ -1,4 +1,5 @@
 """Integration tests for deterministic skill routing."""
+
 import importlib.util
 from pathlib import Path
 

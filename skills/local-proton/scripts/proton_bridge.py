@@ -8,6 +8,7 @@ no añadir features. Preferir los MCP tools de Mail cuando existan.
 Credenciales por entorno: PROTON_USER (email Proton), PROTON_PASS (password de Bridge).
 Subcomandos: unread, search, fetch, folders, mark, send.
 """
+
 import argparse
 import email
 import email.header
@@ -66,8 +67,7 @@ def require_creds():
     _, _, _, _, user, password = get_config()
     if not user or not password:
         raise ProtonBridgeError(
-            "Faltan PROTON_USER / PROTON_PASS en el entorno. "
-            "Usa la contraseña generada por Bridge, no la de la cuenta."
+            "Faltan PROTON_USER / PROTON_PASS en el entorno. Usa la contraseña generada por Bridge, no la de la cuenta."
         )
     return user, password
 
@@ -79,8 +79,7 @@ def connect(imap_host=None, imap_port=None):
     port = imap_port if imap_port is not None else cfg_port
     if not user or not password:
         raise ProtonBridgeError(
-            "Faltan PROTON_USER / PROTON_PASS en el entorno. "
-            "Usa la contraseña generada por Bridge, no la de la cuenta."
+            "Faltan PROTON_USER / PROTON_PASS en el entorno. Usa la contraseña generada por Bridge, no la de la cuenta."
         )
     try:
         imap = imaplib.IMAP4(host, port)
@@ -98,8 +97,7 @@ def connect_smtp(smtp_host=None, smtp_port=None):
     port = smtp_port if smtp_port is not None else cfg_port
     if not user or not password:
         raise ProtonBridgeError(
-            "Faltan PROTON_USER / PROTON_PASS en el entorno. "
-            "Usa la contraseña generada por Bridge, no la de la cuenta."
+            "Faltan PROTON_USER / PROTON_PASS en el entorno. Usa la contraseña generada por Bridge, no la de la cuenta."
         )
     try:
         server = smtplib.SMTP(host, port)
@@ -260,26 +258,38 @@ def build_parser():
     p = argparse.ArgumentParser(description="Cliente Proton Mail Bridge")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    sp = sub.add_parser("unread"); sp.add_argument("--limit", type=int, default=50); sp.set_defaults(fn=cmd_unread)
+    sp = sub.add_parser("unread")
+    sp.add_argument("--limit", type=int, default=50)
+    sp.set_defaults(fn=cmd_unread)
 
     sp = sub.add_parser("search")
     sp.add_argument("--from", dest="from")
-    sp.add_argument("--subject"); sp.add_argument("--text"); sp.add_argument("--since")
-    sp.add_argument("--unread", action="store_true"); sp.add_argument("--limit", type=int, default=50)
+    sp.add_argument("--subject")
+    sp.add_argument("--text")
+    sp.add_argument("--since")
+    sp.add_argument("--unread", action="store_true")
+    sp.add_argument("--limit", type=int, default=50)
     sp.set_defaults(fn=cmd_search)
 
-    sp = sub.add_parser("fetch"); sp.add_argument("--uid", required=True)
-    sp.add_argument("--headers", action="store_true"); sp.set_defaults(fn=cmd_fetch)
+    sp = sub.add_parser("fetch")
+    sp.add_argument("--uid", required=True)
+    sp.add_argument("--headers", action="store_true")
+    sp.set_defaults(fn=cmd_fetch)
 
-    sp = sub.add_parser("folders"); sp.set_defaults(fn=cmd_folders)
+    sp = sub.add_parser("folders")
+    sp.set_defaults(fn=cmd_folders)
 
-    sp = sub.add_parser("mark"); sp.add_argument("--uid", required=True)
+    sp = sub.add_parser("mark")
+    sp.add_argument("--uid", required=True)
     g = sp.add_mutually_exclusive_group(required=True)
-    g.add_argument("--read", action="store_true"); g.add_argument("--unread", action="store_true")
+    g.add_argument("--read", action="store_true")
+    g.add_argument("--unread", action="store_true")
     sp.set_defaults(fn=cmd_mark)
 
-    sp = sub.add_parser("send"); sp.add_argument("--to", required=True)
-    sp.add_argument("--subject", required=True); sp.add_argument("--body", required=True)
+    sp = sub.add_parser("send")
+    sp.add_argument("--to", required=True)
+    sp.add_argument("--subject", required=True)
+    sp.add_argument("--body", required=True)
     sp.add_argument(
         "--approve-send",
         default="",

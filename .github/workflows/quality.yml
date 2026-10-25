@@ -14,11 +14,32 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
           python-version: "3.12"
+      - run: uv sync --frozen
       - name: Hygiene
-        run: python3 tools/validate/hygiene.py
+        run: uv run python3 tools/validate/hygiene.py
+      - name: Private patterns denylist (HYGIENE_DENYLIST)
+        env:
+          HYGIENE_DENYLIST: ${{ secrets.HYGIENE_DENYLIST }}
+          AUTOWORKSPACE_PRIVATE_PATTERNS: ${{ secrets.HYGIENE_DENYLIST }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HYGIENE_DENYLIST:-}" ]; then
+            echo "::warning::HYGIENE_DENYLIST secret absent — step not_run (never false green). Task for Alejandro."
+            echo "not_run: HYGIENE_DENYLIST secret not configured"
+            exit 0
+          fi
+          echo "$HYGIENE_DENYLIST" | while IFS= read -r pat; do
+            [ -z "$pat" ] && continue
+            if git grep -nEe "$pat" -- . ':(exclude).git' >/dev/null 2>&1; then
+              echo "::error::denylist pattern matched in tree: $pat"
+              git grep -nEe "$pat" -- . ':(exclude).git' || true
+              exit 1
+            fi
+          done
+          echo "denylist OK"
       - name: bash -n global
         run: |
           find skills tools -name '*.sh' -print0 | xargs -0 -n1 bash -n

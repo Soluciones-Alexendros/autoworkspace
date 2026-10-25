@@ -8,14 +8,14 @@
 
 ## Pirámide de la flota
 
-| Capa | Job (dentro del reusable) | Qué demuestra |
-|------|---------------------------|----------------|
-| Calidad estática | `quality` | format, lint, types, estructura, título de PR |
-| Unit / function | `test` | comportamiento de dominio + coverage |
-| Artefacto | `build` | el producto compila / genera output |
-| Rutas / resultado | `smoke` | el artefacto responde (barato, ≤5 min) |
-| UI / flujos | `e2e` (opcional) | Playwright u equivalente en webs P1 |
-| Agregado required | **`ci-gate`** (caller) | todas las fases en success ([ADR-0013](../architecture/decisions/ADR-0013-check-unico-ci-gate.md)) |
+| Capa              | Job (dentro del reusable) | Qué demuestra                                                                                      |
+| ----------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
+| Calidad estática  | `quality`                 | format, lint, types, estructura, título de PR                                                      |
+| Unit / function   | `test`                    | comportamiento de dominio + coverage                                                               |
+| Artefacto         | `build`                   | el producto compila / genera output                                                                |
+| Rutas / resultado | `smoke`                   | el artefacto responde (barato, ≤5 min)                                                             |
+| UI / flujos       | `e2e` (opcional)          | Playwright u equivalente en webs P1                                                                |
+| Agregado required | **`ci-gate`** (caller)    | todas las fases en success ([ADR-0013](../architecture/decisions/ADR-0013-check-unico-ci-gate.md)) |
 
 El ruleset / branch protection exige **solo** `ci-gate` (app 15368).
 

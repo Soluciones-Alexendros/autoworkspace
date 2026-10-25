@@ -10,6 +10,7 @@ Uso:
 
 Códigos de salida: 0 = OK, 2 = error de obtención/parseo (ver campo "error").
 """
+
 import argparse
 import json
 import logging
@@ -39,25 +40,25 @@ class PageParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.title = ""
         self._in_title = False
-        self.meta = {}            # name/property -> content (lista)
+        self.meta = {}  # name/property -> content (lista)
         self.html_attrs = {}
         self.canonical = []
         self.hreflang = []
-        self.headings = []        # (nivel, texto)
+        self.headings = []  # (nivel, texto)
         self._heading_level = None
         self._heading_text = []
-        self.imgs = []            # dict(src, alt, has_alt, w, h, loading)
-        self.links = []           # dict(href, text)
+        self.imgs = []  # dict(src, alt, has_alt, w, h, loading)
+        self.links = []  # dict(href, text)
         self._link_href = None
         self._link_text = []
-        self.ldjson_raw = []      # contenido crudo de <script type=application/ld+json>
+        self.ldjson_raw = []  # contenido crudo de <script type=application/ld+json>
         self._in_ldjson = False
         self._ldjson_buf = []
-        self.inputs = []          # dict(id, type, aria_label, aria_labelledby)
+        self.inputs = []  # dict(id, type, aria_label, aria_labelledby)
         self.labels_for = []
         self.has_viewport = None
         self.charset = None
-        self.resources = []       # src/href de recursos (para mixed content)
+        self.resources = []  # src/href de recursos (para mixed content)
         self.text_chunks = []
 
     # -- helpers ------------------------------------------------------
@@ -90,12 +91,15 @@ class PageParser(HTMLParser):
             self._heading_level = int(tag[1])
             self._heading_text = []
         elif tag == "img":
-            self.imgs.append({
-                "src": a.get("src", "")[:200],
-                "alt": a.get("alt"),
-                "w": a.get("width"), "h": a.get("height"),
-                "loading": a.get("loading"),
-            })
+            self.imgs.append(
+                {
+                    "src": a.get("src", "")[:200],
+                    "alt": a.get("alt"),
+                    "w": a.get("width"),
+                    "h": a.get("height"),
+                    "loading": a.get("loading"),
+                }
+            )
             if a.get("src"):
                 self.resources.append(a["src"])
         elif tag == "a":
@@ -110,11 +114,14 @@ class PageParser(HTMLParser):
         elif tag in ("input", "select", "textarea"):
             if a.get("type", "text").lower() in ("hidden", "submit", "button"):
                 return
-            self.inputs.append({
-                "id": a.get("id"), "type": a.get("type", "text"),
-                "aria_label": a.get("aria-label"),
-                "aria_labelledby": a.get("aria-labelledby"),
-            })
+            self.inputs.append(
+                {
+                    "id": a.get("id"),
+                    "type": a.get("type", "text"),
+                    "aria_label": a.get("aria-label"),
+                    "aria_labelledby": a.get("aria-labelledby"),
+                }
+            )
         elif tag == "label" and a.get("for"):
             self.labels_for.append(a["for"])
 
@@ -149,6 +156,7 @@ class PageParser(HTMLParser):
 # status: PASS | FAIL | WARN | NA
 # ----------------------------------------------------------------------
 
+
 def _res(key, status, evidencia, detalle=""):
     return {"script_key": key, "status": status, "evidencia": evidencia, "detalle": detalle}
 
@@ -161,20 +169,28 @@ def check_https(url, final_url, headers, local):
     if not https:
         return _res("https_security", "FAIL", f"URL final: {final_url}", "Sin HTTPS")
     st = "PASS" if hsts else "WARN"
-    return _res("https_security", st, f"HTTPS OK; HSTS={'sí' if hsts else 'no'}",
-                "" if hsts else "Falta cabecera Strict-Transport-Security")
+    return _res(
+        "https_security",
+        st,
+        f"HTTPS OK; HSTS={'sí' if hsts else 'no'}",
+        "" if hsts else "Falta cabecera Strict-Transport-Security",
+    )
 
 
 def check_security_headers(headers, local):
     if local:
         return _res("security_headers", "NA", "Sin cabeceras en modo offline")
-    wanted = ["strict-transport-security", "content-security-policy",
-              "x-content-type-options", "referrer-policy", "permissions-policy",
-              "x-frame-options"]
+    wanted = [
+        "strict-transport-security",
+        "content-security-policy",
+        "x-content-type-options",
+        "referrer-policy",
+        "permissions-policy",
+        "x-frame-options",
+    ]
     present = [h for h in wanted if h in headers]
     st = "PASS" if len(present) >= 4 else ("WARN" if len(present) >= 2 else "FAIL")
-    return _res("security_headers", st, f"{len(present)}/6: {', '.join(present)}",
-                "Mínimo 4 cabeceras de seguridad")
+    return _res("security_headers", st, f"{len(present)}/6: {', '.join(present)}", "Mínimo 4 cabeceras de seguridad")
 
 
 def check_title(p):
@@ -205,15 +221,15 @@ def check_canonical(p, final_url, local):
         return _res("canonical", "PASS", f"canonical={href}")
     same = href.rstrip("/") == final_url.rstrip("/")
     st = "PASS" if same else "WARN"
-    return _res("canonical", st, f"canonical={href}",
-                "" if same else f"Canonical no autorreferenciado (final={final_url})")
+    return _res(
+        "canonical", st, f"canonical={href}", "" if same else f"Canonical no autorreferenciado (final={final_url})"
+    )
 
 
 def check_robots_meta(p):
     vals = ",".join(p.meta.get("robots", [])).lower()
     if "noindex" in vals:
-        return _res("robots_meta", "WARN", f"robots='{vals}'",
-                    "Página noindex: confirmar que es intencionado")
+        return _res("robots_meta", "WARN", f"robots='{vals}'", "Página noindex: confirmar que es intencionado")
     return _res("robots_meta", "PASS", f"robots='{vals or 'no explícito (index,follow)'}'")
 
 
@@ -223,8 +239,12 @@ def check_hreflang(p):
     codes = [h["hreflang"].lower() for h in p.hreflang]
     valid = all(re.fullmatch(r"[a-z]{2,3}(-[a-z0-9]{2,8})*|x-default", c) for c in codes)
     st = "PASS" if valid and "x-default" in codes else ("WARN" if valid else "FAIL")
-    return _res("hreflang", st, f"hreflang: {', '.join(codes)}",
-                "" if st == "PASS" else "Falta x-default o códigos ISO inválidos")
+    return _res(
+        "hreflang",
+        st,
+        f"hreflang: {', '.join(codes)}",
+        "" if st == "PASS" else "Falta x-default o códigos ISO inválidos",
+    )
 
 
 def check_headings(p):
@@ -251,8 +271,12 @@ def check_img_alt(p):
     cov = with_alt / total
     st = "PASS" if cov >= 0.98 else ("WARN" if cov >= 0.9 else "FAIL")
     missing = [i["src"] for i in p.imgs if i["alt"] is None][:5]
-    return _res("img_alt_coverage", st, f"{with_alt}/{total} imágenes con atributo alt ({cov:.0%})",
-                "" if st == "PASS" else f"Sin alt: {missing}")
+    return _res(
+        "img_alt_coverage",
+        st,
+        f"{with_alt}/{total} imágenes con atributo alt ({cov:.0%})",
+        "" if st == "PASS" else f"Sin alt: {missing}",
+    )
 
 
 def check_img_dimensions(p):
@@ -262,8 +286,9 @@ def check_img_dimensions(p):
     withdim = sum(1 for i in p.imgs if i["w"] and i["h"])
     cov = withdim / total
     st = "PASS" if cov >= 0.95 else "WARN"
-    return _res("img_dimensions", st, f"{withdim}/{total} con width/height ({cov:.0%})",
-                "Reservar espacio para evitar CLS")
+    return _res(
+        "img_dimensions", st, f"{withdim}/{total} con width/height ({cov:.0%})", "Reservar espacio para evitar CLS"
+    )
 
 
 def check_html_lang(p):
@@ -271,8 +296,9 @@ def check_html_lang(p):
     if not lang:
         return _res("html_lang", "FAIL", "<html> sin atributo lang", "Añadir lang ISO 639-1 (WCAG 3.1.1)")
     valid = bool(re.fullmatch(r"[a-z]{2,3}(-[a-z0-9]{2,8})*", lang))
-    return _res("html_lang", "PASS" if valid else "FAIL", f"lang='{lang}'",
-                "" if valid else "Código de idioma inválido")
+    return _res(
+        "html_lang", "PASS" if valid else "FAIL", f"lang='{lang}'", "" if valid else "Código de idioma inválido"
+    )
 
 
 def check_viewport(p):
@@ -288,8 +314,12 @@ def check_skip_link(p):
         href = l["href"].strip()
         if href.startswith("#") and re.search(r"(salt|skip|contenido|content|main)", l["text"], re.I):
             return _res("skip_link", "PASS", f"Skip link -> {href} ('{l['text'][:50]}')")
-    return _res("skip_link", "FAIL", "No se detectó enlace 'saltar al contenido'",
-                "Añadir <a href='#main'> visible al foco (WCAG 2.4.1)")
+    return _res(
+        "skip_link",
+        "FAIL",
+        "No se detectó enlace 'saltar al contenido'",
+        "Añadir <a href='#main'> visible al foco (WCAG 2.4.1)",
+    )
 
 
 def check_form_labels(p):
@@ -302,14 +332,22 @@ def check_form_labels(p):
     total = len(p.inputs)
     cov = labeled / total
     st = "PASS" if cov == 1.0 else ("WARN" if cov >= 0.8 else "FAIL")
-    return _res("form_labels", st, f"{labeled}/{total} campos con nombre accesible",
-                "" if st == "PASS" else "Asociar <label for> o aria-label (WCAG 1.3.1/3.3.2)")
+    return _res(
+        "form_labels",
+        st,
+        f"{labeled}/{total} campos con nombre accesible",
+        "" if st == "PASS" else "Asociar <label for> o aria-label (WCAG 1.3.1/3.3.2)",
+    )
 
 
 def check_jsonld(p):
     if not p.ldjson_raw:
-        return _res("jsonld", "WARN", "Sin datos estructurados JSON-LD",
-                    "Añadir Organization + BreadcrumbList + tipo por plantilla")
+        return _res(
+            "jsonld",
+            "WARN",
+            "Sin datos estructurados JSON-LD",
+            "Añadir Organization + BreadcrumbList + tipo por plantilla",
+        )
     types, errors = [], 0
     for raw in p.ldjson_raw:
         try:
@@ -331,15 +369,23 @@ def check_mixed_content(p, final_url, local):
         return _res("mixed_content", "NA", "No aplica (offline o sin HTTPS)")
     mixed = [r for r in p.resources if r.startswith("http://")]
     st = "PASS" if not mixed else "FAIL"
-    return _res("mixed_content", st, f"{len(mixed)} recursos http:// en página HTTPS",
-                "" if not mixed else f"Ejemplos: {mixed[:3]}")
+    return _res(
+        "mixed_content",
+        st,
+        f"{len(mixed)} recursos http:// en página HTTPS",
+        "" if not mixed else f"Ejemplos: {mixed[:3]}",
+    )
 
 
 def check_content_parity(p):
     words = len(" ".join(p.text_chunks).split())
     st = "PASS" if words >= 50 else "WARN"
-    return _res("content_parity", st, f"~{words} palabras de texto en HTML inicial",
-                "" if st == "PASS" else "Posible dependencia de renderizado JS: verificar DOM renderizado")
+    return _res(
+        "content_parity",
+        st,
+        f"~{words} palabras de texto en HTML inicial",
+        "" if st == "PASS" else "Posible dependencia de renderizado JS: verificar DOM renderizado",
+    )
 
 
 def check_charset(p):
@@ -352,6 +398,7 @@ def check_charset(p):
 # ----------------------------------------------------------------------
 # Fetch de robots.txt y sitemap.xml
 # ----------------------------------------------------------------------
+
 
 def fetch(url, timeout=TIMEOUT):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
@@ -399,8 +446,9 @@ def check_sitemap(base, robots_text_url, local):
         except NETWORK_ERRORS as e:
             logger.debug("sitemap candidato %s falló: %s: %s", cand, type(e).__name__, e)
             continue
-    return _res("sitemap", "WARN", "No se encontró sitemap.xml válido",
-                "Generar sitemap y declararlo en robots.txt y GSC")
+    return _res(
+        "sitemap", "WARN", "No se encontró sitemap.xml válido", "Generar sitemap y declararlo en robots.txt y GSC"
+    )
 
 
 def check_og_tags(p):
@@ -409,11 +457,14 @@ def check_og_tags(p):
     required = ["og:title", "og:description", "og:image"]
     missing = [k for k in required if not og.get(k)]
     if not og and not tw:
-        return _res("og_tags", "WARN", "Sin Open Graph ni Twitter Cards",
-                    "Añadir og:title, og:description, og:image (>=1200x630)")
+        return _res(
+            "og_tags",
+            "WARN",
+            "Sin Open Graph ni Twitter Cards",
+            "Añadir og:title, og:description, og:image (>=1200x630)",
+        )
     if missing:
-        return _res("og_tags", "WARN", f"Faltan: {', '.join(missing)}",
-                    "Completar etiquetas Open Graph obligatorias")
+        return _res("og_tags", "WARN", f"Faltan: {', '.join(missing)}", "Completar etiquetas Open Graph obligatorias")
     return _res("og_tags", "PASS", f"OG completo ({len(og)} tags); Twitter: {len(tw)} tags")
 
 
@@ -422,19 +473,27 @@ def check_cookie_banner(p):
     htmlish = text + " ".join(l["text"].lower() for l in p.links)
     hits = [k for k in ("cookie", "consent", "consentimiento", "privacidad") if k in htmlish]
     if hits:
-        return _res("cookie_banner", "PASS", f"Señales detectadas: {', '.join(hits)}",
-                    "Verificar manualmente bloqueo previo y granularidad (RGPD/ePrivacy)")
-    return _res("cookie_banner", "WARN", "No se detectaron señales de CMP/cookies",
-                "Si hay analítica o pauta, se requiere CMP con Consent Mode v2")
+        return _res(
+            "cookie_banner",
+            "PASS",
+            f"Señales detectadas: {', '.join(hits)}",
+            "Verificar manualmente bloqueo previo y granularidad (RGPD/ePrivacy)",
+        )
+    return _res(
+        "cookie_banner",
+        "WARN",
+        "No se detectaron señales de CMP/cookies",
+        "Si hay analítica o pauta, se requiere CMP con Consent Mode v2",
+    )
 
 
 # ----------------------------------------------------------------------
 # Orquestador
 # ----------------------------------------------------------------------
 
+
 def audit(url=None, file=None):
-    results = {"target": url or file, "modo": "offline" if file else "online",
-               "checks": [], "error": None}
+    results = {"target": url or file, "modo": "offline" if file else "online", "checks": [], "error": None}
     try:
         if file:
             try:
@@ -456,8 +515,7 @@ def audit(url=None, file=None):
                 logger.error("fallo de red al obtener %s: %s: %s", url, type(e).__name__, e)
                 results["error"] = f"{type(e).__name__}: {e}"
                 return results
-            results["http"] = {"status": status, "final_url": final_url,
-                               "ttfb_ms": round(ttfb)}
+            results["http"] = {"status": status, "final_url": final_url, "ttfb_ms": round(ttfb)}
     except (TypeError, ValueError) as e:
         logger.error("URL objetivo inválida %r: %s: %s", url, type(e).__name__, e)
         results["error"] = f"{type(e).__name__}: {e}"
@@ -500,8 +558,7 @@ def audit(url=None, file=None):
 
 
 def main(argv=None) -> int:
-    logging.basicConfig(stream=sys.stderr, level=logging.WARNING,
-                        format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Auditoría 360° - chequeo automatizado de página")
     ap.add_argument("url", nargs="?", help="URL a auditar (https://...)")
     ap.add_argument("--file", help="Fichero HTML local (modo offline/tests)")

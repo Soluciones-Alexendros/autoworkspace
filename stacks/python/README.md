@@ -4,7 +4,7 @@
 
 - **Objetivos:** Nombres de comandos uv/ruff/mypy/pytest y plantilla caller para repos Python de la flota.
 - **Estructura:** Esta meta-sección → comandos → Coverage → Smoke → archivos del directorio.
-- **Contenido a integrar según contexto:** Copia `ci.yml` a `.github/workflows/ci.yml` y pineá el SHA del reusable-python del tag `repo-standard ≥2.0`. Ajusta `coverage-threshold` mientras la suite no sea estable ([ADR-0007](../../docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
+- **Contenido a integrar según contexto:** Copia `ci.yml` a `.github/workflows/ci.yml` y pineá el SHA del reusable-python del tag `autoworkspace ≥6.0.0`. Ajusta `coverage-threshold` mientras la suite no sea estable ([ADR-0007](../../docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
 
 Referencia para skills/agents y CLIs Python con **uv**.
 

@@ -22,6 +22,7 @@ def _setup_logging(verbose: bool = False) -> None:
     else:
         logging.getLogger().setLevel(level)
 
+
 REQUIRED = [
     ("timeout", "coreutils", "Instalar: pacman -S coreutils / apt install coreutils"),
     ("systemctl", "systemd", "Sistema systemd requerido"),

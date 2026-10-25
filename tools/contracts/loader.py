@@ -1,4 +1,5 @@
 """Load and semantically validate skills/*/execution.yaml (local extension)."""
+
 from __future__ import annotations
 
 import json
@@ -14,7 +15,7 @@ except ImportError as exc:  # pragma: no cover
 try:
     import jsonschema
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("jsonschema required: pip install -r requirements-dev.txt") from exc
+    raise SystemExit("jsonschema required: uv sync --frozen") from exc
 
 DIALECT = "autoworkspace.execution"
 SCHEMA_VERSION = 1
@@ -161,9 +162,7 @@ def validate_contract(
     if skill_path is not None and data.get("skill_version"):
         md_ver = _skill_md_version(skill_path)
         if md_ver and md_ver != str(data["skill_version"]):
-            errors.append(
-                f"skill_version {data['skill_version']!r} != SKILL.md metadata.version {md_ver!r}"
-            )
+            errors.append(f"skill_version {data['skill_version']!r} != SKILL.md metadata.version {md_ver!r}")
 
     ops = data.get("operations")
     op_ids: set[str] = set()

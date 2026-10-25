@@ -1,4 +1,5 @@
 """Approval provider boundary (D04). Digest detects change; it is not consent."""
+
 from __future__ import annotations
 
 import hashlib
@@ -113,12 +114,8 @@ class InteractiveProvider(ApprovalProvider):
         except EOFError:
             return ApprovalDecision(False, "EOF", "interactive", request.plan_digest)
         if line == request.operation_id:
-            return ApprovalDecision(
-                True, "operator typed operation id", "interactive", request.plan_digest
-            )
-        return ApprovalDecision(
-            False, "mismatched confirmation", "interactive", request.plan_digest
-        )
+            return ApprovalDecision(True, "operator typed operation id", "interactive", request.plan_digest)
+        return ApprovalDecision(False, "mismatched confirmation", "interactive", request.plan_digest)
 
 
 def sys_stdin_isatty() -> bool:

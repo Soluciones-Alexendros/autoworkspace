@@ -1,9 +1,10 @@
 """Tests de los scripts nuevos de local-security (esqueletos funcionales)."""
+
 import json
 import os
 import subprocess
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 SCRIPTS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, SCRIPTS)
@@ -18,20 +19,26 @@ import vulns_check
 def _run(script, *args):
     return subprocess.run(
         [sys.executable, os.path.join(SCRIPTS, script), *args],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
 
 
 def test_all_help_exit0():
-    for s in ("scan_orchestrator.py", "vulns_check.py", "harden_plan.py",
-              "apparmor_lifecycle.py", "forense_collector.py"):
+    for s in (
+        "scan_orchestrator.py",
+        "vulns_check.py",
+        "harden_plan.py",
+        "apparmor_lifecycle.py",
+        "forense_collector.py",
+    ):
         r = _run(s, "--help")
         assert r.returncode == 0, s
 
 
 def test_all_invalid_args_exit2():
-    for s in ("scan_orchestrator.py", "vulns_check.py", "harden_plan.py",
-              "apparmor_lifecycle.py"):
+    for s in ("scan_orchestrator.py", "vulns_check.py", "harden_plan.py", "apparmor_lifecycle.py"):
         r = _run(s, "--opcion-inexistente-xyz")
         assert r.returncode == 2, s
     r = _run("forense_collector.py", "receta-inexistente-xyz")
@@ -47,8 +54,7 @@ def test_scan_check_exit0(tmp_path):
 
 
 def test_cross_validate_golden():
-    res = {"rkhunter": {"warnings": 2}, "debsums": {"mismatches": 1},
-           "aide": {"changed_entries": True}}
+    res = {"rkhunter": {"warnings": 2}, "debsums": {"mismatches": 1}, "aide": {"changed_entries": True}}
     cv = scan_orchestrator.cross_validate(res)
     assert len(cv["indeterminados"]) == 3 and cv["validados"] == []
     cv2 = scan_orchestrator.cross_validate({"rkhunter": {}, "debsums": {}, "aide": {}})
@@ -85,8 +91,7 @@ def test_harden_plan_baseline_ilegible():
 def test_apparmor_status_y_soak(tmp_path):
     st = str(tmp_path / "aa.json")
     assert apparmor_lifecycle.main(["status", "--state", st]) == 0
-    assert apparmor_lifecycle.main(
-        ["soak", "--profile", "test-prof", "--days", "3", "--state", st]) == 0
+    assert apparmor_lifecycle.main(["soak", "--profile", "test-prof", "--days", "3", "--state", st]) == 0
     data = json.loads(open(st, encoding="utf-8").read())
     assert data["profiles"]["test-prof"]["stage"] == "soak"
     # enforce bloqueado si aa-logprof no parsea
@@ -128,6 +133,7 @@ def test_postura_sin_hardcodeo_visible():
 
 
 # --- vulns_check unit tests for coverage ---
+
 
 def test_vulns_which_returns_none():
     with patch("vulns_check.shutil.which", return_value=None):
@@ -228,6 +234,7 @@ def test_vulns_main_with_network_json(tmp_path):
 
 # --- scan_orchestrator unit tests for coverage ---
 
+
 def test_scan_which_found():
     with patch("scan_orchestrator.shutil.which", return_value="/usr/bin/clamscan"):
         assert scan_orchestrator.which("clamscan") == "/usr/bin/clamscan"
@@ -275,6 +282,7 @@ def test_scan_check_availability_some_present():
         if cmd in ("clamscan", "rkhunter"):
             return f"/usr/bin/{cmd}"
         return None
+
     with patch("scan_orchestrator.which", side_effect=mock_which):
         avail = scan_orchestrator.check_availability()
         assert avail["clamav"]["daemon"] is True
@@ -358,6 +366,7 @@ def test_scan_main_run_only(tmp_path):
 
 # --- harden_plan unit tests for coverage ---
 
+
 def test_harden_parse_control_ids_invalid_file():
     assert harden_plan.parse_control_ids("/no/existe/baseline.md") == []
 
@@ -398,7 +407,9 @@ def test_harden_run_cmd_oserror():
 
 
 def test_harden_probe_current(monkeypatch):
-    monkeypatch.setattr(harden_plan, "run_cmd", lambda cmd, timeout=10: "permitrootlogin no\npasswordauthentication yes\n")
+    monkeypatch.setattr(
+        harden_plan, "run_cmd", lambda cmd, timeout=10: "permitrootlogin no\npasswordauthentication yes\n"
+    )
     state = harden_plan.probe_current()
     assert state["SSH-01"] == "no"
     assert state["SSH-02"] == "yes"
@@ -418,6 +429,7 @@ def test_harden_main_level1_json(tmp_path):
 
 
 # --- forense_collector unit tests for coverage ---
+
 
 def test_forense_which_found():
     with patch("forense_collector.shutil.which", return_value="/usr/bin/journalctl"):
@@ -504,6 +516,7 @@ def test_forense_main_pid_requires_arg():
 
 # --- apparmor_lifecycle unit tests for coverage ---
 
+
 def test_apparmor_which_found():
     with patch("apparmor_lifecycle.shutil.which", return_value="/usr/bin/apparmor_parser"):
         assert apparmor_lifecycle.which("apparmor_parser") == "/usr/bin/apparmor_parser"
@@ -536,6 +549,7 @@ def test_apparmor_save_state(tmp_path):
     state_file = tmp_path / "aa.json"
     apparmor_lifecycle.save_state(str(state_file), {"profiles": {"p": {"stage": "enforce"}}})
     import json
+
     data = json.loads(state_file.read_text())
     assert data["profiles"]["p"]["stage"] == "enforce"
 

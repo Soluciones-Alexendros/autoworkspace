@@ -5,6 +5,7 @@ Uso:
     python3 report.py scoring.json --md informe.md
     python3 report.py resultados.json --from-checks   # calcula scoring internamente
 """
+
 import argparse
 import datetime
 import importlib.util
@@ -27,24 +28,30 @@ logger = logging.getLogger("auditoria360.report")
 
 ICONO = {"PASS": "✅", "FAIL": "❌", "WARN": "⚠️", "NA": "➖", "PENDING": "🔎"}
 SEMAFORO = {"VERDE": "🟢", "AMBAR": "🟠", "ROJO": "🔴", "SIN DATOS": "⚪"}
-SPRINT = {"Crítico": "Sprint 1 (<72h)", "Alto": "Sprint 2 (<2-6 semanas)",
-          "Medio": "Sprint 3 (<7-12 semanas)", "Bajo": "Backlog"}
+SPRINT = {
+    "Crítico": "Sprint 1 (<72h)",
+    "Alto": "Sprint 2 (<2-6 semanas)",
+    "Medio": "Sprint 3 (<7-12 semanas)",
+    "Bajo": "Backlog",
+}
 
 
 def render(sc):
     fecha = datetime.date.today().isoformat()
     L = []
-    L.append(f"# INFORME DE CIERRE — AUDITORÍA 360°")
+    L.append("# INFORME DE CIERRE — AUDITORÍA 360°")
     L.append(f"**Objetivo:** {sc.get('target') or '(sin especificar)'}  ")
     L.append(f"**Fecha:** {fecha}  ")
-    L.append(f"**Estándares:** WCAG 2.2 AA · EN 301 549 · Google Search Essentials · Consent Mode v2 · RGPD\n")
+    L.append("**Estándares:** WCAG 2.2 AA · EN 301 549 · Google Search Essentials · Consent Mode v2 · RGPD\n")
 
     L.append("## 1. Resumen ejecutivo\n")
     pct = sc["pct_global"]
     L.append(f"- **Dictamen: {sc['dictamen']}** — {sc['motivo_dictamen']}")
     L.append(f"- Cumplimiento global: **{pct}%**" if pct is not None else "- Cumplimiento global: SIN DATOS")
-    L.append(f"- FAIL críticos: **{sc['fails_criticos']}** · Hallazgos totales: {sc['total_hallazgos']}"
-             f" · Pendientes de verificación: {sc['pendientes']}")
+    L.append(
+        f"- FAIL críticos: **{sc['fails_criticos']}** · Hallazgos totales: {sc['total_hallazgos']}"
+        f" · Pendientes de verificación: {sc['pendientes']}"
+    )
     L.append(f"- Deuda técnica estimada: **~{sc['deuda_horas_estimada']} h**\n")
 
     L.append("## 2. Semáforo por pilar\n")
@@ -52,8 +59,10 @@ def render(sc):
     L.append("|---|---|---|---|---|---|---|")
     for pid, p in sc["pilares"].items():
         pct_txt = f"{p['pct']}%" if p["pct"] is not None else "—"
-        L.append(f"| {pid} — {p['nombre']} | {p['pass']} | {p['fail']} | {p['na']} "
-                 f"| {p['pending']} | {pct_txt} | {SEMAFORO[p['semaforo']]} {p['semaforo']} |")
+        L.append(
+            f"| {pid} — {p['nombre']} | {p['pass']} | {p['fail']} | {p['na']} "
+            f"| {p['pending']} | {pct_txt} | {SEMAFORO[p['semaforo']]} {p['semaforo']} |"
+        )
     L.append("")
 
     L.append("## 3. Hallazgos y acciones correctivas (priorización por severidad)\n")
@@ -61,7 +70,9 @@ def render(sc):
         L.append("Sin hallazgos FAIL/WARN. ✅\n")
     for h in sc["hallazgos"]:
         L.append(f"### {ICONO[h['resultado']]} {h['id']} — {h['criterio']}")
-        L.append(f"- **Severidad:** {h['severidad']} · **Pilar:** {h['pilar']} · **Sprint:** {SPRINT.get(h['severidad'], 'Backlog')}")
+        L.append(
+            f"- **Severidad:** {h['severidad']} · **Pilar:** {h['pilar']} · **Sprint:** {SPRINT.get(h['severidad'], 'Backlog')}"
+        )
         L.append(f"- **Estándar:** {h['estandar']}")
         if h["evidencia"]:
             L.append(f"- **Evidencia:** {h['evidencia']}")
@@ -91,12 +102,10 @@ def render(sc):
 
 
 def main(argv=None) -> int:
-    logging.basicConfig(stream=sys.stderr, level=logging.WARNING,
-                        format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Informe de cierre Auditoría 360°")
     ap.add_argument("entrada", help="JSON de scoring (o de checks con --from-checks)")
-    ap.add_argument("--from-checks", action="store_true",
-                    help="La entrada es JSON de checks; calcula el scoring")
+    ap.add_argument("--from-checks", action="store_true", help="La entrada es JSON de checks; calcula el scoring")
     ap.add_argument("--config", help="Directorio de configs")
     ap.add_argument("--md", help="Guardar informe Markdown")
     args = ap.parse_args(argv)
@@ -122,8 +131,7 @@ def main(argv=None) -> int:
             sc = data
             for clave in ("dictamen", "pilares", "hallazgos"):
                 if clave not in sc:
-                    raise ValueError(f"el JSON de scoring no trae '{clave}' "
-                                     f"(¿olvidaste --from-checks?)")
+                    raise ValueError(f"el JSON de scoring no trae '{clave}' (¿olvidaste --from-checks?)")
         md = render(sc)
     except (ValueError, KeyError, TypeError, AttributeError) as e:
         logger.error("no se pudo generar el informe: %s: %s", type(e).__name__, e)

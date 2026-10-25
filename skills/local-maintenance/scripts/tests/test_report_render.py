@@ -1,4 +1,5 @@
 """Tests report_render.py: --help, inválidos, input ausente -> 1, doradas."""
+
 import json
 import subprocess
 import sys
@@ -10,22 +11,48 @@ SCRIPT = "report_render.py"
 
 def _run(*args):
     return subprocess.run(
-        [sys.executable, SCRIPT, *args], capture_output=True, text=True, cwd=".",
+        [sys.executable, SCRIPT, *args],
+        capture_output=True,
+        text=True,
+        cwd=".",
     )
 
 
 def _sample():
     return {
-        "metadata": {"timestamp": "t", "hostname": "h", "mode": "audit-quick",
-                     "distro": "d", "family": "f", "kernel": "k", "duration_seconds": 1},
+        "metadata": {
+            "timestamp": "t",
+            "hostname": "h",
+            "mode": "audit-quick",
+            "distro": "d",
+            "family": "f",
+            "kernel": "k",
+            "duration_seconds": 1,
+        },
         "health_score": {"overall": 80, "security": 80, "updates": 80, "hygiene": 80, "resources": 80},
-        "findings": [{"id": "X-01", "category": "security", "severity": "P0",
-                      "title": "T", "description": "D", "control": "C",
-                      "status": "FAIL", "evidence": "E", "remediation": "R",
-                      "risk_level": "R2"}],
-        "summary": {"total_checks": 1, "passed": 0, "failed": 1, "warned": 0,
-                    "skipped": 0, "errors": 0,
-                    "by_severity": {"P0": 1, "P1": 0, "P2": 0, "P3": 0, "P4": 0}},
+        "findings": [
+            {
+                "id": "X-01",
+                "category": "security",
+                "severity": "P0",
+                "title": "T",
+                "description": "D",
+                "control": "C",
+                "status": "FAIL",
+                "evidence": "E",
+                "remediation": "R",
+                "risk_level": "R2",
+            }
+        ],
+        "summary": {
+            "total_checks": 1,
+            "passed": 0,
+            "failed": 1,
+            "warned": 0,
+            "skipped": 0,
+            "errors": 0,
+            "by_severity": {"P0": 1, "P1": 0, "P2": 0, "P3": 0, "P4": 0},
+        },
     }
 
 

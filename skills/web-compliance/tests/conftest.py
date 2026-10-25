@@ -1,4 +1,5 @@
 """Fixtures compartidos: scripts/ en sys.path con aislamiento de imports."""
+
 import os
 import sys
 
@@ -9,5 +10,5 @@ SCRIPTS_PATH = os.path.join(ROOT, "scripts")
 sys.path.insert(0, SCRIPTS_PATH)
 
 # Guardar referencia para imports explícitos
-import importlib.util
+
 _WEB_COMPLIANCE_SCRIPTS = SCRIPTS_PATH

@@ -258,9 +258,12 @@ class CheckProductStructureCli(unittest.TestCase):
 
     def _run(self, *args):
         import subprocess
+
         return subprocess.run(
             ["bash", self.SH, *args],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
 
     def test_help_exit_0(self):

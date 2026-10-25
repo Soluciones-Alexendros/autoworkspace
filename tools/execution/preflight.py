@@ -1,4 +1,5 @@
 """Portable preflight: resolve skill root and check requirements without installing."""
+
 from __future__ import annotations
 
 import os
@@ -128,11 +129,7 @@ def preflight_contract(
         result.blocked_reasons.extend(bin_check.blocked_reasons)
     result.optional_missing.extend(bin_check.optional_missing)
 
-    net_allowed = (
-        allow_network
-        if allow_network is not None
-        else os.environ.get("AUTOWORKSPACE_ALLOW_NETWORK") == "1"
-    )
+    net_allowed = allow_network if allow_network is not None else os.environ.get("AUTOWORKSPACE_ALLOW_NETWORK") == "1"
     if reqs.get("network") and not net_allowed:
         result.ok = False
         result.blocked_reasons.append("network:required-but-not-authorized")

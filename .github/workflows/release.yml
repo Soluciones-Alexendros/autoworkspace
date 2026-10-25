@@ -21,15 +21,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
           python-version: "3.12"
-      - run: pip install -r requirements-dev.txt
+      - run: uv sync --frozen
       - name: Validate
         run: |
-          python3 tools/validate/skill_spec.py
-          python3 tools/validate/skill_links.py
-          python3 tools/validate/release_coherence.py
+          uv run python3 tools/validate/skill_spec.py
+          uv run python3 tools/validate/skill_links.py
+          uv run python3 tools/validate/release_coherence.py
       - name: Publish from tag
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -37,8 +37,8 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          python3 tools/validate/release_coherence.py --release-gate
-          python3 tools/version/cut_tag.py --extract-notes "$VERSION" --notes-file notes.md
+          uv run python3 tools/validate/release_coherence.py --release-gate
+          uv run python3 tools/version/cut_tag.py --extract-notes "$VERSION" --notes-file notes.md
           gh release create "${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag
       - name: Cut annotated tag on main
         id: cut
@@ -46,7 +46,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          python3 tools/version/cut_tag.py --apply --notes-file notes.md
+          uv run python3 tools/version/cut_tag.py --apply --notes-file notes.md
       - name: Push tag and create GitHub Release
         if: github.ref == 'refs/heads/main' && steps.cut.outputs.tagged == 'true'
         env:

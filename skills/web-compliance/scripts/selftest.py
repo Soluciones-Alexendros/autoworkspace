@@ -14,8 +14,8 @@ entornos mínimos y aúna pipeline end-to-end. Los tests pytest reales
 tests/test_*.py. No importar este módulo desde pytest: los decoradores @test
 se ejecutan en tiempo de importación por diseño.
 """
+
 import argparse
-import json
 import logging
 import os
 import sys
@@ -46,6 +46,7 @@ def test(nombre):
         except Exception as e:  # un test nunca debe interrumpir la suite
             logger.warning("ERROR %s: %s: %s", nombre, type(e).__name__, e)
             RESULTADOS.append((nombre, "ERROR", f"{type(e).__name__}: {e}"))
+
     return deco
 
 
@@ -54,6 +55,7 @@ def _by_key(res):
 
 
 # ---------------------------------------------------------------- configs
+
 
 @test("configs/checks.json y thresholds.json válidos y coherentes")
 def _():
@@ -80,14 +82,26 @@ def _():
 
 # ---------------------------------------------------------------- audit_page
 
+
 @test("audit_page: fixture PASS supera checks clave")
 def _():
     res = audit_page.audit(file=os.path.join(FIXTURES, "page_pass.html"))
     assert res["error"] is None, f"error inesperado: {res['error']}"
     c = _by_key(res)
-    for k in ("title", "meta_description", "canonical", "headings", "img_alt_coverage",
-              "html_lang", "viewport", "skip_link", "form_labels", "jsonld",
-              "content_parity", "charset"):
+    for k in (
+        "title",
+        "meta_description",
+        "canonical",
+        "headings",
+        "img_alt_coverage",
+        "html_lang",
+        "viewport",
+        "skip_link",
+        "form_labels",
+        "jsonld",
+        "content_parity",
+        "charset",
+    ):
         assert c[k]["status"] == "PASS", f"{k} = {c[k]['status']} ({c[k]['evidencia']})"
 
 
@@ -112,11 +126,13 @@ def _():
 @test("audit_page: hreflang válido con x-default y detección de inválido")
 def _():
     p = audit_page.PageParser()
-    p.feed('<html lang="es"><head>'
-           '<link rel="alternate" hreflang="es" href="https://x.com/es/">'
-           '<link rel="alternate" hreflang="en" href="https://x.com/en/">'
-           '<link rel="alternate" hreflang="x-default" href="https://x.com/">'
-           '</head><body></body></html>')
+    p.feed(
+        '<html lang="es"><head>'
+        '<link rel="alternate" hreflang="es" href="https://x.com/es/">'
+        '<link rel="alternate" hreflang="en" href="https://x.com/en/">'
+        '<link rel="alternate" hreflang="x-default" href="https://x.com/">'
+        "</head><body></body></html>"
+    )
     assert audit_page.check_hreflang(p)["status"] == "PASS"
     p2 = audit_page.PageParser()
     p2.feed('<html><head><link rel="alternate" hreflang="ESPAÑOL!" href="x"></head><body></body></html>')
@@ -124,6 +140,7 @@ def _():
 
 
 # ---------------------------------------------------------------- contrast
+
 
 @test("contrast: ratios WCAG de referencia")
 def _():
@@ -139,6 +156,7 @@ def _():
 
 # ---------------------------------------------------------------- score
 
+
 @test("score: todo PASS => dictamen POSITIVO")
 def _():
     reg, _ = score_mod.load_configs()
@@ -153,8 +171,7 @@ def _():
     reg, _ = score_mod.load_configs()
     checks = [{"id": c["id"], "resultado": "PASS"} for c in reg["checks"]]
     crit = next(c for c in reg["checks"] if c["severidad"] == "Crítico")
-    checks = [{"id": crit["id"], "resultado": "FAIL" if c["id"] == crit["id"] else "PASS"}
-              for c in reg["checks"]]
+    checks = [{"id": crit["id"], "resultado": "FAIL" if c["id"] == crit["id"] else "PASS"} for c in reg["checks"]]
     sc = score_mod.score(checks)
     assert sc["dictamen"] == "NEGATIVO"
     assert sc["fails_criticos"] == 1
@@ -181,14 +198,14 @@ def _():
 
 @test("score: un FAIL no es pisado por un PASS posterior del mismo check")
 def _():
-    checks = [{"id": "ACC-04", "resultado": "FAIL"},
-              {"id": "ACC-04", "resultado": "PASS"}]
+    checks = [{"id": "ACC-04", "resultado": "FAIL"}, {"id": "ACC-04", "resultado": "PASS"}]
     sc = score_mod.score(checks)
     acc04 = [h for h in sc["hallazgos"] if h["id"] == "ACC-04"]
     assert acc04, "ACC-04 debería seguir siendo hallazgo FAIL"
 
 
 # ---------------------------------------------------------------- report
+
 
 @test("report: genera Markdown con dictamen, matriz y verificación de cierre")
 def _():
@@ -205,9 +222,9 @@ def _():
 
 # ---------------------------------------------------------------- main
 
+
 def main(argv=None) -> int:
-    logging.basicConfig(stream=sys.stderr, level=logging.WARNING,
-                        format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Smoke test integrado de auditoria-360-web (exit 0/1)")
     ap.parse_args(argv)
     print("=" * 60)

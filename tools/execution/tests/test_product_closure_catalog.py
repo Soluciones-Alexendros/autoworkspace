@@ -1,4 +1,5 @@
 """C18 / V43: frozen catalog has execution contract + verifiable mode per skill."""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -151,18 +151,21 @@ def github_vista(repo: str) -> dict:
     )
     runs = []
     if default:
-        runs = gh_json(
-            [
-                "run",
-                "list",
-                "--branch",
-                default,
-                "--limit",
-                "5",
-                "--json",
-                "conclusion,status,name,headBranch,databaseId",
-            ]
-        ) or []
+        runs = (
+            gh_json(
+                [
+                    "run",
+                    "list",
+                    "--branch",
+                    default,
+                    "--limit",
+                    "5",
+                    "--json",
+                    "conclusion,status,name,headBranch,databaseId",
+                ]
+            )
+            or []
+        )
     return {
         "disponible": True,
         "nombre": view.get("nameWithOwner"),
@@ -263,10 +266,7 @@ def fallos_desde(scan: dict, git: dict, est: dict, gh: dict) -> list[dict]:
                 {
                     "sev": "P0",
                     "fuente": "escaneo",
-                    "detalle": (
-                        f"posible hallazgo en {s.get('fichero')}:{s.get('linea')} "
-                        f"({s.get('tipo')}; fp={fp})"
-                    ),
+                    "detalle": (f"posible hallazgo en {s.get('fichero')}:{s.get('linea')} ({s.get('tipo')}; fp={fp})"),
                 }
             )
     for env in scan.get("env_versionados") or []:
@@ -320,13 +320,7 @@ def semaforo(fallos: list[dict], git: dict) -> str:
 
 
 def esc(text: object) -> str:
-    return (
-        str(text)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 def to_markdown(rep: dict) -> str:
@@ -383,9 +377,7 @@ def to_markdown(rep: dict) -> str:
             lines.append(f"- #{issue.get('number')} {issue.get('title')}{suffix}")
         for pr in (gh.get("prs_abiertos") or [])[:10]:
             draft = " (borrador)" if pr.get("isDraft") else ""
-            lines.append(
-                f"- PR #{pr.get('number')} {pr.get('title')}{draft} ← `{pr.get('headRefName')}`"
-            )
+            lines.append(f"- PR #{pr.get('number')} {pr.get('title')}{draft} ← `{pr.get('headRefName')}`")
     if road.get("planes_locales"):
         lines.append("Planes locales:")
         for p in road["planes_locales"]:
@@ -429,10 +421,7 @@ def to_html(rep: dict) -> str:
     road = rep["roadmap"]
     fallos_rows = []
     for f in rep["fallos"]:
-        fallos_rows.append(
-            f"<tr><td>{esc(f['sev'])}</td><td>{esc(f['fuente'])}</td>"
-            f"<td>{esc(f['detalle'])}</td></tr>"
-        )
+        fallos_rows.append(f"<tr><td>{esc(f['sev'])}</td><td>{esc(f['fuente'])}</td><td>{esc(f['detalle'])}</td></tr>")
     if not fallos_rows:
         fallos_rows.append('<tr><td colspan="3">Sin hallazgos</td></tr>')
     road_items = []
@@ -468,26 +457,26 @@ def to_html(rep: dict) -> str:
 </head>
 <body>
   <h1>Estado de partida — {nombre}</h1>
-  <p class="meta">{esc(rep['generated_at'])} · perfil {esc(rep['profile'])} · <span class="pill">{esc(sem)}</span></p>
+  <p class="meta">{esc(rep["generated_at"])} · perfil {esc(rep["profile"])} · <span class="pill">{esc(sem)}</span></p>
   <section>
     <h2>Estado del repo</h2>
     <table>
-      <tr><th>Rama</th><td><code>{esc(git.get('rama') or 'n/d')}</code> @ <code>{esc(git.get('sha') or 'n/d')}</code></td></tr>
-      <tr><th>Remoto</th><td>{esc(git.get('upstream') or 'n/d')} (adelante {esc(git.get('adelante', 0))}, detrás {esc(git.get('atras', 0))})</td></tr>
-      <tr><th>Árbol sucio</th><td>{'sí' if git.get('sucio') else 'no'}</td></tr>
-      <tr><th>Estructura {esc(rep['profile'])}</th><td>{'OK' if rep['estructura']['ok'] else 'FALLO'}</td></tr>
-      <tr><th>GitHub</th><td>{esc(gh.get('nombre') or 'n/d')}</td></tr>
+      <tr><th>Rama</th><td><code>{esc(git.get("rama") or "n/d")}</code> @ <code>{esc(git.get("sha") or "n/d")}</code></td></tr>
+      <tr><th>Remoto</th><td>{esc(git.get("upstream") or "n/d")} (adelante {esc(git.get("adelante", 0))}, detrás {esc(git.get("atras", 0))})</td></tr>
+      <tr><th>Árbol sucio</th><td>{"sí" if git.get("sucio") else "no"}</td></tr>
+      <tr><th>Estructura {esc(rep["profile"])}</th><td>{"OK" if rep["estructura"]["ok"] else "FALLO"}</td></tr>
+      <tr><th>GitHub</th><td>{esc(gh.get("nombre") or "n/d")}</td></tr>
     </table>
   </section>
   <section>
     <h2>Camino del producto</h2>
-    <ul>{''.join(road_items)}</ul>
+    <ul>{"".join(road_items)}</ul>
   </section>
   <section>
     <h2>Errores y fallos</h2>
     <table>
       <thead><tr><th>Sev</th><th>Fuente</th><th>Detalle</th></tr></thead>
-      <tbody>{''.join(fallos_rows)}</tbody>
+      <tbody>{"".join(fallos_rows)}</tbody>
     </table>
   </section>
 </body>

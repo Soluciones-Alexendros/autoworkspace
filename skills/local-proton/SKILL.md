@@ -4,7 +4,7 @@ description: Proton Mail (Proton Mail Bridge IMAP/SMTP local, MCP Mail) and Prot
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "5.1.1"
+  version: "5.1.3"
   domain: local
   type: atomic
   language: en

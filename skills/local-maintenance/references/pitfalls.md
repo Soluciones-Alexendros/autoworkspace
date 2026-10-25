@@ -6,11 +6,11 @@ Leer SIEMPRE antes de remediar un hallazgo. Verificar el estado real a mano prim
 
 | Check | Bug | Fix aplicado |
 |-------|-----|--------------|
-| FS-05/FS-06 | La caché de bun vive ahora en `~/Aplicaciones/datos/share/bun/` (XDG_DATA_HOME redirigido); la exclusión `*/.bun/*` ya no la cubre → cientos de archivos 0666 del install-cache | Añadida exclusión `*/share/bun/*` |
-| FS-05/FS-06/FS-07 | Las capas de imágenes de contenedores (podman/docker) en `share/containers/storage/overlay/*/diff/` contienen paths world-writable y UID sin mapear (`/home/runner`, `/opt/hostedtoolcache` de imágenes de CI). Son contenido de imagen, no riesgo del host; también infla la papelera histórica (`Documentos/MantenimientoLocal/historico/*/papelera-xdg/...`) que los contiene | Añadida exclusión `*/share/containers/storage/*` |
-| FS-05 | La config de Proton Mail/Pass vive ahora en `~/Aplicaciones/datos/config/Proton*/` (XDG_CONFIG_HOME redirigido); la exclusión `*/.config/Proton Mail/*` ya no la cubre (mismo comportamiento 0666 documentado en 2026-08-10) | Añadidas exclusiones `*/config/Proton Mail/*` y `*/config/Proton Pass/*` |
+| FS-05/FS-06 | La caché de bun vive ahora en `$XDG_DATA_HOME/bun/` (o el redirect XDG del host); la exclusión `*/.bun/*` ya no la cubre → cientos de archivos 0666 del install-cache | Añadida exclusión `*/share/bun/*` |
+| FS-05/FS-06/FS-07 | Las capas de imágenes de contenedores (podman/docker) en `share/containers/storage/overlay/*/diff/` contienen paths world-writable y UID sin mapear (`/home/runner`, `/opt/hostedtoolcache` de imágenes de CI). Son contenido de imagen, no riesgo del host; también infla la papelera histórica (`$XDG_DATA_HOME/…/papelera-xdg/…`) que los contiene | Añadida exclusión `*/share/containers/storage/*` |
+| FS-05 | La config de Proton Mail/Pass vive ahora en `$XDG_CONFIG_HOME/Proton*/` (o el redirect XDG del host); la exclusión `*/.config/Proton Mail/*` ya no la cubre (mismo comportamiento 0666 documentado en 2026-08-10) | Añadidas exclusiones `*/config/Proton Mail/*` y `*/config/Proton Pass/*` |
 | FS-05 | Los `.lock` de uv (gestor de paquetes Python) se crean 0666 por diseño (`share/uv/*`, `cache/uv/*`, y `venv*/.lock` en cada proyecto). Misma clase que la caché de bun | Añadidas exclusiones `*/share/uv/*`, `*/cache/uv/*` y `*/venv*/.lock` |
-| FS-05/FS-06/FS-07 | La papelera histórica de XDG (`Documentos/MantenimientoLocal/historico/*/papelera-xdg/`) es una copia congelada (dirs renombrados `config-puerta`, `cache-puerta`…) que replica todo el ruido anterior hasta que se elimine. **Pendiente: purga de la papelera (decisión del usuario)** | Añadida exclusión `*/papelera-xdg/*` |
+| FS-05/FS-06/FS-07 | La papelera histórica de XDG (`$XDG_DATA_HOME/…/papelera-xdg/` (papelera histórica local)) es una copia congelada (dirs renombrados `config-puerta`, `cache-puerta`…) que replica todo el ruido anterior hasta que se elimine. **Pendiente: purga de la papelera (decisión del usuario)** | Añadida exclusión `*/papelera-xdg/*` |
 
 ## Falsos positivos corregidos (2026-08-10)
 
@@ -31,7 +31,7 @@ Leer SIEMPRE antes de remediar un hallazgo. Verificar el estado real a mano prim
 
 ## Hallazgos reales recurrentes (aceptados, no perseguir)
 
-- **NET-04 / NET-05** — SSH y servicios en 0.0.0.0: excepción documentada (WiFi doméstica con DHCP; AGENTS.md de MantenimientoLocal prohíbe restringir ListenAddress).
+- **NET-04 / NET-05** — SSH y servicios en 0.0.0.0: excepción documentada (LAN local con DHCP; política local de mantenimiento prohíbe restringir ListenAddress).
 - **FS-09** — `/usr/share/doc/copyq-doc/CHANGES.md.gz` → `changelog.gz` inexistente: bug de empaquetado upstream de `copyq-doc`. No borrar (pertenece a dpkg).
 - **FW-03** — ~150 "puertos abiertos": el check cuenta sockets UDP/ICMP sin estado y dockers; inflado.
 - **FS-08** — 30 SUID/SGID: binarios estándar del sistema.

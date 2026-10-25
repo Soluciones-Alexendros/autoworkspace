@@ -26,7 +26,7 @@ Dependabot **Alerts** (y Security Updates puntuales de CVE) son otro producto: n
 
 ## Decisión
 
-1. **Prerrequisito de flota (humano, org):** la GitHub App [Renovate](https://github.com/apps/renovate) está instalada en `Iniciativas-Alexendros` y habilitada para los repos activos (o «all repositories» si el Mantenedor lo prefiere). Sin la App, el JSON del canon no hace nada.
+1. **Prerrequisito de flota (humano, org):** la GitHub App [Renovate](https://github.com/apps/renovate) está instalada en `Soluciones-Alexendros` y habilitada para los repos activos (o «all repositories» si el Mantenedor lo prefiere). Sin la App, el JSON del canon no hace nada.
 2. Cada repo P1+ versiona `.github/renovate.json` (base de este canon, `packageRules` recortadas al stack). Schedule: madrugada `Europe/Madrid`. Automerge `patch` + `minor`; minors agrupados; label `dependencies`; **sin** automerge de `major`.
 3. **Prohibido** `.github/dependabot.yml` (o `dependabot.yml` en raíz) para version-updates de npm/cargo/actions/docker/etc.
 4. **Dependabot Alerts: ON** a nivel org/repo. No se desactivan en PRs de alineación. Security Updates automáticos de Dependabot se evitan si generan bumps paralelos a Renovate; el parche de CVE lo toma Renovate o un PR humano.

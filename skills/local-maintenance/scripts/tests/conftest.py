@@ -1,4 +1,5 @@
 """conftest: añade scripts/ al sys.path para importar módulos."""
+
 import os
 import sys
 

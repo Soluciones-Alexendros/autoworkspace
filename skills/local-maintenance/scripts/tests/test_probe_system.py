@@ -1,4 +1,5 @@
 """Tests probe_system.py: --help, inválidos, error distro -> 1, doradas."""
+
 import json
 import subprocess
 import sys
@@ -10,7 +11,10 @@ SCRIPT = "probe_system.py"
 
 def _run(*args):
     return subprocess.run(
-        [sys.executable, SCRIPT, *args], capture_output=True, text=True, cwd=".",
+        [sys.executable, SCRIPT, *args],
+        capture_output=True,
+        text=True,
+        cwd=".",
     )
 
 
@@ -27,6 +31,7 @@ def test_invalid_args_exit2():
 def test_error_detect_distro_exit1(tmp_path, monkeypatch):
     def _boom():
         raise OSError("os-release simulado")
+
     monkeypatch.setattr(probe_system, "detect_distro", _boom)
     assert probe_system.main([str(tmp_path / "out.json")]) == 1
 
@@ -34,10 +39,12 @@ def test_error_detect_distro_exit1(tmp_path, monkeypatch):
 def test_error_write_exit1(tmp_path, monkeypatch):
     # Fuerza fallo de escritura sin tocar el sistema: open siempre falla.
     import builtins
+
     real_open = builtins.open
 
     def _boom_open(*a, **k):
         raise OSError("solo-lectura simulada")
+
     monkeypatch.setattr("builtins.open", _boom_open)
     try:
         assert probe_system.main([str(tmp_path / "out.json")]) == 1

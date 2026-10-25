@@ -2,7 +2,7 @@
 
 ### Propósito de este documento
 
-- **Objetivos:** Contrato operativo para agentes y Mantenedor: fuentes de verdad, autonomía, gates, DoD. En un producto, el mismo contrato de flota + hechos de *ese* workspace.
+- **Objetivos:** Contrato operativo para agentes y Mantenedor: fuentes de verdad, autonomía, gates, DoD. En un producto, el mismo contrato de flota + hechos de _ese_ workspace.
 - **Estructura:** Esta meta-sección → §1 Rol → §2 Fuentes → §3 Ficha → §4 Autonomía → §5 Working agreement → §6 Comandos → §7 Zonas prohibidas → §8 Definition of Done → §9 Hechos del workspace.
 - **Contenido a integrar según contexto:** Copia §1–8. Reescribe **solo** §9 (stack, validador, CODEOWNERS, perfiles). No reabras decisiones cerradas. No pegues secretos ni URLs de prod reales.
 
@@ -16,7 +16,7 @@ Copia este archivo a la raíz de cada repo de producto y ajusta solo la sección
 ## 1. Rol
 
 - El humano dirige y el agente implementa una unidad cohesiva por sesión.
-- Una sesión = un PR pequeño. CI verde (`ci-gate`) + squash auto-merge ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+- Una sesión = un PR pequeño. CI verde (`ci-gate`) + squash auto-merge ([ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
 - No reabras decisiones cerradas del estándar (Renovate único, cobertura por defecto, idioma de docs, orden de fases, check único `ci-gate`).
 
 ## 2. Fuentes de verdad (orden)
@@ -61,12 +61,12 @@ Criterio de cierre: ci-gate verde + Definition of Done + auto-merge squash
 
 ## 5. Working agreement de la flota
 
-- `main` solo recibe PR con `ci-gate` verde y squash-merge. Sin push directo. 0 approvals. Sin bypass admin ([ADR-0012](docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
-- Fases CI: `quality` → `test` → `build` → `smoke` (`e2e` opcional). El único check **required** es `ci-gate` ([ADR-0013](docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)). `build` solo si hay artefacto.
+- `main` solo recibe PR con `ci-gate` verde y squash-merge. Sin push directo. 0 approvals. Sin bypass admin ([ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+- Fases CI: `quality` → `test` → `build` → `smoke` (`e2e` opcional). El único check **required** es `ci-gate` ([ADR-0013](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)). `build` solo si hay artefacto.
 - En **este** canon: `pipeline` llama a `reusable-static`; `ci-gate` agrega el resultado.
-- En repos de producto, `test` incluye unit/function. Coverage default del reusable **80%**; el gate ≥70% sigue siendo opcional hasta suite estable ([ADR-0007](docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
-- Bot de deps: **solo Renovate** ([ADR-0004](docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)). No añadas `.github/dependabot.yml` de version-updates. Dependabot Alerts ON.
-- Secret scanning + push protection: prerrequisito org ([ADR-0005](docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
+- En repos de producto, `test` incluye unit/function. Coverage default del reusable **80%**; el gate ≥70% sigue siendo opcional hasta suite estable ([ADR-0007](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0007-coverage-gate-opcional.md)).
+- Bot de deps: **solo Renovate** ([ADR-0004](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)). No añadas `.github/dependabot.yml` de version-updates. Dependabot Alerts ON.
+- Secret scanning + push protection: prerrequisito org ([ADR-0005](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
 - `.env` nunca se commitea. `.env.example` solo con placeholders documentados.
 - Callers pinean reusable por SHA (`stacks/<stack>/ci.yml`); no aplastes el stack.
 

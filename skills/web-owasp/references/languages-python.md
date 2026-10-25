@@ -22,13 +22,13 @@ Django settings are **deployment configuration**, not attacker input:
 # SAFE: All django.conf.settings values are server-controlled
 from django.conf import settings
 
-requests.get(settings.EXTERNAL_API_URL)      # NOT SSRF - configured at deployment
-requests.get(f"{settings.SEER_URL}{path}")   # NOT SSRF - base URL is server-controlled
-open(settings.LOG_FILE_PATH)                 # NOT path traversal
-db.connect(settings.DATABASE_URL)            # NOT injection
+requests.get(settings.EXTERNAL_API_URL)  # NOT SSRF - configured at deployment
+requests.get(f"{settings.SEER_URL}{path}")  # NOT SSRF - base URL is server-controlled
+open(settings.LOG_FILE_PATH)  # NOT path traversal
+db.connect(settings.DATABASE_URL)  # NOT injection
 
 # SAFE: Environment-based configuration
-API_URL = os.environ.get('API_URL')
+API_URL = os.environ.get("API_URL")
 requests.get(API_URL)  # Server operator controls this
 
 # SAFE: Settings from Django's settings.py
@@ -98,16 +98,16 @@ send_file(user_path)  # CHECK: Path traversal
 
 # VULNERABLE configurations
 DEBUG = True  # FLAG in production
-ALLOWED_HOSTS = ['*']  # FLAG
-SECRET_KEY = 'hardcoded-value'  # FLAG if committed
+ALLOWED_HOSTS = ["*"]  # FLAG
+SECRET_KEY = "hardcoded-value"  # FLAG if committed
 CSRF_COOKIE_SECURE = False  # FLAG in production
 SESSION_COOKIE_SECURE = False  # FLAG in production
 
 # Missing security middleware - CHECK if absent
 MIDDLEWARE = [
     # Should include:
-    'django.middleware.security.SecurityMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
 ]
 ```
 
@@ -119,8 +119,8 @@ MIDDLEWARE = [
 
 ```python
 # SAFE: Jinja2 auto-escapes by default
-{{ variable }}
-render_template('template.html', name=user_input)
+{{variable}}
+render_template("template.html", name=user_input)
 
 # SAFE: Parameterized queries with SQLAlchemy
 db.session.query(User).filter(User.name == user_input)
@@ -136,7 +136,7 @@ form.validate_on_submit()
 # XSS
 Markup(user_input)  # FLAG: Marks as safe HTML
 render_template_string(user_input)  # FLAG: SSTI vulnerability
-{{ variable|safe }}  # FLAG in templates
+{{variable | safe}}  # FLAG in templates
 
 # SQL Injection
 db.engine.execute(f"SELECT * FROM users WHERE name = '{user_input}'")  # FLAG
@@ -147,8 +147,8 @@ render_template_string(user_controlled_template)  # FLAG: Critical
 Template(user_input).render()  # FLAG: Critical
 
 # Session Security
-app.secret_key = 'hardcoded'  # FLAG
-app.config['SECRET_KEY'] = 'weak'  # FLAG
+app.secret_key = "hardcoded"  # FLAG
+app.config["SECRET_KEY"] = "weak"  # FLAG
 
 # Debug Mode
 app.run(debug=True)  # FLAG in production
@@ -167,10 +167,12 @@ app.debug = True  # FLAG in production
 async def create_user(user: UserCreate):  # Pydantic model validates
     pass
 
+
 # SAFE: Path parameters with type hints
 @app.get("/users/{user_id}")
 async def get_user(user_id: int):  # Validated as int
     pass
+
 
 # SAFE: SQLAlchemy ORM
 db.query(User).filter(User.id == user_id).first()
@@ -183,10 +185,12 @@ db.query(User).filter(User.id == user_id).first()
 db.execute(f"SELECT * FROM users WHERE id = {user_id}")  # FLAG
 text(f"SELECT * FROM users WHERE name = '{name}'")  # FLAG
 
+
 # Response without validation
 @app.get("/data")
 async def get_data():
     return user_controlled_dict  # CHECK: May expose sensitive fields
+
 
 # Dependency injection bypass
 @app.get("/admin")
@@ -215,15 +219,15 @@ yaml.load(data, Loader=yaml.UnsafeLoader)
 # Code Execution - Always Critical
 eval(user_input)
 exec(user_input)
-compile(user_input, '<string>', 'exec')
+compile(user_input, "<string>", "exec")
 __import__(user_input)
 
 # Command Injection - Critical
 os.system(user_cmd)
 os.popen(user_cmd)
 subprocess.call(cmd, shell=True)  # If cmd has user input
-subprocess.run(cmd, shell=True)   # If cmd has user input
-subprocess.Popen(cmd, shell=True) # If cmd has user input
+subprocess.run(cmd, shell=True)  # If cmd has user input
+subprocess.Popen(cmd, shell=True)  # If cmd has user input
 commands.getoutput(user_cmd)  # Python 2
 ```
 
@@ -260,25 +264,28 @@ bcrypt.hashpw()  # For password hashing
 ```python
 # VULNERABLE: No validation
 def process(data):
-    return eval(data['expression'])
+    return eval(data["expression"])
+
 
 # SAFE: Type validation
 def process(data: dict):
-    if not isinstance(data.get('value'), int):
+    if not isinstance(data.get("value"), int):
         raise ValueError("Invalid input")
-    return data['value'] * 2
+    return data["value"] * 2
+
 
 # SAFE: Schema validation
 from pydantic import BaseModel, validator
+
 
 class UserInput(BaseModel):
     name: str
     age: int
 
-    @validator('name')
+    @validator("name")
     def name_must_be_safe(cls, v):
         if not v.isalnum():
-            raise ValueError('Name must be alphanumeric')
+            raise ValueError("Name must be alphanumeric")
         return v
 ```
 
@@ -296,6 +303,7 @@ User.query.filter(User.id == id).first()
 
 # Parameterized text queries
 from sqlalchemy import text
+
 session.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id})
 ```
 
@@ -320,11 +328,11 @@ session.execute(text(f"SELECT * FROM users WHERE id = {user_id}"))
 ```python
 # VULNERABLE: JSON numbers become floats
 data = request.get_json()
-user_id = data['id']  # Could be float, string, dict, etc.
+user_id = data["id"]  # Could be float, string, dict, etc.
 User.query.get(user_id)  # May behave unexpectedly
 
 # SAFE: Explicit type conversion
-user_id = int(data['id'])
+user_id = int(data["id"])
 ```
 
 ### Race Conditions
@@ -336,9 +344,7 @@ if user.balance >= amount:
     user.balance -= amount
 
 # SAFE: Atomic operation
-User.query.filter(User.id == user_id, User.balance >= amount).update(
-    {User.balance: User.balance - amount}
-)
+User.query.filter(User.id == user_id, User.balance >= amount).update({User.balance: User.balance - amount})
 ```
 
 ---

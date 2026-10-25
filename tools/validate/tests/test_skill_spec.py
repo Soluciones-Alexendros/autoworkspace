@@ -1,4 +1,5 @@
 """Tests for tools/validate/skill_spec.py."""
+
 import importlib.util
 from pathlib import Path
 
@@ -16,10 +17,7 @@ def load():
 def write_skill(root: Path, name: str, body: str, desc: str | None = None) -> None:
     skill = root / "skills" / name
     skill.mkdir(parents=True)
-    description = desc or (
-        f"{name} capability. Use when the operator asks for it. "
-        "Not for other families."
-    )
+    description = desc or (f"{name} capability. Use when the operator asks for it. Not for other families.")
     (skill / "SKILL.md").write_text(
         f"""---
 name: {name}
@@ -96,8 +94,7 @@ def test_host_profile_heading(tmp_path):
     write_skill(
         tmp_path,
         "local-demo",
-        "## Overview\n\nX.\n\n## When to Use\n\nY.\n\n"
-        "## Perfil de Este Equipo\n\nhost.\n\n## References\n\nZ.\n",
+        "## Overview\n\nX.\n\n## When to Use\n\nY.\n\n## Perfil de Este Equipo\n\nhost.\n\n## References\n\nZ.\n",
     )
     seed_catalog(tmp_path, ["local-demo"])
     errors = run_root(tmp_path)

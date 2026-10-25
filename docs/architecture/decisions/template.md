@@ -14,9 +14,9 @@ priority: "P1"
 
 ### Propósito de este documento
 
-- **Objetivos:** Registrar *esta* decisión (qué se cierra, para quién, qué no se reabre).
+- **Objetivos:** Registrar _esta_ decisión (qué se cierra, para quién, qué no se reabre).
 - **Estructura:** Frontmatter → H1 → esta meta-sección → Contexto, Decisión, Consecuencias, Prioridad, Checklist de implementación, Alternativas, Relacionados.
-- **Contenido a integrar según contexto:** Sustituye placeholders (`XXXX`, fechas, P0/P1). En un repo de producto, describe una decisión del *producto*, no copies un ADR del canon. Si adoptas una del canon, enlázala y no la dupliques.
+- **Contenido a integrar según contexto:** Sustituye placeholders (`XXXX`, fechas, P0/P1). En un repo de producto, describe una decisión del _producto_, no copies un ADR del canon. Si adoptas una del canon, enlázala y no la dupliques.
 
 ## Contexto
 

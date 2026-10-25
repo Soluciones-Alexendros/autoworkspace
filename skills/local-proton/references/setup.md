@@ -45,7 +45,7 @@ pensado para exposición pública.
 ## Variables de entorno
 
 ```bash
-export PROTON_USER="usuario@proton.me"
+export PROTON_USER="${PROTON_USER:-user@example.com}"  # ver .env.example
 export PROTON_PASS="contraseña-generada-por-bridge"
 # Opcionales (solo si cambian host/puertos):
 # export PROTON_IMAP_HOST / PROTON_IMAP_PORT / PROTON_SMTP_HOST / PROTON_SMTP_PORT

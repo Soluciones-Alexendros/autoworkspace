@@ -4,8 +4,10 @@
 Uso: python3 tools/validate/skill_spec.py [--root DIR]
 Exit 0 si todas las skills cumplen; 1 en caso contrario (lista errores).
 """
+
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -14,7 +16,7 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:
-    print("ERROR: PyYAML no instalado. pip install -r requirements-dev.txt")
+    print("ERROR: PyYAML no instalado. uv sync --frozen")
     sys.exit(1)
 
 ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else Path(__file__).resolve().parents[2]
@@ -163,8 +165,14 @@ def check_headings(skill: str, body: str, needs_tools: bool) -> None:
             err(skill, f"H2 prohibido: {heading}")
     if "sudoers.d" in body:
         err(skill, "SKILL.md no puede documentar sudoers.d")
-    if re.search(r"aerox16", body, re.I):
-        err(skill, "SKILL.md no puede nombrar un host concreto")
+    # Patrones privados: AUTOWORKSPACE_PRIVATE_PATTERNS (local) o secreto CI HYGIENE_DENYLIST.
+    patterns_raw = os.environ.get("AUTOWORKSPACE_PRIVATE_PATTERNS", "").strip()
+    for raw in patterns_raw.replace(",", "\n").splitlines():
+        pat = raw.strip()
+        if not pat:
+            continue
+        if re.search(pat, body, re.I):
+            err(skill, f"SKILL.md coincide con patrón privado configurado ({pat!r})")
 
 
 def check_residues(root: Path, sdir: Path) -> None:

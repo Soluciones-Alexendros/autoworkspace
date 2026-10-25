@@ -6,6 +6,42 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-10-25
+
+### Changed
+
+- **BREAKING:** autoworkspace es el host público del canon de flota (absorbe `repo-standard@e518eb1`). Callers pasan a `Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-<stack>.yml@<SHA>`. Método de merge de la flota: `gh pr merge --auto --squash` (prohibidos `--merge` / `--rebase` / `--admin`). Plantilla de producto en `templates/repo/`.
+- CI único con `ci-gate`: `pipeline-python` (uv, cobertura ≥77%), `pipeline-node` (format/lint/typecheck), `canon`, `hygiene`, `validate`, `check-bump`. Dev deps Python vía `pyproject.toml` + `uv.lock` (`uv sync --frozen`).
+- Deuda ruff/mypy heredada congelada por `tools/validate/freeze_quality_debt.py` (retirada en P12); registrada en `.github/policy-exceptions.md`.
+
+### Fixed
+
+- `local-maintenance` 5.1.4 -> 5.1.5 (patch)
+- `local-proton` 5.1.2 -> 5.1.3 (patch)
+- `local-security` 5.1.1 -> 5.1.2 (patch)
+- `plan-continue` 4.3.4 -> 4.3.5 (patch)
+- `project-libraries` 4.1.0 -> 4.1.1 (patch)
+- `project-publish` 4.3.2 -> 4.3.3 (patch)
+- `web-compliance` 4.1.1 -> 4.1.2 (patch)
+- `web-owasp` 4.2.0 -> 4.2.1 (patch)
+
+  P11 T5: formato mecánico, contratos alineados, freeze de deuda
+
+- `local-maintenance` 5.1.3 -> 5.1.4 (patch)
+- `local-proton` 5.1.1 -> 5.1.2 (patch)
+
+  P11 T4: redact local paths / PROTON_USER example
+
+- `plan-continue` 4.3.3 -> 4.3.4 (patch)
+- `project-publish` 4.3.1 -> 4.3.2 (patch)
+- `web-compliance` 4.1.0 -> 4.1.1 (patch)
+
+  P11 T3: desduplicar canon refs, validador ADR, package vendor
+
+- `plan-continue` 4.3.2 -> 4.3.3 (patch)
+
+  P11 T2: inicio-plan apunta a REUTILIZACION (sin docs/repo-standard)
+
 - `plan-continue` 4.3.1 -> 4.3.2 (patch)
 
   Avoid CodeQL secret string literals in inicio_plan/scan_repo user-facing text and pattern type names.
@@ -189,7 +225,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
   | —                     | `web-fullaudit`     | nueva (orquestador de auditoría web)  |
   | `web-playwright`      | —                   | suprimida                             |
   | `webapp-testing`      | —                   | suprimida                             |
-- Canon `docs/repo-standard/` (solo lectura): `structure.md`, `ci-cd.md`, `release.md`, `security.md`, `templates/` (PR, issues, commitlint)
+- Canon `docs/architecture/ + docs/REUTILIZACION.md (P11) ` (solo lectura): `structure.md`, `ci-cd.md`, `release.md`, `security.md`, `templates/` (PR, issues, commitlint)
 - Autoversionado semver por magnitud: `tools/version/bump.py`.
 
 ## [0.1.0] - 2026-09-26
@@ -199,7 +235,8 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 - Estructura `skills/<nombre>/` con frontmatter normalizado (`license: MIT`, `metadata` con autor, versión, dominio e idioma).
 - Validadores `tools/validate/` (spec + enlaces), CI en `.github/workflows/` y `run-validation.sh` agregado.
 
-[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v6.0.0...HEAD
+[6.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v5.0.0...v6.0.0
 [5.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v4.1.0...v5.0.0
 [4.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v3.0.2...v4.0.0

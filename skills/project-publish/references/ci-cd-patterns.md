@@ -1,6 +1,6 @@
 # Patrones de CI/CD en GitHub Actions
 
-Adapta el patrón al stack. `assets/workflows/ci.yml` es un ejemplo Node con npm. No lo copies sobre otro ecosistema.
+Adapta el patrón al stack. Usa `stacks/<stack>/ci.yml` del canon (host autoworkspace) pineado por SHA. No copies un caller de un stack sobre otro ecosistema. Rulesets como código: `rulesets/` (P2/P10).
 
 | Stack | Setup | Comprobación mínima |
 |---|---|---|
