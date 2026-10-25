@@ -15,7 +15,7 @@ help:
 	@echo "  make smoke     — scripts/smoke.sh (canon contract)"
 
 quality:
-	python3 tools/validate/hygiene.py
+	uv run uv run python3 tools/validate/hygiene.py
 
 validate:
 	bash run-validation.sh
@@ -23,7 +23,7 @@ validate:
 lint: quality
 
 test:
-	python3 -m pytest tools/ \
+	uv run pytest tools/ \
 		skills/local-maintenance/scripts/tests/ \
 		skills/web-compliance/tests/ \
 		skills/local-security/scripts/tests/ \
