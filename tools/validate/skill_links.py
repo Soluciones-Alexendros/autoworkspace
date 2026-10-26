@@ -264,12 +264,7 @@ def check_md(md: Path) -> None:
 
 
 def main() -> int:
-    mds = sorted(
-        p
-        for p in ROOT.rglob("*.md")
-        if not (TERM_SKIP_PARTS & set(p.parts))
-        and ".archivado" not in str(p)
-    )
+    mds = sorted(p for p in ROOT.rglob("*.md") if not (TERM_SKIP_PARTS & set(p.parts)) and ".archivado" not in str(p))
     for md in mds:
         check_md(md)
     check_adr_citations(ROOT)
