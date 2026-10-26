@@ -148,6 +148,7 @@ Este repositorio aloja el contrato P0/P1 de la flota. Índice rápido:
 | Callers por stack     | [`stacks/`](stacks/)                                                                        |
 | Reusables CI          | [`.github/workflows/reusable-*.yml`](.github/workflows/)                                    |
 | Plantilla de producto | [`templates/repo/`](templates/repo/) — `gh repo create … && cp -a templates/repo/. <repo>/` |
+| Glosario              | [`docs/GLOSARIO.md`](docs/GLOSARIO.md) — un término canónico por concepto                   |
 
 Norma de planes (plantilla en `docs/` + carpeta `docs/plans/`) llegan en T2. Rulesets como código llegan con P2/P10 (`rulesets/`).
 
