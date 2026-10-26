@@ -45,10 +45,11 @@ jobs:
       quality-command: |
         set -euo pipefail
         tmpdir="$(mktemp -d)"
-        (
-          cd "$tmpdir"
-          curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
-        )
+        archive="actionlint_1.7.12_linux_amd64.tar.gz"
+        curl -fsSL -o "$tmpdir/$archive" \
+          "https://github.com/rhysd/actionlint/releases/download/v1.7.12/${archive}"
+        echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $tmpdir/$archive" | sha256sum -c -
+        tar -xzf "$tmpdir/$archive" -C "$tmpdir" actionlint
         "$tmpdir/actionlint" -color
         bash scripts/check-structure.sh templates/repo
       test-command: make -f templates/repo/Makefile test

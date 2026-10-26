@@ -29,13 +29,5 @@ jobs:
           persist-credentials: false
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
-      - name: Instalar actionlint y lintar workflows
-        run: |
-          set -euo pipefail
-          tmpdir="$(mktemp -d)"
-          (
-            cd "$tmpdir"
-            curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
-          )
-          "$tmpdir/actionlint" -color
-        shell: bash
+      - name: Lint workflows
+        uses: ./skills/project-publish/actions/actionlint
