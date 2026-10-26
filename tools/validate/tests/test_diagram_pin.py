@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -14,15 +15,17 @@ CI = REPO / ".github" / "workflows" / "ci.yml"
 SHA_LEN = 40
 
 
-def _catalog_renderer() -> dict[str, str]:
-    return json.loads(CATALOG.read_text(encoding="utf-8"))["renderer"]
+def _catalog_renderer() -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(CATALOG.read_text(encoding="utf-8"))
+    return cast("dict[str, Any]", data["renderer"])
 
 
-def _workflow() -> dict:
-    return yaml.safe_load(CI.read_text(encoding="utf-8"))
+def _workflow() -> dict[str, Any]:
+    data: dict[str, Any] = yaml.safe_load(CI.read_text(encoding="utf-8"))
+    return data
 
 
-def _diagram_steps() -> list[dict]:
+def _diagram_steps() -> list[dict[str, Any]]:
     steps = _workflow()["jobs"]["diagrams"]["steps"]
     return [step for step in steps if step.get("uses", "").startswith("actions/checkout")]
 
