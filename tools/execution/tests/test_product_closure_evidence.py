@@ -1,4 +1,4 @@
-"""Product closure V01–V12: strict evidence, phase semantics, content confinement."""
+"""Product closure V01-V12: strict evidence, phase semantics, content confinement."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import os
 import sys
 import uuid
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -24,7 +25,7 @@ from execution.ops import OpResult  # noqa: E402
 DIG = "b" * 64
 
 
-def _ok(op="local_gates", **kw):
+def _ok(op: str = "local_gates", **kw: Any) -> OpResult:
     return OpResult(
         operation_id=op,
         outcome="succeeded",
@@ -37,30 +38,30 @@ def _ok(op="local_gates", **kw):
     )
 
 
-def _write_art(tmp: Path, name="artifact.txt", body="ok") -> Path:
+def _write_art(tmp: Path, name: str = "artifact.txt", body: str = "ok") -> Path:
     p = tmp / name
     p.write_text(body)
     return p
 
 
-# --- V01–V04 ---
+# --- V01-V04 ---
 
 
-def test_v01_succeeded_only_rejected(tmp_path):
+def test_v01_succeeded_only_rejected(tmp_path: Path) -> None:
     (tmp_path / ".autoworkspace").mkdir()
     rid = str(uuid.uuid4())
     ed = tmp_path / ".autoworkspace" / "evidence"
     ed.mkdir()
     # Hand-craft minimal JSON (succeeded + uuid filename, no bindings)
     (ed / f"{rid}.json").write_text(json.dumps({"outcome": "succeeded", "run_id": rid, "schema_version": 1}))
-    with pytest.raises(ValueError, match="missing required|schema|plan_digest|phase"):
+    with pytest.raises(ValueError, match=r"missing required|schema|plan_digest|phase"):
         load_evidence(tmp_path, rid, revalidate_content=False)
 
 
-def test_v02_omit_each_binding(tmp_path):
+def test_v02_omit_each_binding(tmp_path: Path) -> None:
     (tmp_path / ".autoworkspace").mkdir()
     art = _write_art(tmp_path)
-    base = dict(
+    base: dict[str, Any] = dict(
         artifacts=[str(art)],
         phase="VALIDATE",
         skill="project-publish",
@@ -81,7 +82,7 @@ def test_v02_omit_each_binding(tmp_path):
             store_result(tmp_path, _ok(), **kw)
 
 
-def test_v03_bad_types_and_legacy(tmp_path):
+def test_v03_bad_types_and_legacy(tmp_path: Path) -> None:
     (tmp_path / ".autoworkspace").mkdir()
     rid = str(uuid.uuid4())
     ed = tmp_path / ".autoworkspace" / "evidence"
@@ -109,11 +110,11 @@ def test_v03_bad_types_and_legacy(tmp_path):
     rid2 = str(uuid.uuid4())
     bad2 = dict(payload, run_id=rid2, output_digest="")
     (ed / f"{rid2}.json").write_text(json.dumps(bad2))
-    with pytest.raises(ValueError, match="output_digest|missing"):
+    with pytest.raises(ValueError, match=r"output_digest|missing"):
         load_evidence(tmp_path, rid2, revalidate_content=False, for_complete=True)
 
 
-def test_v04_valid_accepted(tmp_path):
+def test_v04_valid_accepted(tmp_path: Path) -> None:
     (tmp_path / "code.py").write_text("x")
     (tmp_path / ".autoworkspace").mkdir()
     art = _write_art(tmp_path)
@@ -136,10 +137,10 @@ def test_v04_valid_accepted(tmp_path):
     assert data["run_id"] == rid
 
 
-# --- V05–V07 ---
+# --- V05-V07 ---
 
 
-def test_v05_local_gates_cannot_complete_define(tmp_path):
+def test_v05_local_gates_cannot_complete_define(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
     (tmp_path / ".autoworkspace").mkdir()
     art = _write_art(tmp_path)
@@ -156,7 +157,7 @@ def test_v05_local_gates_cannot_complete_define(tmp_path):
         load_evidence(tmp_path, rid, expected_phase="DEFINE", for_complete=True)
 
 
-def test_v06_prefix_and_wrong_phase_rejected(tmp_path):
+def test_v06_prefix_and_wrong_phase_rejected(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
     (tmp_path / ".autoworkspace").mkdir()
     art = _write_art(tmp_path)
@@ -173,7 +174,7 @@ def test_v06_prefix_and_wrong_phase_rejected(tmp_path):
         load_evidence(tmp_path, rid, expected_phase="VALIDATE")
 
 
-def test_v07_missing_verification_rejected(tmp_path):
+def test_v07_missing_verification_rejected(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
     (tmp_path / ".autoworkspace").mkdir()
     art = _write_art(tmp_path)
@@ -190,10 +191,10 @@ def test_v07_missing_verification_rejected(tmp_path):
         load_evidence(tmp_path, rid, expected_phase="VALIDATE", for_complete=True)
 
 
-# --- V08–V12 ---
+# --- V08-V12 ---
 
 
-def test_v08_bytes_change_digest_touch_stable(tmp_path):
+def test_v08_bytes_change_digest_touch_stable(tmp_path: Path) -> None:
     f = tmp_path / "a.bin"
     f.write_bytes(b"AAAA")
     d1 = work_digest(tmp_path)
@@ -207,7 +208,7 @@ def test_v08_bytes_change_digest_touch_stable(tmp_path):
     assert d3 == d4
 
 
-def test_v09_dir_symlink_recorded(tmp_path):
+def test_v09_dir_symlink_recorded(tmp_path: Path) -> None:
     real = tmp_path / "realdir"
     real.mkdir()
     (real / "f").write_text("z")
@@ -218,7 +219,7 @@ def test_v09_dir_symlink_recorded(tmp_path):
     assert m["entries"]["linkdir"].startswith("symlink:")
 
 
-def test_v10_artifact_symlink_rejected(tmp_path):
+def test_v10_artifact_symlink_rejected(tmp_path: Path) -> None:
     (tmp_path / ".autoworkspace").mkdir()
     real = tmp_path / "real.txt"
     real.write_text("p")
@@ -236,7 +237,7 @@ def test_v10_artifact_symlink_rejected(tmp_path):
         )
 
 
-def test_v11_unreadable_file_errors(tmp_path):
+def test_v11_unreadable_file_errors(tmp_path: Path) -> None:
     f = tmp_path / "secret.bin"
     f.write_bytes(b"x")
     f.chmod(0o000)
@@ -247,7 +248,7 @@ def test_v11_unreadable_file_errors(tmp_path):
         f.chmod(0o600)
 
 
-def test_v12_admin_change_stable_new_file_changes(tmp_path):
+def test_v12_admin_change_stable_new_file_changes(tmp_path: Path) -> None:
     (tmp_path / "code.py").write_text("stable")
     aw = tmp_path / ".autoworkspace"
     aw.mkdir()

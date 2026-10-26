@@ -81,6 +81,46 @@ def route(prompt: str, top: int = 3):
     return ranked[:top]
 
 
+def _run_interactive(top: int) -> None:
+    while True:
+        try:
+            p = input("prompt> ").strip()
+            if not p:
+                continue
+            if p in ("exit", "quit"):
+                break
+            for sc, sk in route(p, top):
+                print(f"{sc:.2f} {sk['name']} -> {sk['entry']}")
+        except (EOFError, KeyboardInterrupt):
+            break
+
+
+ABSTAIN_PAYLOAD = {
+    "abstain": True,
+    "reason": "no lexical signal (score=0); refusing automatic first-catalog pick",
+    "score_kind": "lexical_not_probabilistic",
+}
+
+
+def _emit_abstain(as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(ABSTAIN_PAYLOAD, ensure_ascii=False, indent=2))
+    else:
+        print("ABSTAIN: no lexical signal — do not auto-select a skill")
+
+
+def _emit_results(results: list, as_json: bool) -> None:
+    if as_json:
+        rows = [
+            {"score": sc, "name": sk["name"], "entry": sk["entry"], "score_kind": "lexical_not_probabilistic"}
+            for sc, sk in results
+        ]
+        print(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    for sc, sk in results:
+        print(f"{sc:.2f} {sk['name']} -> {sk['entry']}  keywords={','.join(sk.get('keywords', [])[:4])}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Skill router for OpenCode")
     parser.add_argument("prompt", nargs="*", help="User prompt")
@@ -90,17 +130,7 @@ def main():
     args = parser.parse_args()
 
     if args.interactive:
-        while True:
-            try:
-                p = input("prompt> ").strip()
-                if not p:
-                    continue
-                if p in ("exit", "quit"):
-                    break
-                for sc, sk in route(p, args.top):
-                    print(f"{sc:.2f} {sk['name']} -> {sk['entry']}")
-            except (EOFError, KeyboardInterrupt):
-                break
+        _run_interactive(args.top)
         return
 
     prompt = " ".join(args.prompt)
@@ -108,30 +138,9 @@ def main():
         prompt = sys.stdin.read().strip()
     results = route(prompt, args.top)
     if not results:
-        payload = {
-            "abstain": True,
-            "reason": "no lexical signal (score=0); refusing automatic first-catalog pick",
-            "score_kind": "lexical_not_probabilistic",
-        }
-        if args.json:
-            print(json.dumps(payload, ensure_ascii=False, indent=2))
-        else:
-            print("ABSTAIN: no lexical signal — do not auto-select a skill")
+        _emit_abstain(args.json)
         return
-    if args.json:
-        print(
-            json.dumps(
-                [
-                    {"score": sc, "name": sk["name"], "entry": sk["entry"], "score_kind": "lexical_not_probabilistic"}
-                    for sc, sk in results
-                ],
-                ensure_ascii=False,
-                indent=2,
-            )
-        )
-    else:
-        for sc, sk in results:
-            print(f"{sc:.2f} {sk['name']} -> {sk['entry']}  keywords={','.join(sk.get('keywords', [])[:4])}")
+    _emit_results(results, args.json)
 
 
 if __name__ == "__main__":

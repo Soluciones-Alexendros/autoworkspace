@@ -48,7 +48,7 @@ ERROR_RE = re.compile(r"^(?P<path>[^:]+):\d+:\s+error:(?:.*?\[(?P<code>[a-z0-9-]
 
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
+    return subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, check=False)
 
 
 def collect_ruff() -> dict[str, list[str]]:
@@ -108,9 +108,7 @@ def _rel(path: str) -> str:
 
 def collect_mypy_failing_modules() -> tuple[list[str], list[str], dict[str, int]]:
     """Return (modules_for_ignore, exclude_globs, rule_counts)."""
-    exclude_globs = list(HYPHEN_EXCLUDES) + [
-        r".*/tests/conftest\.py$",
-    ]
+    exclude_globs = [*list(HYPHEN_EXCLUDES), r".*/tests/conftest\.py$"]
     cmd = [
         "uv",
         "run",
@@ -132,12 +130,12 @@ def collect_mypy_failing_modules() -> tuple[list[str], list[str], dict[str, int]
     modules: set[str] = set()
     rule_counts: dict[str, int] = defaultdict(int)
     for line in text.splitlines():
-        m = ERROR_RE.match(line)
-        if not m:
+        err_match = ERROR_RE.match(line)
+        if not err_match:
             continue
-        code = m.group("code") or "uncategorized"
+        code = err_match.group("code") or "uncategorized"
         rule_counts[code] += 1
-        rel = _rel(m.group("path"))
+        rel = _rel(err_match.group("path"))
         mod = path_to_module.get(rel)
         if mod is None and rel.endswith(".py"):
             # Fallback: basename without suffix (mypy default for script dirs).

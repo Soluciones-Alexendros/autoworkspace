@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -26,19 +29,19 @@ class AllowProvider(ApprovalProvider):
         return ApprovalDecision(True, "test allow", "test", request.plan_digest)
 
 
-def test_deny_provider_blocks_mutation():
+def test_deny_provider_blocks_mutation() -> None:
     d = DenyProvider().decide(ApprovalRequest("clean_routine", "/tmp", {}, ("mutate-host",), "abc"))
     assert d.allowed is False
 
 
-def test_insufficient_tokens():
+def test_insufficient_tokens() -> None:
     assert is_insufficient_token("approved=true")
     assert is_insufficient_token("true")
     assert is_insufficient_token("1")
     assert is_insufficient_token("CONFIRM_SEND")
 
 
-def test_shell_c_rejected_via_free_form():
+def test_shell_c_rejected_via_free_form() -> None:
     r = run_operation(
         operation_id="x",
         argv=["bash", "-c", "echo hi"],
@@ -50,13 +53,13 @@ def test_shell_c_rejected_via_free_form():
     assert "free-form" in r.detail
 
 
-def test_mutate_blocked_without_approval(monkeypatch):
+def test_mutate_blocked_without_approval(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AUTOWORKSPACE_APPROVAL_PROVIDER", "deny")
     r = run_registered("clean_journal", {"snapshot_id": "snap-1"}, target="/")
     assert r.outcome == "blocked"
 
 
-def test_free_form_mutation_rejected():
+def test_free_form_mutation_rejected() -> None:
     r = run_operation(
         operation_id="evil",
         argv=["true"],
@@ -68,11 +71,11 @@ def test_free_form_mutation_rejected():
     assert "free-form" in r.detail
 
 
-def test_digest_includes_argv_change_invalidates(monkeypatch):
-    monkeypatch.setattr("execution.ops.provider_from_env", lambda: AllowProvider())
+def test_digest_includes_argv_change_invalidates(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("execution.ops.provider_from_env", AllowProvider)
     calls = []
 
-    def handler(params):
+    def handler(params: dict[str, Any]) -> int:
         calls.append(params)
         return 0
 
@@ -100,7 +103,7 @@ def test_digest_includes_argv_change_invalidates(monkeypatch):
     assert d1 != d2
 
 
-def test_argv_or_target_change_blocks_stale_approval(monkeypatch):
+def test_argv_or_target_change_blocks_stale_approval(monkeypatch: pytest.MonkeyPatch) -> None:
     """Provider that approves only a fixed digest — change invalidates."""
     fixed = {"digest": ""}
 
@@ -111,7 +114,7 @@ def test_argv_or_target_change_blocks_stale_approval(monkeypatch):
                 return ApprovalDecision(True, "first", "test", request.plan_digest)
             return ApprovalDecision(True, "stale", "test", fixed["digest"])
 
-    monkeypatch.setattr("execution.ops.provider_from_env", lambda: StaleProvider())
+    monkeypatch.setattr("execution.ops.provider_from_env", StaleProvider)
     register_handler("clean_temp", lambda p: 0)
     r1 = run_registered("clean_temp", {"snapshot_id": "s1"}, target="/t1")
     assert r1.outcome == "succeeded"
@@ -119,25 +122,30 @@ def test_argv_or_target_change_blocks_stale_approval(monkeypatch):
     assert r2.outcome == "blocked"
 
 
-def test_handler_not_invoked_when_denied(monkeypatch):
-    monkeypatch.setattr("execution.ops.provider_from_env", lambda: DenyProvider())
-    invoked = []
-    register_handler("clean_journal", lambda p: invoked.append(1) or 0)
+def test_handler_not_invoked_when_denied(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("execution.ops.provider_from_env", DenyProvider)
+    invoked: list[int] = []
+
+    def _denied(_params: dict[str, Any]) -> int:
+        invoked.append(1)
+        return 0
+
+    register_handler("clean_journal", _denied)
     r = run_registered("clean_journal", {"snapshot_id": "s"}, target="/")
     assert r.outcome == "blocked"
     assert invoked == []
 
 
-def test_preflight_missing_binary():
+def test_preflight_missing_binary() -> None:
     r = check_binaries(["definitely-not-a-real-binary-xyz"])
     assert r.ok is False
 
 
-def test_resolve_workspace():
+def test_resolve_workspace() -> None:
     assert resolve_workspace_root(ROOT) == ROOT.resolve()
 
 
-def test_digest_stable():
+def test_digest_stable() -> None:
     a = plan_digest("op", "t", {"x": 1}, ["read"], argv=[], cwd="", executable_id="")
     b = plan_digest("op", "t", {"x": 1}, ["read"], argv=[], cwd="", executable_id="")
     assert a == b

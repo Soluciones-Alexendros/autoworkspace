@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import fcntl
 import os
-from datetime import datetime, timezone
+import sys
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,7 @@ try:
 except ImportError as exc:  # pragma: no cover
     raise SystemExit("PyYAML required: uv sync --frozen") from exc
 
+STATUS_PATH_PARTS = 3
 PHASES = ("DEFINE", "SCHEMAS", "IMPLEMENT", "VALIDATE", "INTEGRATE", "STATUS")
 PHASE_INDEX = {p: i for i, p in enumerate(PHASES)}
 
@@ -44,7 +47,7 @@ def load_status(repo: Path | str) -> dict[str, Any]:
 
 def _bump_semver(version: str, kind: str) -> str:
     parts = version.strip().split(".")
-    while len(parts) < 3:
+    while len(parts) < STATUS_PATH_PARTS:
         parts.append("0")
     major, minor, patch = (int(parts[0]), int(parts[1]), int(parts[2]))
     if kind == "major":
@@ -144,7 +147,186 @@ def _atomic_write_yaml(path: Path, data: dict[str, Any]) -> None:
             fcntl.flock(lockf.fileno(), fcntl.LOCK_UN)
 
 
-def advance_status(
+@dataclass(frozen=True)
+class _AdvanceContext:
+    """Everything a completion needs, resolved once."""
+
+    root: Path
+    phase: str
+    skill: str
+    checksum_spec: str
+    note: str
+    run_id: str
+    target: str
+    allow_restart: bool
+    bump_product_version: bool
+    expected_revision: int | None
+
+
+def _utc_stamp() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _stamp_awaiting(data: dict[str, Any], phase: str) -> dict[str, Any]:
+    out = dict(data)
+    out["awaiting_agent"] = True
+    out["awaiting_phase"] = phase
+    out["updated_at"] = _utc_stamp()
+    return out
+
+
+def _receipt_key(phase: str, run_id: str) -> str:
+    return f"{phase}:{run_id}"
+
+
+def _seen_completion(data: dict[str, Any], run_id: str, phase: str) -> bool:
+    receipts = data.get("completion_receipts") or {}
+    if isinstance(receipts, dict) and _receipt_key(phase, run_id) in receipts:
+        return True
+    # Legacy window still consulted
+    completed = list(data.get("completed_run_ids") or [])
+    return run_id in completed
+
+
+def _ensure_tools_on_path() -> None:
+    tools = Path(__file__).resolve().parents[1]
+    if str(tools) not in sys.path:
+        sys.path.insert(0, str(tools))
+
+
+def _validated_evidence(ctx: _AdvanceContext) -> dict[str, Any]:
+    """Revalidate evidence UNDER lock so stale content cannot complete (H19)."""
+    from execution.evidence import load_evidence  # noqa: PLC0415  # import opcional: requiere tools/ en sys.path
+
+    evidence = load_evidence(
+        ctx.root,
+        ctx.run_id,
+        revalidate_content=True,
+        expected_phase=ctx.phase,
+        expected_skill=ctx.skill or None,
+        expected_target=ctx.target or None,
+        for_complete=True,
+    )
+    if evidence.get("outcome") != "succeeded":
+        raise ValueError("evidence outcome is not succeeded")
+    return evidence
+
+
+def _completion_entry(
+    ctx: _AdvanceContext,
+    progress: dict[str, Any],
+    evidence: dict[str, Any],
+    now: str,
+) -> dict[str, Any]:
+    return {
+        "advance": progress["advance"],
+        "version": progress["product_version"],
+        "state_revision": progress["state_revision"],
+        "phase": ctx.phase,
+        "skill": ctx.skill,
+        "at": now,
+        "note": ctx.note,
+        "evidence_ok": True,
+        "run_id": ctx.run_id,
+        "work_digest": evidence.get("output_digest") or evidence.get("work_digest", ""),
+    }
+
+
+def _apply_completion(
+    ctx: _AdvanceContext,
+    data: dict[str, Any],
+    evidence: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    """Return (state, idempotent_replay)."""
+    out = dict(data)
+    if _seen_completion(out, ctx.run_id, ctx.phase):
+        return out, True
+    if out.get("awaiting_agent"):
+        raise ValueError("awaiting_agent must be resolved before complete")
+    current = str(out.get("phase") or "DEFINE")
+    _assert_phase_transition(current, ctx.phase, allow_restart=ctx.allow_restart)
+
+    cur_rev = int(out.get("state_revision") or 0)
+    if ctx.expected_revision is not None and ctx.expected_revision != cur_rev:
+        raise ValueError(f"stale state_revision: expected {ctx.expected_revision}, have {cur_rev}")
+
+    product_version = str(out.get("version") or "0.1.0")
+    if ctx.bump_product_version:
+        product_version = _bump_semver(product_version, bump_kind_for_phase(ctx.phase))
+    state_revision = cur_rev + 1
+    advance = int(out.get("advance") or 0) + 1
+    now = _utc_stamp()
+    progress = {"state_revision": state_revision, "advance": advance, "product_version": product_version}
+
+    history = list(out.get("history") or [])
+    history.append(_completion_entry(ctx, progress, evidence, now))
+    evidence_log = list(out.get("evidence_log") or [])
+    evidence_log.append(
+        {
+            "state_revision": state_revision,
+            "checksum_spec": ctx.checksum_spec or evidence.get("plan_digest", ""),
+            "run_id": ctx.run_id,
+            "at": now,
+            "phase": ctx.phase,
+        }
+    )
+    completed = list(out.get("completed_run_ids") or [])
+    completed.append(ctx.run_id)
+    receipts = dict(out.get("completion_receipts") or {})
+    receipts[_receipt_key(ctx.phase, ctx.run_id)] = {
+        "at": now,
+        "state_revision": state_revision,
+        "plan_digest": evidence.get("plan_digest", ""),
+        "output_digest": evidence.get("output_digest", ""),
+    }
+    out.update(
+        {
+            "schema_version": 1,
+            "version": product_version,
+            "state_revision": state_revision,
+            "phase": ctx.phase,
+            "advance": advance,
+            "last_skill": ctx.skill,
+            "checksum_spec": ctx.checksum_spec or out.get("checksum_spec") or "",
+            "updated_at": now,
+            "history": history[-50:],
+            "evidence_log": evidence_log,
+            # Compact window for diagnostics; durable identity is receipts.
+            "completed_run_ids": completed[-200:],
+            "completion_receipts": receipts,
+            "awaiting_agent": False,
+        }
+    )
+    out.pop("awaiting_phase", None)
+    return out, False
+
+
+def _advance_once(ctx: _AdvanceContext) -> dict[str, Any]:
+    evidence = _validated_evidence(ctx)
+    data, idempotent = _apply_completion(ctx, load_status(ctx.root), evidence)
+    if idempotent:
+        data = dict(data)
+        data["_idempotent_replay"] = True
+    return data
+
+
+def _advance_locked(ctx: _AdvanceContext) -> dict[str, Any]:
+    replay: dict[str, bool] = {"idempotent": False}
+
+    def _run(data: dict[str, Any]) -> dict[str, Any]:
+        evidence = _validated_evidence(ctx)
+        out, idempotent = _apply_completion(ctx, data, evidence)
+        replay["idempotent"] = idempotent
+        return out
+
+    result = _with_status_lock(ctx.root, _run)
+    if replay["idempotent"]:
+        result = dict(result)
+        result["_idempotent_replay"] = True
+    return result
+
+
+def advance_status(  # noqa: PLR0913  # API pública: keyword-only, espejo del contrato de estado
     repo: Path | str,
     *,
     phase: str,
@@ -172,21 +354,8 @@ def advance_status(
 
     if allow_awaiting and not evidence_ok:
         if not write:
-            data = load_status(root)
-            data = dict(data)
-            data["awaiting_agent"] = True
-            data["awaiting_phase"] = phase
-            data["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            return data
-
-        def _await(data: dict[str, Any]) -> dict[str, Any]:
-            data = dict(data)
-            data["awaiting_agent"] = True
-            data["awaiting_phase"] = phase
-            data["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            return data
-
-        return _with_status_lock(root, _await)
+            return _stamp_awaiting(load_status(root), phase)
+        return _with_status_lock(root, lambda data: _stamp_awaiting(data, phase))
 
     if not evidence_ok:
         raise ValueError(
@@ -196,133 +365,25 @@ def advance_status(
     if not run_id:
         raise ValueError("refusing status advance without validated run_id evidence")
 
-    import sys
-
-    tools = Path(__file__).resolve().parents[1]
-    if str(tools) not in sys.path:
-        sys.path.insert(0, str(tools))
-    from execution.evidence import load_evidence
-
-    replay = {"idempotent": False, "evidence": None}
-
-    def _receipt_key(ph: str, rid: str) -> str:
-        return f"{ph}:{rid}"
-
-    def _seen_completion(data: dict[str, Any], rid: str, ph: str) -> bool:
-        receipts = data.get("completion_receipts") or {}
-        if isinstance(receipts, dict) and _receipt_key(ph, rid) in receipts:
-            return True
-        # Legacy window still consulted
-        completed = list(data.get("completed_run_ids") or [])
-        return rid in completed
-
-    def _advance(data: dict[str, Any]) -> dict[str, Any]:
-        data = dict(data)
-        # Revalidate evidence UNDER lock so stale content between pre-check and
-        # commit cannot complete (H19).
-        evidence = load_evidence(
-            root,
-            run_id,
-            revalidate_content=True,
-            expected_phase=phase,
-            expected_skill=skill or None,
-            expected_target=target or None,
-            for_complete=True,
-        )
-        if evidence.get("outcome") != "succeeded":
-            raise ValueError("evidence outcome is not succeeded")
-        replay["evidence"] = evidence
-
-        if _seen_completion(data, run_id, phase):
-            replay["idempotent"] = True
-            return data
-
-        if data.get("awaiting_agent"):
-            raise ValueError("awaiting_agent must be resolved before complete")
-
-        current = str(data.get("phase") or "DEFINE")
-        _assert_phase_transition(current, phase, allow_restart=allow_restart)
-
-        cur_rev = int(data.get("state_revision") or 0)
-        if expected_revision is not None and expected_revision != cur_rev:
-            raise ValueError(f"stale state_revision: expected {expected_revision}, have {cur_rev}")
-
-        product_version = str(data.get("version") or "0.1.0")
-        if bump_product_version:
-            kind = bump_kind_for_phase(phase)
-            product_version = _bump_semver(product_version, kind)
-        state_revision = cur_rev + 1
-        advance = int(data.get("advance") or 0) + 1
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        entry = {
-            "advance": advance,
-            "version": product_version,
-            "state_revision": state_revision,
-            "phase": phase,
-            "skill": skill,
-            "at": now,
-            "note": note,
-            "evidence_ok": True,
-            "run_id": run_id,
-            "work_digest": evidence.get("output_digest") or evidence.get("work_digest", ""),
-        }
-        history = list(data.get("history") or [])
-        history.append(entry)
-        evidence_log = list(data.get("evidence_log") or [])
-        evidence_log.append(
-            {
-                "state_revision": state_revision,
-                "checksum_spec": checksum_spec or evidence.get("plan_digest", ""),
-                "run_id": run_id,
-                "at": now,
-                "phase": phase,
-            }
-        )
-        completed = list(data.get("completed_run_ids") or [])
-        completed.append(run_id)
-        receipts = dict(data.get("completion_receipts") or {})
-        receipts[_receipt_key(phase, run_id)] = {
-            "at": now,
-            "state_revision": state_revision,
-            "plan_digest": evidence.get("plan_digest", ""),
-            "output_digest": evidence.get("output_digest", ""),
-        }
-        data.update(
-            {
-                "schema_version": 1,
-                "version": product_version,
-                "state_revision": state_revision,
-                "phase": phase,
-                "advance": advance,
-                "last_skill": skill,
-                "checksum_spec": checksum_spec or data.get("checksum_spec") or "",
-                "updated_at": now,
-                "history": history[-50:],
-                "evidence_log": evidence_log,
-                # Compact window for diagnostics; durable identity is receipts.
-                "completed_run_ids": completed[-200:],
-                "completion_receipts": receipts,
-                "awaiting_agent": False,
-            }
-        )
-        data.pop("awaiting_phase", None)
-        return data
-
+    _ensure_tools_on_path()
+    ctx = _AdvanceContext(
+        root=root,
+        phase=phase,
+        skill=skill,
+        checksum_spec=checksum_spec,
+        note=note,
+        run_id=run_id,
+        target=target,
+        allow_restart=allow_restart,
+        bump_product_version=bump_product_version,
+        expected_revision=expected_revision,
+    )
     if not write:
-        data = _advance(load_status(root))
-        if replay["idempotent"]:
-            data = dict(data)
-            data["_idempotent_replay"] = True
-        return data
-
-    result = _with_status_lock(root, _advance)
-    if replay["idempotent"]:
-        result = dict(result)
-        result["_idempotent_replay"] = True
-    return result
+        return _advance_once(ctx)
+    return _advance_locked(ctx)
 
 
-def resolve_awaiting_agent(
+def resolve_awaiting_agent(  # noqa: PLR0913  # API pública: keyword-only
     repo: Path | str,
     *,
     run_id: str,
@@ -342,12 +403,10 @@ def resolve_awaiting_agent(
         raise ValueError("run_id required to resolve awaiting_agent")
 
     root = Path(repo).resolve()
-    import sys
-
     tools = Path(__file__).resolve().parents[1]
     if str(tools) not in sys.path:
         sys.path.insert(0, str(tools))
-    from execution.evidence import load_evidence
+    from execution.evidence import load_evidence  # noqa: PLC0415  # import opcional: requiere tools/ en sys.path
 
     def _resolve(data: dict[str, Any]) -> dict[str, Any]:
         data = dict(data)
@@ -369,7 +428,7 @@ def resolve_awaiting_agent(
         )
         if evidence.get("outcome") != "succeeded":
             raise ValueError("evidence outcome is not succeeded")
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         data["awaiting_agent"] = False
         data.pop("awaiting_phase", None)
         data["updated_at"] = now

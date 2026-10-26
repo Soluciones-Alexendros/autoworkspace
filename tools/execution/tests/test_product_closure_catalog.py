@@ -6,14 +6,17 @@ from pathlib import Path
 
 import yaml
 
+EXPECTED_SKILLS = 16
+EXPECTED_OPERATIONS = 32
+
 ROOT = Path(__file__).resolve().parents[3]
 SKILLS = ROOT / "skills"
 
 
-def test_v43_sixteen_skills_with_operations():
+def test_v43_sixteen_skills_with_operations() -> None:
     names = sorted(p.name for p in SKILLS.iterdir() if (p / "SKILL.md").is_file())
-    assert len(names) == 16
-    missing = []
+    assert len(names) == EXPECTED_SKILLS
+    missing: list[str] = []
     for name in names:
         exe = SKILLS / name / "execution.yaml"
         assert exe.is_file(), name
@@ -28,7 +31,7 @@ def test_v43_sixteen_skills_with_operations():
     assert missing == []
 
 
-def test_c01_matrix_matches_disk():
+def test_c01_matrix_matches_disk() -> None:
     """Frozen plan matrix row count equals declared operations."""
     plan = ROOT / "tasks" / "plan-product-closure-final.md"
     text = plan.read_text(encoding="utf-8")
@@ -37,5 +40,5 @@ def test_c01_matrix_matches_disk():
     for p in sorted(SKILLS.glob("*/execution.yaml")):
         data = yaml.safe_load(p.read_text()) or {}
         total += len(data.get("operations") or [])
-    assert total == 32
+    assert total == EXPECTED_OPERATIONS
     assert "32 operaciones" in text or "32 operaciones / 16 skills" in text

@@ -3,11 +3,12 @@
 import importlib.util
 import subprocess
 from pathlib import Path
+from typing import Any
 
 BUMP = Path(__file__).resolve().parents[1] / "bump.py"
 
 
-def load_bump(tmp=None):
+def load_bump(tmp: Path | None = None) -> Any:
     spec = importlib.util.spec_from_file_location("bump", BUMP)
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -18,7 +19,7 @@ def load_bump(tmp=None):
 bump = load_bump()
 
 
-def test_normalize_kind_aliases_es():
+def test_normalize_kind_aliases_es() -> None:
     assert bump.normalize_kind("major") == "major"
     assert bump.normalize_kind("actualización") == "major"
     assert bump.normalize_kind("actualizacion-mayor") == "major"
@@ -30,7 +31,7 @@ def test_normalize_kind_aliases_es():
     assert bump.normalize_kind("fix") == "patch"
 
 
-def test_normalize_kind_unknown():
+def test_normalize_kind_unknown() -> None:
     try:
         bump.normalize_kind("enorme")
     except ValueError:
@@ -38,14 +39,14 @@ def test_normalize_kind_unknown():
     raise AssertionError("debió fallar con magnitud desconocida")
 
 
-def test_bump_version_magnitudes():
+def test_bump_version_magnitudes() -> None:
     assert bump.bump_version("1.2.3", "major") == "2.0.0"
     assert bump.bump_version("1.2.3", "minor") == "1.3.0"
     assert bump.bump_version("1.2.3", "patch") == "1.2.4"
     assert bump.bump_version("0.1.0", "minor") == "0.2.0"
 
 
-def test_bump_version_invalid():
+def test_bump_version_invalid() -> None:
     try:
         bump.bump_version("1.2", "patch")
     except ValueError:
@@ -53,7 +54,7 @@ def test_bump_version_invalid():
     raise AssertionError("debió fallar con version no semver")
 
 
-def test_write_skill_version_preserves_format(tmp_path):
+def test_write_skill_version_preserves_format(tmp_path: Path) -> None:
     skill = tmp_path / "skills" / "demo-skill"
     skill.mkdir(parents=True)
     (skill / "SKILL.md").write_text(
@@ -67,7 +68,7 @@ def test_write_skill_version_preserves_format(tmp_path):
     assert bump.read_skill_version(skill) == "0.1.1"
 
 
-def test_skills_from_paths():
+def test_skills_from_paths() -> None:
     paths = [
         "skills/codigo-seguridad/SKILL.md",
         "skills/codigo-seguridad/references/x.md",
@@ -77,7 +78,7 @@ def test_skills_from_paths():
     assert bump.skills_from_paths(paths) == ["codigo-seguridad"]
 
 
-def test_main_dry_run_tmp_root(tmp_path):
+def test_main_dry_run_tmp_root(tmp_path: Path) -> None:
     skill = tmp_path / "skills" / "demo-skill"
     skill.mkdir(parents=True)
     (skill / "SKILL.md").write_text(
@@ -89,13 +90,13 @@ def test_main_dry_run_tmp_root(tmp_path):
     assert bump.read_skill_version(skill) == "0.1.0"
 
 
-def test_main_unknown_skill_tmp_root(tmp_path):
+def test_main_unknown_skill_tmp_root(tmp_path: Path) -> None:
     (tmp_path / "skills").mkdir()
     rc = bump.main(["--root", str(tmp_path), "--type", "minor", "--skills", "no-existe"])
     assert rc == 1
 
 
-def test_bump_cli_help():
+def test_bump_cli_help() -> None:
     r = subprocess.run(["python3", str(BUMP), "--help"], capture_output=True, text=True, check=False)
     assert r.returncode == 0
     assert "--type" in r.stdout

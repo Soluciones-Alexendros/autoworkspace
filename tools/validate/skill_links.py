@@ -251,8 +251,8 @@ def check_md(md: Path) -> None:
             continue
         if in_fence:
             continue  # enlaces de ejemplo dentro de bloques de código
-        line = re.sub(r"`[^`]*`", "", line)  # ignorar `código inline` de ejemplo
-        for m in LINK_RE.finditer(line):
+        stripped = re.sub(r"`[^`]*`", "", line)  # ignorar `código inline` de ejemplo
+        for m in LINK_RE.finditer(stripped):
             target = m.group(1).strip()
             if target.startswith(("http://", "https://", "#", "mailto:")):
                 continue
@@ -264,12 +264,7 @@ def check_md(md: Path) -> None:
 
 
 def main() -> int:
-    mds = sorted(
-        p
-        for p in ROOT.rglob("*.md")
-        if not (TERM_SKIP_PARTS & set(p.parts))
-        and ".archivado" not in str(p)
-    )
+    mds = sorted(p for p in ROOT.rglob("*.md") if not (TERM_SKIP_PARTS & set(p.parts)) and ".archivado" not in str(p))
     for md in mds:
         check_md(md)
     check_adr_citations(ROOT)

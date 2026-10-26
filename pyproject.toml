@@ -79,33 +79,12 @@ max-complexity = 10
 "skills/web-compliance/scripts/selftest.py" = ["PLR2004", "RUF059"]
 "skills/web-compliance/tests/test_cli.py" = ["PLR2004"]
 "skills/web-compliance/tests/test_golden_errors.py" = ["PLR0913", "PLR0917", "PLR2004"]
-"tools/contracts/loader.py" = ["C901", "PLR0911", "PLR0912", "PLR0915", "PLR2004", "PLW0603"]
-"tools/contracts/result.py" = ["PLR0913", "UP017"]
-"tools/contracts/tests/test_loader.py" = ["PLR2004"]
-"tools/execution/approval.py" = ["PLC0415", "PLR0913"]
-"tools/execution/evidence.py" = ["C901", "F841", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "SIM108"]
-"tools/execution/ops.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR2004"]
-"tools/execution/tests/test_ops_approval.py" = ["PLW0108"]
-"tools/execution/tests/test_product_closure_catalog.py" = ["PLR2004"]
-"tools/execution/tests/test_product_closure_evidence.py" = ["RUF002", "RUF003", "RUF043"]
-"tools/execution/tests/test_product_closure_state_release.py" = ["PLW1510", "RUF002"]
-"tools/execution/tests/test_verifiable_closure.py" = ["PLC0415", "PLR2004", "PLW0108", "RUF002", "RUF003", "RUF043"]
-"tools/skill-router/route.py" = ["C901", "PLR0912"]
-"tools/validate/freeze_quality_debt.py" = ["PLW1510", "RUF005"]
-"tools/validate/release_coherence.py" = ["C901", "PLC0415", "PLR0912"]
-"tools/validate/skill_links.py" = ["PLW2901"]
-"tools/validate/skill_spec.py" = ["C901", "PLR0912", "PLR2004"]
-"tools/validate/tests/test_release_coherence.py" = ["PLC0415"]
-"tools/version/bump.py" = ["C901", "PLR0911", "PLR0912", "PLR2004"]
-"tools/version/cut_tag.py" = ["C901", "PLR0911"]
-"tools/workspace-router/__init__.py" = ["N999"]
-"tools/workspace-router/run.py" = ["C901", "PLR0911", "PLR0912", "PLR0915"]
-"tools/workspace-router/status_bump.py" = ["C901", "PLC0415", "PLR0913", "PLR0915", "PLR2004", "UP017"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 explicit_package_bases = true
+mypy_path = "tools"
 exclude = [
   'tools/workspace-router/',
   'tools/skill-router/',
@@ -153,25 +132,13 @@ module = [
   "test_scan_repo",
   "test_session_logger",
   "test_snapshot_state",
-  "tools.contracts.loader",
-  "tools.contracts.tests.test_loader",
-  "tools.contracts.validate_contracts",
-  "tools.execution.evidence",
-  "tools.execution.ops",
-  "tools.execution.tests.test_ops_approval",
-  "tools.execution.tests.test_product_closure_catalog",
-  "tools.execution.tests.test_product_closure_evidence",
-  "tools.execution.tests.test_product_closure_state_release",
-  "tools.execution.tests.test_verifiable_closure",
-  "tools.validate.freeze_quality_debt",
-  "tools.validate.hygiene",
-  "tools.validate.release_coherence",
-  "tools.validate.skill_spec",
-  "tools.validate.tests.test_release_coherence",
-  "tools.validate.tests.test_skill_spec",
-  "tools.version.cut_tag",
-  "tools.version.tests.test_bump",
   "vulns_check",
 ]
 ignore_errors = true
 # END GENERATED: quality-debt
+
+# Terceros sin stubs publicados: se declaran aquí una sola vez, sin silenciar
+# los módulos propios (P12 T6).
+[[tool.mypy.overrides]]
+module = ["yaml", "jsonschema", "status_bump"]
+ignore_missing_imports = true
