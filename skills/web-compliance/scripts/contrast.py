@@ -15,6 +15,7 @@ import json
 import logging
 import re
 import sys
+from typing import Any
 
 logger = logging.getLogger("auditoria360.contrast")
 
@@ -28,32 +29,37 @@ THRESHOLDS = {
     "aaa_large": 4.5,
 }
 
+# Constantes con nombre (P12 T6e): sustituyen literales mágicos.
+HEX_SHORT_LEN = 3
+SRGB_LINEAR_THRESHOLD = 0.03928
+RATIO_TOLERANCE = 0.02
 
-def _hex_to_rgb(hex_color):
+
+def _hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
     m = HEX_RE.match(hex_color.strip())
     if not m:
         raise ValueError(f"Color inválido: '{hex_color}'. Usa formato #RGB o #RRGGBB.")
     h = m.group(1)
-    if len(h) == 3:
+    if len(h) == HEX_SHORT_LEN:
         h = "".join(ch * 2 for ch in h)
-    return tuple(int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    return (int(h[0:2], 16) / 255, int(h[2:4], 16) / 255, int(h[4:6], 16) / 255)
 
 
-def relative_luminance(hex_color):
-    def linearize(c):
-        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+def relative_luminance(hex_color: str) -> float:
+    def linearize(c: float) -> float:
+        return c / 12.92 if c <= SRGB_LINEAR_THRESHOLD else ((c + 0.055) / 1.055) ** 2.4
 
     r, g, b = (linearize(c) for c in _hex_to_rgb(hex_color))
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def contrast_ratio(fg, bg):
+def contrast_ratio(fg: str, bg: str) -> float:
     l1, l2 = relative_luminance(fg), relative_luminance(bg)
     lighter, darker = max(l1, l2), min(l1, l2)
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def check(fg, bg, large_text=False):
+def check(fg: str, bg: str, large_text: bool = False) -> dict[str, Any]:
     ratio = contrast_ratio(fg, bg)
     aa = THRESHOLDS["aa_large"] if large_text else THRESHOLDS["aa_normal"]
     aaa = THRESHOLDS["aaa_large"] if large_text else THRESHOLDS["aaa_normal"]
@@ -69,22 +75,22 @@ def check(fg, bg, large_text=False):
     }
 
 
-def selftest():
+def selftest() -> list[str]:
     cases = [
         ("#000000", "#FFFFFF", 21.0, True),
         ("#767676", "#FFFFFF", 4.54, True),
         ("#767676", "#FFFF00", 4.23, False),  # corregido: el material fuente indicaba 2.59 (erróneo)
         ("#777777", "#FFFFFF", 4.48, False),
     ]
-    failures = []
+    failures: list[str] = []
     for fg, bg, expected_ratio, expected_aa in cases:
         r = check(fg, bg)
-        if abs(r["ratio"] - expected_ratio) > 0.02 or r["aa"] != expected_aa:
+        if abs(r["ratio"] - expected_ratio) > RATIO_TOLERANCE or r["aa"] != expected_aa:
             failures.append(f"{fg} sobre {bg}: ratio={r['ratio']} (esperado {expected_ratio}), aa={r['aa']}")
     return failures
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Contraste WCAG entre dos colores")
     ap.add_argument("fg", nargs="?", help="Color de texto (#RRGGBB)")

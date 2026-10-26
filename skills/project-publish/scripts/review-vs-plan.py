@@ -28,18 +28,22 @@ SECRET_PATTERNS = [
 ]
 FILE_RE = re.compile(r"[\w\-./]+\.(?:ts|tsx|js|jsx|py|sh|md|json|yaml|yml|toml)")
 
+# Constantes con nombre (P12 T6e): sustituyen literales mágicos.
+MIN_ARGV = 3
+MIN_COVERAGE = 0.5
+
 
 def run(cmd: list[str], cwd: str | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, check=False)
 
 
 def main() -> int:
-    if len(sys.argv) < 3:
+    if len(sys.argv) < MIN_ARGV:
         print("Uso: review-vs-plan.py <plan_file> <branch> [base=main]")
         return 1
     plan_file = Path(sys.argv[1])
     branch = sys.argv[2]
-    base = sys.argv[3] if len(sys.argv) > 3 else "main"
+    base = sys.argv[3] if len(sys.argv) > MIN_ARGV else "main"
 
     if not plan_file.is_file():
         print(f"BLOQUEO: plan no encontrado: {plan_file}")
@@ -69,7 +73,7 @@ def main() -> int:
         hit = {p for p in planned if any(p == c or c.endswith("/" + p) for c in changed)}
         cov = len(hit) / len(planned)
         print(f"Cobertura plan->diff: {cov:.0%} ({len(hit)}/{len(planned)})")
-        if cov < 0.5:
+        if cov < MIN_COVERAGE:
             print("AVISO: cobertura baja; verifica que el resultado del plan este en el diff.")
     else:
         print("Sin ficheros mencionables en el plan; se acepta el diff tal cual.")

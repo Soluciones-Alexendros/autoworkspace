@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import sys
+from typing import Any
 
 logger = logging.getLogger("auditoria360.score")
 
@@ -28,7 +29,7 @@ RESULTADOS_VALIDOS = {"PASS", "FAIL", "WARN", "NA", "PENDING"}
 # WARN cuenta como FAIL a efectos de dictamen (evidencia de incumplimiento parcial)
 
 
-def _load_json(path):
+def _load_json(path: str) -> Any:
     try:
         with open(path, encoding="utf-8") as fh:
             return json.load(fh)
@@ -38,17 +39,17 @@ def _load_json(path):
         raise RuntimeError(f"JSON inválido en {path}: {e}") from e
 
 
-def load_configs(config_dir=None):
+def load_configs(config_dir: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     base = config_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "configs")
     checks = _load_json(os.path.join(base, "checks.json"))
     thresholds = _load_json(os.path.join(base, "thresholds.json"))
     return checks, thresholds
 
 
-def normalizar(resultados, registry):
+def normalizar(resultados: list[dict[str, Any]], registry: dict[str, Any]) -> dict[str, Any]:
     """Devuelve {check_id: resultado} fusionando entradas por id o script_key."""
     by_key = {c["script_key"]: c["id"] for c in registry["checks"] if c.get("script_key")}
-    mapa = {}
+    mapa: dict[str, Any] = {}
     for item in resultados:
         cid = item.get("id") or by_key.get(item.get("script_key"))
         if not cid:
@@ -69,13 +70,13 @@ def normalizar(resultados, registry):
     return mapa
 
 
-def score(resultados, config_dir=None):
+def score(resultados: list[dict[str, Any]], config_dir: str | None = None) -> dict[str, Any]:
     registry, thresholds = load_configs(config_dir)
     mapa = normalizar(resultados, registry)
     reg_by_id = {c["id"]: c for c in registry["checks"]}
 
-    pilares = {}
-    hallazgos = []
+    pilares: dict[str, Any] = {}
+    hallazgos: list[dict[str, Any]] = []
     deuda_horas = 0
     for cid, c in reg_by_id.items():
         r = mapa.get(cid, {"resultado": "PENDING", "evidencia": "", "accion": ""})
@@ -178,7 +179,7 @@ def score(resultados, config_dir=None):
     }
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Scoring de compliance Auditoría 360°")
     ap.add_argument("resultados", help="JSON con checks evaluados")

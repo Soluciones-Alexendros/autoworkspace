@@ -6,6 +6,9 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `project-publish` 4.3.3 -> 4.3.4 (patch)
+- `web-compliance` 4.1.2 -> 4.1.3 (patch)
+
 - `plan-continue` 4.3.5 -> 4.3.6 (patch)
 
 - `local-maintenance` 5.1.5 -> 5.1.6 (patch)
