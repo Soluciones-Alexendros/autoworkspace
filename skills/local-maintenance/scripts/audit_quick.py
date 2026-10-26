@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """audit_quick.py - Health-check read-only (higiene/updates, subconjunto P0+P1).
 
 Subconjunto de mantenimiento: PKG-01/03/05/07, FS-10, LOG-06, SRV-02, NET-04.
@@ -14,6 +15,8 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Callable
+from typing import Any
 
 from common import (
     BLUE,
@@ -55,7 +58,7 @@ def sshd_value(key: str) -> str:
     return out.strip()
 
 
-def run_quick_checks(collector: FindingCollector, pkg_mgr: str, runner=None) -> str:
+def run_quick_checks(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> str:
     """Ejecuta la fase rapida (8 checks higiene) y devuelve running_kernel."""
     r = runner if runner is not None else run_check
     print(f"{log_tag} Verificando actualizaciones de seguridad...")
@@ -121,10 +124,15 @@ def main(argv: list[str] | None = None) -> int:
     hs = output["health_score"]
     print(f"{log_tag} Auditoria rapida completada en {duration}s")
     print(
-        f"{log_tag} Health Score: {hs['overall']} (Security: {hs['security']}, Updates: {hs['updates']}, Hygiene: {hs['hygiene']}, Resources: {hs['resources']}, Stability: {hs['stability']})"
+        f"{log_tag} Health Score: {hs['overall']} "
+        f"(Security: {hs['security']}, Updates: {hs['updates']}, "
+        f"Hygiene: {hs['hygiene']}, Resources: {hs['resources']}, "
+        f"Stability: {hs['stability']})"
     )
     print(
-        f"{log_tag} Resultados: {collector.passed} passed, {collector.failed} failed, {collector.warned} warned, {collector.skipped} skipped, {collector.errors} errors"
+        f"{log_tag} Resultados: {collector.passed} passed, "
+        f"{collector.failed} failed, {collector.warned} warned, "
+        f"{collector.skipped} skipped, {collector.errors} errors"
     )
     print(f"{log_tag} Guardado en: {output_file}")
     return 0

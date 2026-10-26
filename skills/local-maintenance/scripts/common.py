@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """Utilidades compartidas para mantenimiento-linux (port Python nativo).
 
 Reemplaza las funciones comunes de los scripts bash (run_cmd/run_check,
@@ -9,6 +10,8 @@ bash. Todo el parsing se hace con la librería estándar.
 
 from __future__ import annotations
 
+import argparse
+import glob
 import json
 import logging
 import os
@@ -17,10 +20,23 @@ import shutil
 import socket
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+MIN_SHELL_ARGV = 2
+MIN_SSHD_FIELDS = 2
+MIN_DF_FIELDS = 3
+MIN_DF_INODE_FIELDS = 6
+PCT_CRITICAL = 90
+PCT_WARNING = 80
+MAX_JOURNAL_ERRORS = 50
+MAX_BOOT_FAILURES = 20
+SELF_CHECK_NONEMPTY = 2
+SELF_CHECK_INT = 42
+SELF_CHECK_DEFAULT = 7
 
 logger = logging.getLogger("mantenimiento.common")
 
@@ -36,6 +52,28 @@ def _setup_logging(verbose: bool = False) -> None:
 COMPONENT_VERSION = "2.1.0"
 
 
+def _frontmatter_version(text: str) -> str | None:
+    """Devuelve metadata.version del frontmatter de SKILL.md, o None."""
+    if not text.startswith("---"):
+        return None
+    end = text.find("\n---", 4)
+    if end == -1:
+        return None
+    try:
+        import yaml  # noqa: PLC0415  # import opcional: PyYAML puede faltar
+
+        fm = yaml.safe_load(text[4:end])
+    except Exception:
+        return None
+    if not isinstance(fm, dict):
+        return None
+    meta = fm.get("metadata") or {}
+    version = meta.get("version") if isinstance(meta, dict) else None
+    if isinstance(version, str) and version.strip():
+        return version.strip()
+    return None
+
+
 def skill_version_from_manifest() -> str:
     """Read metadata.version from the skill SKILL.md (canonical skill version)."""
     skill_md = Path(__file__).resolve().parents[1] / "SKILL.md"
@@ -43,24 +81,7 @@ def skill_version_from_manifest() -> str:
         text = skill_md.read_text(encoding="utf-8")
     except OSError:
         return COMPONENT_VERSION
-    if not text.startswith("---"):
-        return COMPONENT_VERSION
-    end = text.find("\n---", 4)
-    if end == -1:
-        return COMPONENT_VERSION
-    try:
-        import yaml
-
-        fm = yaml.safe_load(text[4:end])
-    except Exception:
-        return COMPONENT_VERSION
-    if not isinstance(fm, dict):
-        return COMPONENT_VERSION
-    meta = fm.get("metadata") or {}
-    version = meta.get("version") if isinstance(meta, dict) else None
-    if isinstance(version, str) and version.strip():
-        return version.strip()
-    return COMPONENT_VERSION
+    return _frontmatter_version(text) or COMPONENT_VERSION
 
 
 SKILL_VERSION = skill_version_from_manifest()  # skill manifest version; not component_version
@@ -124,7 +145,7 @@ def log_debug(msg: str) -> None:
 
 
 def utcnow_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def hostname() -> str:
@@ -158,14 +179,13 @@ def run_result(
     if not argv:
         return RunResult(returncode=2, stdout="", error="empty argv")
     binary = os.path.basename(argv[0])
-    if binary in {"bash", "sh", "dash", "zsh"} and len(argv) >= 2 and argv[1] in {"-c", "-lc"}:
+    if binary in {"bash", "sh", "dash", "zsh"} and len(argv) >= MIN_SHELL_ARGV and argv[1] in {"-c", "-lc"}:
         return RunResult(returncode=2, stdout="", error="shell -c escape rejected", argv=list(argv))
     try:
         proc = subprocess.run(
             argv,
             shell=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
             text=True,
             check=False,
@@ -202,8 +222,7 @@ def run(cmd: str, timeout: int = 10) -> str:
             cmd,
             shell=True,
             executable="/bin/bash",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
             text=True,
             check=False,
@@ -226,8 +245,7 @@ def run_capture(cmd: str, timeout: int = 10) -> tuple[int, str]:
             cmd,
             shell=True,
             executable="/bin/bash",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
             text=True,
             check=False,
@@ -258,7 +276,7 @@ def sysctl_get(key: str) -> str:
 
 def service_active(unit: str) -> bool:
     """Verifica si un servicio systemd está activo leyendo su estado real."""
-    rc, out = run_capture(f"systemctl is-active {unit} 2>/dev/null", timeout=10)
+    _rc, out = run_capture(f"systemctl is-active {unit} 2>/dev/null", timeout=10)
     return out.strip() == "active"
 
 
@@ -266,8 +284,8 @@ def read_os_release() -> dict[str, str]:
     values: dict[str, str] = {}
     try:
         with open("/etc/os-release", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
+            for raw in fh:
+                line = raw.strip()
                 if not line or "=" not in line:
                     continue
                 key, _, val = line.partition("=")
@@ -301,48 +319,54 @@ _RHEL_IDS = {
 }
 _SUSE_IDS = {"opensuse", "opensuse-leap", "opensuse-tumbleweed", "sles"}
 
+_IDENTITY_TABLE = (
+    (_ARCH_IDS, "arch", "pacman"),
+    (_DEBIAN_IDS, "debian", "apt"),
+    (_RHEL_IDS, "rhel", "dnf"),
+    (_SUSE_IDS, "suse", "zypper"),
+)
+_BINARY_FAMILY = {"pacman": "arch", "apt": "debian", "dnf": "rhel", "zypper": "suse"}
+
+
+def _family_from_id(distro_id: str) -> tuple[str, str]:
+    for ids, family, pkg_mgr in _IDENTITY_TABLE:
+        if distro_id in ids:
+            return family, pkg_mgr
+    if distro_id == "sles" or distro_id.startswith("opensuse"):
+        return "suse", "zypper"
+    return "unknown", "unknown"
+
+
+def _family_from_binaries() -> tuple[str, str]:
+    for binary in ("pacman", "apt", "dnf", "zypper"):
+        if which(binary):
+            return _BINARY_FAMILY[binary], binary
+    return "unknown", "unknown"
+
+
+def _aur_helper() -> str:
+    helper = ""
+    if which("yay"):
+        helper = "yay"
+    if which("paru"):
+        helper = "paru"
+    return helper
+
 
 def detect_distro() -> dict[str, str]:
     release = read_os_release()
     distro_id = release.get("ID", "unknown")
-    distro_like = release.get("ID_LIKE", "")
-    version_id = release.get("VERSION_ID", "")
-    version_codename = release.get("VERSION_CODENAME", "")
-
-    family = "unknown"
-    pkg_mgr = "unknown"
-    aur_helper = ""
-
-    if distro_id in _ARCH_IDS:
-        family, pkg_mgr = "arch", "pacman"
-        if which("yay"):
-            aur_helper = "yay"
-        if which("paru"):
-            aur_helper = "paru"
-    elif distro_id in _DEBIAN_IDS:
-        family, pkg_mgr = "debian", "apt"
-    elif distro_id in _RHEL_IDS:
-        family, pkg_mgr = "rhel", "dnf"
-    elif any(distro_id.startswith(prefix) for prefix in ("opensuse",)) or distro_id == "sles":
-        family, pkg_mgr = "suse", "zypper"
-    # Fallback por gestor de paquetes
-    elif which("pacman"):
-        family, pkg_mgr = "arch", "pacman"
-    elif which("apt"):
-        family, pkg_mgr = "debian", "apt"
-    elif which("dnf"):
-        family, pkg_mgr = "rhel", "dnf"
-    elif which("zypper"):
-        family, pkg_mgr = "suse", "zypper"
-
+    family, pkg_mgr = _family_from_id(distro_id)
+    if family == "unknown":
+        family, pkg_mgr = _family_from_binaries()
     return {
         "distro_id": distro_id,
-        "distro_like": distro_like,
-        "version_id": version_id,
-        "version_codename": version_codename,
+        "distro_like": release.get("ID_LIKE", ""),
+        "version_id": release.get("VERSION_ID", ""),
+        "version_codename": release.get("VERSION_CODENAME", ""),
         "family": family,
         "package_manager": pkg_mgr,
-        "aur_helper": aur_helper,
+        "aur_helper": _aur_helper() if family == "arch" else "",
     }
 
 
@@ -387,7 +411,7 @@ class FindingCollector:
         self.findings: list[dict[str, str]] = []
         self._counters: dict[str, int] = {status: 0 for status in STATUSES}
 
-    def add(
+    def add(  # noqa: PLR0913, PLR0917  # API de hallazgos: espejo del schema de salida
         self,
         id: str,
         category: str,
@@ -510,7 +534,7 @@ class FindingCollector:
             "by_severity": by_severity,
         }
 
-    def build_output(
+    def build_output(  # noqa: PLR0913, PLR0917  # API de salida: espejo del schema
         self,
         mode: str,
         distro: str,
@@ -577,7 +601,7 @@ def sshd_effective() -> str:
                     for key in _SSHD_KEYS:
                         if stripped.startswith(key + " "):
                             parts = stripped.split()
-                            if len(parts) >= 2:
+                            if len(parts) >= MIN_SSHD_FIELDS:
                                 lines.append(f"{parts[0]} {parts[1]}")
                             break
         except OSError:
@@ -586,15 +610,13 @@ def sshd_effective() -> str:
 
 
 def glob_sorted(pattern: str) -> list[str]:
-    import glob
-
     return sorted(glob.glob(pattern))
 
 
 def _sshd_get(key: str) -> str:
     for line in sshd_effective().splitlines():
         parts = line.split()
-        if parts and parts[0].lower() == key and len(parts) >= 2:
+        if parts and parts[0].lower() == key and len(parts) >= MIN_SSHD_FIELDS:
             return parts[1]
     return ""
 
@@ -606,7 +628,7 @@ def _sshd_get(key: str) -> str:
 # Cada check acepta `runner` (firma run(cmd, timeout)) para tests.
 
 
-def _run_with(runner, cmd: str, timeout: int = 10) -> str:
+def _run_with(runner: Callable[..., Any] | None, cmd: str, timeout: int = 10) -> str:
     fn = runner if runner is not None else run
     try:
         return fn(cmd, timeout=timeout)
@@ -614,111 +636,123 @@ def _run_with(runner, cmd: str, timeout: int = 10) -> str:
         return fn(cmd)
 
 
-def check_pkg_01(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def _pkg01_security_news(runner: Callable[..., Any] | None) -> set[str]:
+    """Titulares de seguridad de Arch News (vacío si la descarga falla)."""
+    try:
+        news_out = _run_with(runner, "curl -s https://news.archlinux.org/index.xml 2>/dev/null", 30)
+    except (OSError, ValueError, re.error) as exc:
+        logger.warning("fallo verificando updates pacman (se asume 0): %s", exc)
+        return set()
+    names: set[str] = set()
+    if "<title>" in news_out and "</title>" in news_out:
+        for m in re.finditer(r"<title>(.*?)</title>", news_out):
+            title = m.group(1).lower()
+            if any(w in title for w in ["security", "security update"]):
+                names.add(m.group(1))
+    return names
+
+
+def _pkg01_pacman(runner: Callable[..., Any] | None) -> int:
+    sec_pkg_names = _pkg01_security_news(runner)
+    try:
+        pkg_updates = _run_with(runner, "checkupdates 2>/dev/null", 60)
+    except (OSError, ValueError, re.error) as exc:
+        logger.warning("fallo verificando updates pacman (se asume 0): %s", exc)
+        return 0
+    sec_updates = 0
+    for pkg_line in pkg_updates.splitlines():
+        pkg_name = pkg_line.split()[0] if pkg_line.split() else ""
+        if pkg_name in sec_pkg_names or any(
+            sn.lower().split(":")[-1].strip().lower() == pkg_name.lower() for sn in sec_pkg_names
+        ):
+            sec_updates += 1
+    return sec_updates
+
+
+def _pkg01_apt(runner: Callable[..., Any] | None) -> int:
+    out = _run_with(runner, "apt list --upgradable 2>/dev/null | grep -vE '^(Listing|Listando)' ", 60)
+    return count_nonempty(out)
+
+
+def _pkg01_dnf(runner: Callable[..., Any] | None) -> int:
+    out = _run_with(runner, "dnf check-update --security 2>/dev/null | grep -v '^$' | wc -l", 60)
+    return to_int(out)
+
+
+@dataclass(frozen=True)
+class _Pkg01Texts:
+    """Textos de PKG-01 por gestor de paquetes."""
+
+    prefix: str
+    fail_desc: str
+    fail_action: str
+    pass_desc: str
+    pass_evidence: str
+    security: bool = True
+
+
+_PKG01_PACMAN = _Pkg01Texts(
+    prefix="News check",
+    fail_desc="Paquetes con actualizaciones de seguridad disponibles",
+    fail_action="Ejecutar pacman -Syu tras leer noticias Arch",
+    pass_desc="Sistema actualizado en seguridad",
+    pass_evidence="0 actualizaciones de seguridad",
+)
+_PKG01_APT = _Pkg01Texts(
+    prefix="apt list --upgradable",
+    fail_desc="Actualizaciones disponibles",
+    fail_action="Ejecutar apt full-upgrade",
+    pass_desc="Sistema actualizado",
+    pass_evidence="0 actualizaciones",
+    security=False,
+)
+_PKG01_DNF = _Pkg01Texts(
+    prefix="dnf check-update --security",
+    fail_desc="Paquetes con actualizaciones de seguridad disponibles",
+    fail_action="Ejecutar dnf upgrade --security",
+    pass_desc="Sistema actualizado en seguridad",
+    pass_evidence="0 actualizaciones de seguridad",
+)
+
+
+def _emit_pkg01(collector: FindingCollector, count: int, texts: _Pkg01Texts) -> None:
+    label = "de seguridad " if texts.security else ""
+    if count > 0:
+        collector.add(
+            "PKG-01",
+            "updates",
+            "P1",
+            f"{count} actualizaciones {label}pendientes",
+            texts.fail_desc,
+            "PKG-01",
+            "FAIL",
+            f"{texts.prefix} -> {count}",
+            texts.fail_action,
+            "R2",
+        )
+        return
+    collector.add(
+        "PKG-01",
+        "updates",
+        "P1",
+        f"Sin actualizaciones {label}pendientes",
+        texts.pass_desc,
+        "PKG-01",
+        "PASS",
+        texts.pass_evidence,
+        "",
+        "R0",
+    )
+
+
+def check_pkg_01(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """PKG-01: actualizaciones de seguridad pendientes."""
     if pkg_mgr == "pacman":
-        try:
-            news_out = _run_with(runner, "curl -s https://news.archlinux.org/index.xml 2>/dev/null", 30)
-            sec_pkg_names = set()
-            if "<title>" in news_out and "</title>" in news_out:
-                for m in re.finditer(r"<title>(.*?)</title>", news_out):
-                    title = m.group(1).lower()
-                    if any(w in title for w in ["security", "security update"]):
-                        sec_pkg_names.add(m.group(1))
-            pkg_updates = _run_with(runner, "checkupdates 2>/dev/null", 60)
-            sec_updates = 0
-            for pkg_line in pkg_updates.splitlines():
-                pkg_name = pkg_line.split()[0] if pkg_line.split() else ""
-                if pkg_name in sec_pkg_names or any(
-                    sn.lower().split(":")[-1].strip().lower() == pkg_name.lower() for sn in sec_pkg_names
-                ):
-                    sec_updates += 1
-        except (OSError, ValueError, re.error) as exc:
-            logger.warning("fallo verificando updates pacman (se asume 0): %s", exc)
-            sec_updates = 0
-        if sec_updates > 0:
-            collector.add(
-                "PKG-01",
-                "updates",
-                "P1",
-                f"{sec_updates} actualizaciones de seguridad pendientes",
-                "Paquetes con actualizaciones de seguridad disponibles",
-                "PKG-01",
-                "FAIL",
-                f"News check -> {sec_updates}",
-                "Ejecutar pacman -Syu tras leer noticias Arch",
-                "R2",
-            )
-        else:
-            collector.add(
-                "PKG-01",
-                "updates",
-                "P1",
-                "Sin actualizaciones de seguridad pendientes",
-                "Sistema actualizado en seguridad",
-                "PKG-01",
-                "PASS",
-                "0 actualizaciones de seguridad",
-                "",
-                "R0",
-            )
+        _emit_pkg01(collector, _pkg01_pacman(runner), _PKG01_PACMAN)
     elif pkg_mgr == "apt":
-        pkg_updates = _run_with(runner, "apt list --upgradable 2>/dev/null | grep -vE '^(Listing|Listando)' ", 60)
-        sec_updates = count_nonempty(pkg_updates)
-        if sec_updates > 0:
-            collector.add(
-                "PKG-01",
-                "updates",
-                "P1",
-                f"{sec_updates} actualizaciones pendientes",
-                "Actualizaciones disponibles",
-                "PKG-01",
-                "FAIL",
-                f"apt list --upgradable -> {sec_updates}",
-                "Ejecutar apt full-upgrade",
-                "R2",
-            )
-        else:
-            collector.add(
-                "PKG-01",
-                "updates",
-                "P1",
-                "Sin actualizaciones pendientes",
-                "Sistema actualizado",
-                "PKG-01",
-                "PASS",
-                "0 actualizaciones",
-                "",
-                "R0",
-            )
+        _emit_pkg01(collector, _pkg01_apt(runner), _PKG01_APT)
     elif pkg_mgr == "dnf":
-        sec_updates = to_int(_run_with(runner, "dnf check-update --security 2>/dev/null | grep -v '^$' | wc -l", 60))
-        if sec_updates > 0:
-            collector.add(
-                "PKG-01",
-                "updates",
-                "P1",
-                f"{sec_updates} actualizaciones de seguridad pendientes",
-                "Paquetes con actualizaciones de seguridad disponibles",
-                "PKG-01",
-                "FAIL",
-                f"dnf check-update --security -> {sec_updates}",
-                "Ejecutar dnf upgrade --security",
-                "R2",
-            )
-        else:
-            collector.add(
-                "PKG-01",
-                "updates",
-                "P1",
-                "Sin actualizaciones de seguridad pendientes",
-                "Sistema actualizado en seguridad",
-                "PKG-01",
-                "PASS",
-                "0 actualizaciones de seguridad",
-                "",
-                "R0",
-            )
+        _emit_pkg01(collector, _pkg01_dnf(runner), _PKG01_DNF)
     else:
         collector.add(
             "PKG-01",
@@ -734,7 +768,7 @@ def check_pkg_01(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         )
 
 
-def check_pkg_03(collector: FindingCollector, pkg_mgr: str, runner=None) -> str:
+def check_pkg_03(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> str:
     """PKG-03: kernel running vs installed. Devuelve running_kernel."""
     running_kernel = _run_with(runner, "uname -r", 5).strip()
     installed_kernel = ""
@@ -802,7 +836,7 @@ def check_pkg_03(collector: FindingCollector, pkg_mgr: str, runner=None) -> str:
     return running_kernel
 
 
-def check_pkg_05(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def check_pkg_05(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """PKG-05: paquetes huerfanos."""
     if pkg_mgr == "pacman":
         orphans = _run_with(runner, "pacman -Qtdq 2>/dev/null", 60)
@@ -849,7 +883,7 @@ def check_pkg_05(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         )
 
 
-def check_pkg_07(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def check_pkg_07(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """PKG-07: archivos de configuracion pendientes (.pacnew/pacdiff/ucf)."""
     if pkg_mgr == "pacman":
         pending = _run_with(runner, "find /etc -name '*.pacnew' -o -name '*.pacsave' 2>/dev/null", 30)
@@ -907,7 +941,7 @@ def check_pkg_07(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         )
 
 
-def check_pkg_06(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def check_pkg_06(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """PKG-06: paquetes foraneos (AUR/manuales). Solo audit_full."""
     if pkg_mgr == "pacman":
         foreign_count = count_nonempty(_run_with(runner, "pacman -Qmq 2>/dev/null", 60))
@@ -982,7 +1016,7 @@ def check_pkg_06(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         )
 
 
-def check_pkg_09(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def check_pkg_09(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """PKG-09: tamano de cache de paquetes. Solo audit_full."""
     if pkg_mgr == "pacman":
         cache_size = to_int(_run_with(runner, "du -sm /var/cache/pacman/pkg 2>/dev/null | cut -f1", 30))
@@ -1035,7 +1069,7 @@ def check_pkg_09(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         )
 
 
-def check_pkg_04(collector: FindingCollector, runner=None) -> None:
+def check_pkg_04(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """PKG-04: firmware actualizable (fwupd). Solo audit_full."""
     if which("fwupdmgr") is None:
         collector.add(
@@ -1080,7 +1114,7 @@ def check_pkg_04(collector: FindingCollector, runner=None) -> None:
         )
 
 
-def check_arc_07(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def check_arc_07(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """ARC-07: actualizaciones parciales peligrosas (Arch). Solo audit_full."""
     if pkg_mgr != "pacman":
         collector.add(
@@ -1126,7 +1160,7 @@ def check_arc_07(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         )
 
 
-def check_deb_04(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def check_deb_04(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """DEB-04: unattended-upgrades activo. Solo audit_full en apt."""
     if pkg_mgr != "apt":
         return
@@ -1158,7 +1192,7 @@ def check_deb_04(collector: FindingCollector, pkg_mgr: str, runner=None) -> None
         )
 
 
-def check_fs_09(collector: FindingCollector, runner=None) -> None:
+def check_fs_09(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """FS-09: symlinks rotos en /etc, /usr, /boot."""
     broken = _run_with(runner, "find /etc /usr /boot -xtype l 2>/dev/null | head -20", 120)
     symlink_count = count_nonempty(broken)
@@ -1181,7 +1215,7 @@ def check_fs_09(collector: FindingCollector, runner=None) -> None:
         )
 
 
-def check_fs_10_disk(collector: FindingCollector, runner=None) -> None:
+def check_fs_10_disk(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """FS-10: uso de disco critico (higiene)."""
     df_out = _run_with(
         runner, "df -h -x tmpfs -x devtmpfs -x squashfs --output=source,target,pcent 2>/dev/null | tail -n +2", 15
@@ -1189,7 +1223,7 @@ def check_fs_10_disk(collector: FindingCollector, runner=None) -> None:
     seen = set()
     for line in df_out.splitlines():
         parts = line.split()
-        if len(parts) < 3:
+        if len(parts) < MIN_DF_FIELDS:
             continue
         source = parts[0]
         if source in seen:
@@ -1200,7 +1234,7 @@ def check_fs_10_disk(collector: FindingCollector, runner=None) -> None:
         if not use_pcent.isdigit():
             continue
         use_pcent_i = int(use_pcent)
-        if use_pcent_i >= 90:
+        if use_pcent_i >= PCT_CRITICAL:
             collector.add(
                 "FS-10",
                 "resources",
@@ -1213,7 +1247,7 @@ def check_fs_10_disk(collector: FindingCollector, runner=None) -> None:
                 "Limpiar espacio o expandir particion",
                 "R2",
             )
-        elif use_pcent_i >= 80:
+        elif use_pcent_i >= PCT_WARNING:
             collector.add(
                 "FS-10",
                 "resources",
@@ -1241,19 +1275,19 @@ def check_fs_10_disk(collector: FindingCollector, runner=None) -> None:
             )
 
 
-def check_fs_11_inodes(collector: FindingCollector, runner=None) -> None:
+def check_fs_11_inodes(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """FS-11: uso de inodos. Solo audit_full."""
     inode_out = _run_with(runner, "df -i / /boot /var /home 2>/dev/null | tail -n +2", 15)
     for line in inode_out.splitlines():
         parts = line.split()
-        if len(parts) < 6:
+        if len(parts) < MIN_DF_INODE_FIELDS:
             continue
         mountpoint = parts[5]
         inode_pcent = parts[4].rstrip("%")
         if not inode_pcent.isdigit():
             continue
         inode_pcent_i = int(inode_pcent)
-        if inode_pcent_i >= 90:
+        if inode_pcent_i >= PCT_CRITICAL:
             collector.add(
                 "FS-11",
                 "resources",
@@ -1266,7 +1300,7 @@ def check_fs_11_inodes(collector: FindingCollector, runner=None) -> None:
                 "Eliminar archivos pequenos innecesarios",
                 "R2",
             )
-        elif inode_pcent_i >= 80:
+        elif inode_pcent_i >= PCT_WARNING:
             collector.add(
                 "FS-11",
                 "resources",
@@ -1294,7 +1328,7 @@ def check_fs_11_inodes(collector: FindingCollector, runner=None) -> None:
             )
 
 
-def check_log_06(collector: FindingCollector, runner=None) -> None:
+def check_log_06(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """LOG-06: errores en journal ultimas 24h."""
     emerg = to_int(
         _run_with(runner, "journalctl -p emerg --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60)
@@ -1305,7 +1339,7 @@ def check_log_06(collector: FindingCollector, runner=None) -> None:
     crit = to_int(_run_with(runner, "journalctl -p crit --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60))
     err = to_int(_run_with(runner, "journalctl -p err --since '24 hours ago' --no-pager 2>/dev/null | grep -c .", 60))
     journal_errors = emerg + alert + crit + err
-    if journal_errors > 50:
+    if journal_errors > MAX_JOURNAL_ERRORS:
         collector.add(
             "LOG-06",
             "stability",
@@ -1346,14 +1380,14 @@ def check_log_06(collector: FindingCollector, runner=None) -> None:
         )
 
 
-def check_log_08(collector: FindingCollector, runner=None) -> None:
+def check_log_08(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """LOG-08: fallos de arranque. Solo audit_full."""
     emerg = to_int(_run_with(runner, "journalctl -b -p emerg --no-pager 2>/dev/null | grep -c .", 60))
     alert = to_int(_run_with(runner, "journalctl -b -p alert --no-pager 2>/dev/null | grep -c .", 60))
     crit = to_int(_run_with(runner, "journalctl -b -p crit --no-pager 2>/dev/null | grep -c .", 60))
     err = to_int(_run_with(runner, "journalctl -b -p err --no-pager 2>/dev/null | grep -c .", 60))
     boot_failures = emerg + alert + crit + err
-    if boot_failures > 20:
+    if boot_failures > MAX_BOOT_FAILURES:
         collector.add(
             "LOG-08",
             "stability",
@@ -1394,7 +1428,7 @@ def check_log_08(collector: FindingCollector, runner=None) -> None:
         )
 
 
-def check_srv_02(collector: FindingCollector, runner=None) -> None:
+def check_srv_02(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """SRV-02: servicios systemd fallidos."""
     failed_svcs = _run_with(runner, "systemctl --failed --no-legend --no-pager 2>/dev/null", 15)
     failed_count = count_nonempty(failed_svcs)
@@ -1426,7 +1460,7 @@ def check_srv_02(collector: FindingCollector, runner=None) -> None:
         )
 
 
-def check_net_04(collector: FindingCollector, runner=None) -> None:
+def check_net_04(collector: FindingCollector, runner: Callable[..., Any] | None = None) -> None:
     """NET-04: SSH expuesto a Internet."""
     ssh_listening = _run_with(runner, "ss -tuln 2>/dev/null | grep ':22 '", 10)
     if ssh_listening.strip():
@@ -1473,7 +1507,6 @@ def check_net_04(collector: FindingCollector, runner=None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     """Entry point librería común (no ejecuta auditoría; solo --help/self-check)."""
-    import argparse
 
     parser = argparse.ArgumentParser(
         description="Utilidades compartidas mantenimiento-linux (librería, sin acción por defecto)."
@@ -1488,8 +1521,8 @@ def main(argv: list[str] | None = None) -> int:
     _setup_logging(args.verbose)
     if args.self_check:
         try:
-            assert count_nonempty("a\n\nb\n") == 2
-            assert to_int("42") == 42 and to_int("x", default=7) == 7
+            assert count_nonempty("a\n\nb\n") == SELF_CHECK_NONEMPTY
+            assert to_int("42") == SELF_CHECK_INT and to_int("x", default=7) == SELF_CHECK_DEFAULT
             c = FindingCollector()
             c.add("T-01", "security", "P0", "t", "d", "c", "PASS", "e", "", "R0")
             assert c.passed == 1 and c.total == 1

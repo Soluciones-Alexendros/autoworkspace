@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """harden_plan.py - Plan de hardening desde el baseline canonico (solo lectura).
 
 Lee skills/local-security/references/hardening-baseline.md, extrae los IDs
@@ -17,6 +18,11 @@ import os
 import re
 import subprocess
 import sys
+from typing import Any
+
+MIN_FIELDS = 2
+MAX_AUTHTRIES = 4
+MIN_MANUAL_LEVEL = 2
 
 logger = logging.getLogger("seguridad.harden_plan")
 
@@ -66,14 +72,14 @@ def parse_control_ids(baseline_path: str) -> list[str]:
     return seen
 
 
-def probe_current() -> dict:
+def probe_current() -> dict[str, Any]:
     """Estado actual de los controles clave (solo lectura)."""
     state: dict[str, str] = {}
     out = run_cmd("sshd -T 2>/dev/null", timeout=10)
     eff = {}
     for line in out.splitlines():
         parts = line.split()
-        if len(parts) >= 2:
+        if len(parts) >= MIN_FIELDS:
             eff[parts[0].lower()] = parts[1]
     state["SSH-01"] = eff.get("permitrootlogin", "?")
     state["SSH-02"] = eff.get("passwordauthentication", "?")
@@ -121,12 +127,12 @@ ROLLBACK = {
 RISK = {"SSH-01": "R2", "SSH-02": "R2", "SSH-05": "R2"}
 
 
-def build_plan(level: int, baseline_ids: list[str], current: dict) -> list[dict]:
-    plan: list[dict] = []
+def build_plan(level: int, baseline_ids: list[str], current: dict[str, Any]) -> list[dict[str, Any]]:
+    plan: list[dict[str, Any]] = []
     prio = {1: "P1", 2: "P2"}.get(level, "P2")
     for ctrl, want in DESIRED.items():
         got = current.get(ctrl, "?")
-        ok = (got == want) or (want == "<=4" and got.isdigit() and int(got) <= 4)
+        ok = (got == want) or (want == "<=4" and got.isdigit() and int(got) <= MAX_AUTHTRIES)
         if ok:
             continue
         family = ctrl.split("-")[0] if "-" in ctrl and not ctrl.startswith(("kernel", "net.", "fs.")) else "sysctl"
@@ -143,7 +149,7 @@ def build_plan(level: int, baseline_ids: list[str], current: dict) -> list[dict]
             }
         )
     # Controles de nivel 2/3 no probados aqui: se listan como pendientes de revision manual
-    if level >= 2:
+    if level >= MIN_MANUAL_LEVEL:
         for extra in ("FW-02", "AU-01", "UA-07", "CR-01"):
             plan.append(
                 {
@@ -160,7 +166,7 @@ def build_plan(level: int, baseline_ids: list[str], current: dict) -> list[dict]
     return plan
 
 
-def render_md(plan: list[dict], level: int) -> str:
+def render_md(plan: list[dict[str, Any]], level: int) -> str:
     lines = [f"# Plan de hardening — Nivel {level}", "", f"Controles con gap: {len(plan)}", ""]
     for item in plan:
         lines.append(f"## {item['control']} ({item['severity']}, {item['risk']})")

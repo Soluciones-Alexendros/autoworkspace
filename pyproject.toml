@@ -37,37 +37,6 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "C90", "N", "PL", "RUF"]
 max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
-"skills/local-maintenance/scripts/audit_full.py" = ["E501", "PLR2004"]
-"skills/local-maintenance/scripts/audit_quick.py" = ["E501"]
-"skills/local-maintenance/scripts/check_deps.py" = ["PLR0913", "PLR0917"]
-"skills/local-maintenance/scripts/clean_routine.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLW0602", "PLW0603", "SIM105"]
-"skills/local-maintenance/scripts/common.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0917", "PLR2004", "PLW2901", "RUF059", "UP017", "UP022"]
-"skills/local-maintenance/scripts/probe_system.py" = ["PLR2004"]
-"skills/local-maintenance/scripts/report_render.py" = ["C901", "E501", "PLC0415", "PLR0915", "PLR2004", "UP017"]
-"skills/local-maintenance/scripts/risk_gate.py" = ["PLR0911", "PLW2901"]
-"skills/local-maintenance/scripts/session_logger.py" = ["PLW0603"]
-"skills/local-maintenance/scripts/snapshot_state.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLR0915", "PLR2004"]
-"skills/local-maintenance/scripts/tests/conftest.py" = ["SIM105"]
-"skills/local-maintenance/scripts/tests/test_audit_full.py" = ["PLC0415", "PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_audit_quick.py" = ["PLC0415", "PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_check_deps.py" = ["PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_clean_routine.py" = ["PLR2004"]
-"skills/local-maintenance/scripts/tests/test_common.py" = ["PLR2004", "PLW1510", "RUF059"]
-"skills/local-maintenance/scripts/tests/test_p0_containment.py" = ["PLR2004"]
-"skills/local-maintenance/scripts/tests/test_probe_system.py" = ["PLC0415", "PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_report_render.py" = ["PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_risk_gate.py" = ["PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_session_logger.py" = ["PLC0415", "PLR2004", "PLW1510", "SIM105", "SIM115", "SIM117"]
-"skills/local-maintenance/scripts/tests/test_snapshot_state.py" = ["PLC0415", "PLR2004", "PLW1510", "SIM117"]
-"skills/local-proton/scripts/proton_bridge.py" = ["PLC0415", "RUF059"]
-"skills/local-proton/scripts/test_proton_bridge.py" = ["E501", "PLC0415", "PLW0108"]
-"skills/local-security/scripts/apparmor_lifecycle.py" = ["UP017", "UP022"]
-"skills/local-security/scripts/forense_collector.py" = ["UP017"]
-"skills/local-security/scripts/harden_plan.py" = ["PLR2004"]
-"skills/local-security/scripts/scan_orchestrator.py" = ["E741", "RUF059"]
-"skills/local-security/scripts/test_postura.py" = ["E741", "PLW1510"]
-"skills/local-security/scripts/tests/test_nuevos_scripts.py" = ["E402", "PLC0415", "PLR2004", "PLW1510", "SIM115", "SIM117"]
-"skills/local-security/scripts/vulns_check.py" = ["E741"]
 "skills/plan-continue/scripts/inicio_plan.py" = ["C901", "E501", "PLC0415", "PLR0912", "PLR2004", "UP017"]
 "skills/plan-continue/scripts/scan_repo.py" = ["C901", "PLR0912", "PLR0915", "PLR2004", "PLW2901", "SIM102", "SIM103"]
 "skills/plan-continue/scripts/test_scan_repo.py" = ["PLC0415", "PLW1510"]
@@ -92,45 +61,17 @@ exclude = [
 
 [[tool.mypy.overrides]]
 module = [
-  "apparmor_lifecycle",
-  "audit_full",
   "audit_page",
-  "audit_quick",
-  "clean_routine",
-  "common",
   "contrast",
-  "forense_collector",
-  "harden_plan",
   "inicio_plan",
-  "probe_system",
-  "proton_bridge",
   "report",
-  "report_render",
-  "risk_gate",
-  "scan_orchestrator",
   "scan_repo",
   "score",
   "selftest",
-  "snapshot_state",
-  "test_audit_full",
-  "test_audit_quick",
-  "test_check_deps",
-  "test_clean_routine",
   "test_cli",
-  "test_common",
   "test_golden_errors",
   "test_inicio_plan",
-  "test_nuevos_scripts",
-  "test_p0_containment",
-  "test_postura",
-  "test_probe_system",
-  "test_proton_bridge",
-  "test_report_render",
-  "test_risk_gate",
   "test_scan_repo",
-  "test_session_logger",
-  "test_snapshot_state",
-  "vulns_check",
 ]
 ignore_errors = true
 # END GENERATED: quality-debt

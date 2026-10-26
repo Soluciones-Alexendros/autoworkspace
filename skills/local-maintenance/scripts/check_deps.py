@@ -45,7 +45,8 @@ OPTIONAL = [
 ]
 
 
-def check_cmd(cmd: str, required: bool, package: str, hint: str, verbose: bool, install_hint: bool) -> int:
+def check_cmd(spec: tuple[str, str, str], *, required: bool, verbose: bool, install_hint: bool) -> int:
+    cmd, package, hint = spec
     if which(cmd) is not None:
         if verbose:
             print(color(f"[OK] {cmd} ({package})", GREEN))
@@ -76,13 +77,13 @@ def main(argv: list[str] | None = None) -> int:
 
     print("--- Requeridos ---")
     for cmd, package, hint in REQUIRED:
-        if not check_cmd(cmd, True, package, hint, verbose, install_hint):
+        if not check_cmd((cmd, package, hint), required=True, verbose=verbose, install_hint=install_hint):
             missing_required += 1
 
     print()
     print("--- Opcionales (mejoran la auditoría) ---")
     for cmd, package, hint in OPTIONAL:
-        if not check_cmd(cmd, False, package, hint, verbose, install_hint):
+        if not check_cmd((cmd, package, hint), required=False, verbose=verbose, install_hint=install_hint):
             missing_optional += 1
 
     print()

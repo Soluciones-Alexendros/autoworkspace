@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """Cliente CLI para Proton Mail Bridge (IMAP 127.0.0.1:1143 / SMTP 127.0.0.1:1025).
 
 LEGACY: funcional pero deprecado. El canon vive en protonsuite-tools
@@ -19,6 +20,8 @@ import smtplib
 import ssl
 import sys
 from email.message import EmailMessage
+from pathlib import Path
+from typing import Any, cast
 
 IMAP_HOST = os.environ.get("PROTON_IMAP_HOST", "127.0.0.1")
 try:
@@ -31,6 +34,13 @@ try:
 except ValueError:
     SMTP_PORT = 1025
 
+_TOOLS = Path(__file__).resolve().parents[3] / "tools"
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+
+from execution.ops import run_registered  # noqa: E402  # requiere _TOOLS en sys.path
+from execution.registry import register_handler  # noqa: E402  # requiere _TOOLS en sys.path
+
 logger = logging.getLogger("proton_bridge")
 
 
@@ -38,7 +48,7 @@ class ProtonBridgeError(RuntimeError):
     """Error controlado del Bridge (credenciales, conexión, protocolo)."""
 
 
-def get_config():
+def get_config() -> tuple[str, int, str, int, str | None, str | None]:
     """Lee la configuración desde el entorno en cada llamada (testeable)."""
     imap_host = os.environ.get("PROTON_IMAP_HOST", IMAP_HOST)
     smtp_host = os.environ.get("PROTON_SMTP_HOST", SMTP_HOST)
@@ -55,7 +65,7 @@ def get_config():
     return imap_host, imap_port, smtp_host, smtp_port, user, password
 
 
-def tls_ctx():
+def tls_ctx() -> ssl.SSLContext:
     # Bridge usa certificado autofirmado local: desactivar verificación.
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -63,7 +73,7 @@ def tls_ctx():
     return ctx
 
 
-def require_creds():
+def require_creds() -> tuple[str, str]:
     _, _, _, _, user, password = get_config()
     if not user or not password:
         raise ProtonBridgeError(
@@ -72,7 +82,7 @@ def require_creds():
     return user, password
 
 
-def connect(imap_host=None, imap_port=None):
+def connect(imap_host: str | None = None, imap_port: int | None = None) -> imaplib.IMAP4:
     """Abre la conexión IMAP contra Bridge. Testeable: mockear esta función."""
     cfg_host, cfg_port, _, _, user, password = get_config()
     host = imap_host if imap_host is not None else cfg_host
@@ -90,7 +100,7 @@ def connect(imap_host=None, imap_port=None):
     return imap
 
 
-def connect_smtp(smtp_host=None, smtp_port=None):
+def connect_smtp(smtp_host: str | None = None, smtp_port: int | None = None) -> smtplib.SMTP:
     """Abre la conexión SMTP contra Bridge. Testeable: mockear esta función."""
     _, _, cfg_host, cfg_port, user, password = get_config()
     host = smtp_host if smtp_host is not None else cfg_host
@@ -108,7 +118,7 @@ def connect_smtp(smtp_host=None, smtp_port=None):
     return server
 
 
-def decode_header_value(v):
+def decode_header_value(v: str | None) -> str:
     if not v:
         return ""
     parts = email.header.decode_header(v)
@@ -118,14 +128,14 @@ def decode_header_value(v):
     return "".join(out)
 
 
-def select_inbox(imap, readonly=True):
+def select_inbox(imap: Any, readonly: bool = True) -> None:
     imap.select("INBOX", readonly=readonly)
 
 
-def print_summaries(imap, uids, limit):
+def print_summaries(imap: Any, uids: list[bytes], limit: int) -> None:
     uids = uids[-limit:][::-1]  # más recientes primero
     for uid in uids:
-        typ, data = imap.fetch(uid, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID)])")
+        _typ, data = imap.fetch(uid, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID)])")
         if not data or not isinstance(data[0], tuple):
             continue
         msg = email.message_from_bytes(data[0][1])
@@ -137,16 +147,16 @@ def print_summaries(imap, uids, limit):
         print()
 
 
-def cmd_unread(args):
+def cmd_unread(args: argparse.Namespace) -> None:
     with connect() as imap:
         select_inbox(imap)
-        typ, data = imap.search(None, "UNSEEN")
+        _typ, data = imap.search(None, "UNSEEN")
         uids = data[0].split() if data and data[0] else []
         print(f"No leídos en INBOX: {len(uids)}\n")
         print_summaries(imap, uids, args.limit)
 
 
-def cmd_search(args):
+def cmd_search(args: argparse.Namespace) -> None:
     with connect() as imap:
         select_inbox(imap)
         criteria = []
@@ -162,28 +172,30 @@ def cmd_search(args):
             criteria += ["SINCE", args.since]
         if not criteria:
             criteria = ["ALL"]
-        typ, data = imap.search(None, *criteria)
+        _typ, data = imap.search(None, *criteria)
         uids = data[0].split() if data and data[0] else []
         print(f"Resultados: {len(uids)}\n")
         print_summaries(imap, uids, args.limit)
 
 
-def extract_body(msg):
+def extract_body(msg: Any) -> str:
     if msg.is_multipart():
         for part in msg.walk():
             if part.get_content_type() == "text/plain" and "attachment" not in str(part.get("Content-Disposition")):
-                return part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8", "replace")
+                raw = cast("bytes", part.get_payload(decode=True))
+                return raw.decode(part.get_content_charset() or "utf-8", "replace")
         for part in msg.walk():
             if part.get_content_type() == "text/html":
-                return part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8", "replace")
-    payload = msg.get_payload(decode=True)
+                raw = cast("bytes", part.get_payload(decode=True))
+                return raw.decode(part.get_content_charset() or "utf-8", "replace")
+    payload = cast("bytes | None", msg.get_payload(decode=True))
     return payload.decode(msg.get_content_charset() or "utf-8", "replace") if payload else ""
 
 
-def cmd_fetch(args):
+def cmd_fetch(args: argparse.Namespace) -> None:
     with connect() as imap:
         select_inbox(imap)
-        typ, data = imap.fetch(args.uid.encode(), "(RFC822)")
+        _typ, data = imap.fetch(args.uid.encode(), "(RFC822)")
         if not data or not isinstance(data[0], tuple):
             raise ProtonBridgeError(f"UID {args.uid} no encontrado")
         msg = email.message_from_bytes(data[0][1])
@@ -198,14 +210,14 @@ def cmd_fetch(args):
         print(extract_body(msg))
 
 
-def cmd_folders(_args):
+def cmd_folders(_args: argparse.Namespace) -> None:
     with connect() as imap:
-        typ, boxes = imap.list()
+        _typ, boxes = imap.list()
         for b in boxes or []:
-            print(b.decode("utf-8", "replace"))
+            print(cast("bytes", b).decode("utf-8", "replace"))
 
 
-def cmd_mark(args):
+def cmd_mark(args: argparse.Namespace) -> None:
     with connect() as imap:
         select_inbox(imap, readonly=False)
         flag = "+FLAGS" if args.read else "-FLAGS"
@@ -213,15 +225,8 @@ def cmd_mark(args):
         print(f"UID {args.uid}: {'leído' if args.read else 'no leído'}")
 
 
-def cmd_send(args):
+def cmd_send(args: argparse.Namespace) -> None:
     """Send requires ApprovalProvider via execution registry (no CONFIRM_SEND/env)."""
-    from pathlib import Path
-
-    tools = Path(__file__).resolve().parents[3] / "tools"
-    if str(tools) not in sys.path:
-        sys.path.insert(0, str(tools))
-    from execution.ops import run_registered
-    from execution.registry import register_handler
 
     params = {
         "to": args.to,
@@ -229,7 +234,7 @@ def cmd_send(args):
         "body": args.body,
     }
 
-    def _do_send(p: dict) -> int:
+    def _do_send(p: dict[str, Any]) -> int:
         _, _, _, _, user, _ = get_config()
         require_creds()
         msg = EmailMessage()
@@ -254,7 +259,7 @@ def cmd_send(args):
         raise ProtonBridgeError(f"send blocked: {result.detail or result.outcome}")
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Cliente Proton Mail Bridge")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -304,7 +309,7 @@ def build_parser():
     return p
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         stream=sys.stderr,
         level=logging.INFO,

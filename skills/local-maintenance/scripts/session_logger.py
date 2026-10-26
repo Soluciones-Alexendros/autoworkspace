@@ -13,6 +13,7 @@ import logging
 import os
 import socket
 import sys
+from dataclasses import dataclass, field
 
 from common import SKILL_VERSION, run, utcnow_iso
 
@@ -27,27 +28,37 @@ def _setup_logging(verbose: bool = False) -> None:
         logging.getLogger().setLevel(level)
 
 
-LOG_DIR = os.environ.get("LOG_DIR", "/var/log/mantenimiento-linux")
-SESSION_ID = (
-    os.environ.get("SESSION_ID", "")
-    or f"session-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
-)
-LOG_FILE = os.path.join(LOG_DIR, f"{SESSION_ID}.log")
+def _default_session_id() -> str:
+    stamp = utcnow_iso().replace("-", "").replace(":", "").replace("T", "-").replace("Z", "")
+    return os.environ.get("SESSION_ID", "") or f"session-{stamp}"
+
+
+@dataclass
+class _SessionState:
+    """Estado del logger; `log_file` se deriva de `log_dir` y `session_id`."""
+
+    log_dir: str = field(default_factory=lambda: os.environ.get("LOG_DIR", "/var/log/mantenimiento-linux"))
+    session_id: str = field(default_factory=_default_session_id)
+
+    @property
+    def log_file(self) -> str:
+        return os.path.join(self.log_dir, f"{self.session_id}.log")
+
+
+_STATE = _SessionState()
 
 
 def _ensure_log_dir() -> None:
-    global LOG_DIR, LOG_FILE
     try:
-        os.makedirs(LOG_DIR, exist_ok=True)
+        os.makedirs(_STATE.log_dir, exist_ok=True)
     except OSError as exc:
-        logger.warning("no se pudo crear LOG_DIR=%r (%s); usando fallback /tmp", LOG_DIR, exc)
-        LOG_DIR = "/tmp/mantenimiento-linux/logs"
+        logger.warning("no se pudo crear LOG_DIR=%r (%s); usando fallback /tmp", _STATE.log_dir, exc)
+        _STATE.log_dir = "/tmp/mantenimiento-linux/logs"
         try:
-            os.makedirs(LOG_DIR, exist_ok=True)
+            os.makedirs(_STATE.log_dir, exist_ok=True)
         except OSError as exc2:
-            logger.error("no se pudo crear fallback LOG_DIR=%r: %s", LOG_DIR, exc2)
+            logger.error("no se pudo crear fallback LOG_DIR=%r: %s", _STATE.log_dir, exc2)
             raise
-        LOG_FILE = os.path.join(LOG_DIR, f"{SESSION_ID}.log")
 
 
 def _current_user() -> str:
@@ -73,7 +84,7 @@ def init_log() -> None:
         raise
     header = (
         "=== mantenimiento-linux session log ===\n"
-        f"SESSION_ID: {SESSION_ID}\n"
+        f"SESSION_ID: {_STATE.session_id}\n"
         f"TIMESTAMP: {utcnow_iso()}\n"
         f"HOSTNAME: {host}\n"
         f"USER: {user}\n"
@@ -83,10 +94,10 @@ def init_log() -> None:
         "======================================\n\n"
     )
     try:
-        with open(LOG_FILE, "a", encoding="utf-8") as fh:
+        with open(_STATE.log_file, "a", encoding="utf-8") as fh:
             fh.write(header)
     except OSError as exc:
-        logger.error("no se pudo escribir header en %r: %s", LOG_FILE, exc)
+        logger.error("no se pudo escribir header en %r: %s", _STATE.log_file, exc)
         raise
 
 
@@ -102,10 +113,10 @@ def log_event(
         lines.append(f"  DETAILS: {details}")
     lines.append("")
     try:
-        with open(LOG_FILE, "a", encoding="utf-8") as fh:
+        with open(_STATE.log_file, "a", encoding="utf-8") as fh:
             fh.write("\n".join(lines) + "\n")
     except OSError as exc:
-        logger.error("no se pudo escribir evento en %r: %s", LOG_FILE, exc)
+        logger.error("no se pudo escribir evento en %r: %s", _STATE.log_file, exc)
         raise
 
 
@@ -138,11 +149,11 @@ def log_mode_end(mode: str, result: str) -> None:
 
 
 def get_log_file() -> str:
-    return LOG_FILE
+    return _STATE.log_file
 
 
 def get_session_id() -> str:
-    return SESSION_ID
+    return _STATE.session_id
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -154,19 +165,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--verbose", action="store_true", help="Logging verboso a stderr")
     args = parser.parse_args(argv)
     _setup_logging(args.verbose)
-    global LOG_DIR, SESSION_ID, LOG_FILE
     if args.log_dir:
-        LOG_DIR = args.log_dir
-        LOG_FILE = os.path.join(LOG_DIR, f"{SESSION_ID}.log")
+        _STATE.log_dir = args.log_dir
     if args.session_id:
-        SESSION_ID = args.session_id
-        LOG_FILE = os.path.join(LOG_DIR, f"{SESSION_ID}.log")
+        _STATE.session_id = args.session_id
     try:
         init_log()
     except OSError:
         return 1
-    print(f"Session log initialized: {LOG_FILE}")
-    print(f"Session ID: {SESSION_ID}")
+    print(f"Session log initialized: {_STATE.log_file}")
+    print(f"Session ID: {_STATE.session_id}")
     return 0
 
 

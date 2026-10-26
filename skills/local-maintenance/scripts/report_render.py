@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
+
 """report_render.py - Genera informe MD/HTML con puntuación, hallazgos y diff temporal."""
 
+import argparse
 import html as _html
 import json
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any, cast
 
 from common import SKILL_VERSION
+
+TREND_DELTA = 5
+MIN_HISTORY = 2
+SCORE_GOOD = 85
+SCORE_WARN = 70
+SEVERITIES = ("P0", "P1", "P2", "P3", "P4")
 
 logger = logging.getLogger("mantenimiento.report")
 
@@ -21,7 +30,7 @@ def _setup_logging(verbose: bool = False) -> None:
         logging.getLogger().setLevel(level)
 
 
-def load_json(path):
+def load_json(path: str) -> Any:
     """Carga archivo JSON (None si falta o es inválido; con contexto en stderr)."""
     try:
         with open(path, encoding="utf-8") as f:
@@ -40,7 +49,7 @@ def load_json(path):
         return None
 
 
-def load_history(history_dir):
+def load_history(history_dir: str) -> list[dict[str, Any]]:
     """Carga historial de auditorías (lista vacía si falta o es inválido)."""
     try:
         index_path = os.path.join(history_dir, "index.json")
@@ -53,31 +62,31 @@ def load_history(history_dir):
     if not data:
         return []
     try:
-        return data.get("runs", [])
+        return cast("list[dict[str, Any]]", data.get("runs", []))
     except AttributeError as exc:
         logger.error("formato de historial inválido en %r: %s", index_path, exc)
         return []
 
 
-def calculate_trend(current_score, previous_score):
+def calculate_trend(current_score: float, previous_score: float | None) -> str:
     """Calcula tendencia del health score."""
     if previous_score is None:
         return "first_run"
     delta = current_score - previous_score
-    if delta > 5:
+    if delta > TREND_DELTA:
         return "improving"
-    elif delta < -5:
+    elif delta < -TREND_DELTA:
         return "degrading"
     else:
         return "stable"
 
 
-def severity_emoji(severity):
+def severity_emoji(severity: str) -> str:
     """Devuelve emoji para severidad."""
     return {"P0": "🔴", "P1": "🟠", "P2": "🟡", "P3": "🔵", "P4": "⚪"}.get(severity, "❓")
 
 
-def severity_color(severity):
+def severity_color(severity: str) -> str:
     """Devuelve color HTML para severidad."""
     return {
         "P0": "#dc3545",
@@ -88,17 +97,17 @@ def severity_color(severity):
     }.get(severity, "#000")
 
 
-def _is_bad(finding) -> bool:
+def _is_bad(finding: dict[str, Any] | None) -> bool:
     return isinstance(finding, dict) and finding.get("status") in ("FAIL", "WARN")
 
 
-def _finding_label(finding) -> str:
+def _finding_label(finding: dict[str, Any]) -> str:
     if not isinstance(finding, dict):
         return "?"
     return f"{finding.get('id', '?')} — {finding.get('title', 'sin titulo')}"
 
 
-def diff_findings(prev_findings, curr_findings) -> dict:
+def diff_findings(prev_findings: list[dict[str, Any]], curr_findings: list[dict[str, Any]]) -> dict[str, Any]:
     """Diff temporal entre dos listas de hallazgos.
 
     nuevos: FAIL/WARN ahora, antes PASS/ausente. resueltos: FAIL/WARN antes,
@@ -131,137 +140,225 @@ def diff_findings(prev_findings, curr_findings) -> dict:
     }
 
 
-def _extract_prev_findings(history, prev_data) -> list | None:
+def _extract_prev_findings(history: list[Any] | None, prev_data: dict[str, Any] | None) -> list[dict[str, Any]] | None:
     if isinstance(prev_data, dict) and isinstance(prev_data.get("findings"), list):
-        return prev_data["findings"]
+        return cast("list[dict[str, Any]]", prev_data["findings"])
     if isinstance(history, list):
         for run in reversed(history):
             if isinstance(run, dict) and isinstance(run.get("findings"), list):
-                return run["findings"]
+                return cast("list[dict[str, Any]]", run["findings"])
     return None
 
 
-def render_markdown(data, history=None, prev_data=None):
+def _md_header(meta: dict[str, Any]) -> list[str]:
+    return [
+        "# Informe de Auditoría - mantenimiento-linux",
+        "",
+        f"**Fecha:** {meta.get('timestamp', 'N/A')}",
+        f"**Host:** {meta.get('hostname', 'N/A')}",
+        f"**Modo:** {meta.get('mode', 'N/A')}",
+        f"**Distro:** {meta.get('distro', 'N/A')} ({meta.get('family', 'N/A')})",
+        f"**Kernel:** {meta.get('kernel', 'N/A')}",
+        f"**Duración:** {meta.get('duration_seconds', 'N/A')}s",
+        "",
+    ]
+
+
+def _md_health(hs: dict[str, Any]) -> list[str]:
+    overall = hs.get("overall", 0)
+    bar = "█" * (overall // 5) + "░" * (20 - overall // 5)
+    return [
+        "## Health Score",
+        "",
+        f"**Overall: {overall}/100**",
+        f"`{bar}`",
+        "",
+        "| Componente | Puntuación | Peso |",
+        "|------------|-----------|------|",
+        f"| Seguridad | {hs.get('security', 0)}/100 | 35% |",
+        f"| Actualización | {hs.get('updates', 0)}/100 | 25% |",
+        f"| Higiene | {hs.get('hygiene', 0)}/100 | 20% |",
+        f"| Recursos | {hs.get('resources', 0)}/100 | 10% |",
+        f"| Estabilidad | {hs.get('stability', 0)}/100 | 10% |",
+        "",
+    ]
+
+
+def _md_trend(history: list[Any] | None, overall: float) -> list[str]:
+    if not history or len(history) < MIN_HISTORY:
+        return []
+    prev = history[-2]
+    prev_score = (
+        prev.get("health_score", {}).get("overall", 0) if isinstance(prev, dict) else prev.get("health_score", 0)
+    )
+    trend = calculate_trend(overall, prev_score)
+    trend_labels = {
+        "improving": "📈 Mejorando",
+        "degrading": "📉 Degradando",
+        "stable": "➡️ Estable",
+        "first_run": "🆕 Primera ejecución",
+    }
+    return [f"**Tendencia:** {trend_labels.get(trend, trend)} (anterior: {prev_score})", ""]
+
+
+def _md_summary(summary: dict[str, Any]) -> list[str]:
+    out = [
+        "## Resumen",
+        "",
+        f"- **Total checks:** {summary.get('total_checks', 0)}",
+        f"- **Passed:** {summary.get('passed', 0)}",
+        f"- **Failed:** {summary.get('failed', 0)}",
+        f"- **Warned:** {summary.get('warned', 0)}",
+        f"- **Skipped:** {summary.get('skipped', 0)}",
+        f"- **Errors:** {summary.get('errors', 0)}",
+        "",
+        "### Por severidad",
+        "",
+    ]
+    by_sev = summary.get("by_severity", {})
+    for sev in SEVERITIES:
+        out.append(f"- {severity_emoji(sev)} **{sev}:** {by_sev.get(sev, 0)}")
+    out.append("")
+    return out
+
+
+def _md_diff(history: list[Any] | None, prev_data: dict[str, Any] | None, findings: list[Any]) -> list[str]:
+    prev_findings = _extract_prev_findings(history, prev_data)
+    if prev_findings is None:
+        return []
+    diff = diff_findings(prev_findings, findings)
+    out = ["## Diff temporal (vs auditoria previa)", ""]
+    for key, label in (
+        ("nuevos", "🆕 Nuevos"),
+        ("resueltos", "✅ Resueltos"),
+        ("persistentes", "🔁 Persistentes"),
+        ("regresados", "⚠️ Regresados"),
+    ):
+        items = diff[key]
+        out.append(f"### {label} ({len(items)})")
+        out.append("")
+        for item in items:
+            out.append(f"- {item}")
+        out.append("")
+    return out
+
+
+def _md_finding(f: dict[str, Any]) -> list[str]:
+    out = [
+        f"**{f.get('title', 'Sin título')}**",
+        f"- ID: `{f.get('id', 'N/A')}`",
+        f"- Categoría: {f.get('category', 'N/A')}",
+        f"- Estado: {f.get('status', 'N/A')}",
+    ]
+    for field, label in (("description", "Descripción"), ("evidence", "Evidencia"), ("remediation", "Remediación")):
+        value = f.get(field)
+        if value:
+            out.append(f"- {label}: {_html.escape(value)}")
+    out.append("")
+    return out
+
+
+def _md_findings(findings: list[Any]) -> list[str]:
+    if not findings:
+        return []
+    out = ["## Hallazgos", ""]
+    for sev in SEVERITIES:
+        sev_findings = [f for f in findings if f.get("severity") == sev]
+        if not sev_findings:
+            continue
+        out.append(f"### {severity_emoji(sev)} {sev} ({len(sev_findings)})")
+        out.append("")
+        for f in sev_findings:
+            out.extend(_md_finding(f))
+    return out
+
+
+def render_markdown(
+    data: dict[str, Any],
+    history: list[Any] | None = None,
+    prev_data: dict[str, Any] | None = None,
+) -> str:
     """Genera informe en Markdown."""
     meta = data.get("metadata", {})
     hs = data.get("health_score", {})
     findings = data.get("findings", [])
     summary = data.get("summary", {})
 
-    lines = []
-    lines.append("# Informe de Auditoría - mantenimiento-linux")
-    lines.append("")
-    lines.append(f"**Fecha:** {meta.get('timestamp', 'N/A')}")
-    lines.append(f"**Host:** {meta.get('hostname', 'N/A')}")
-    lines.append(f"**Modo:** {meta.get('mode', 'N/A')}")
-    lines.append(f"**Distro:** {meta.get('distro', 'N/A')} ({meta.get('family', 'N/A')})")
-    lines.append(f"**Kernel:** {meta.get('kernel', 'N/A')}")
-    lines.append(f"**Duración:** {meta.get('duration_seconds', 'N/A')}s")
-    lines.append("")
-
-    # Health Score
-    lines.append("## Health Score")
-    lines.append("")
-    overall = hs.get("overall", 0)
-    bar = "█" * (overall // 5) + "░" * (20 - overall // 5)
-    lines.append(f"**Overall: {overall}/100**")
-    lines.append(f"`{bar}`")
-    lines.append("")
-    lines.append("| Componente | Puntuación | Peso |")
-    lines.append("|------------|-----------|------|")
-    lines.append(f"| Seguridad | {hs.get('security', 0)}/100 | 35% |")
-    lines.append(f"| Actualización | {hs.get('updates', 0)}/100 | 25% |")
-    lines.append(f"| Higiene | {hs.get('hygiene', 0)}/100 | 20% |")
-    lines.append(f"| Recursos | {hs.get('resources', 0)}/100 | 10% |")
-    lines.append(f"| Estabilidad | {hs.get('stability', 0)}/100 | 10% |")
-    lines.append("")
-
-    # Tendencia
-    if history and len(history) >= 2:
-        prev = history[-2]
-        prev_score = (
-            prev.get("health_score", {}).get("overall", 0) if isinstance(prev, dict) else prev.get("health_score", 0)
-        )
-        trend = calculate_trend(overall, prev_score)
-        trend_labels = {
-            "improving": "📈 Mejorando",
-            "degrading": "📉 Degradando",
-            "stable": "➡️ Estable",
-            "first_run": "🆕 Primera ejecución",
-        }
-        lines.append(f"**Tendencia:** {trend_labels.get(trend, trend)} (anterior: {prev_score})")
-        lines.append("")
-
-    # Resumen
-    lines.append("## Resumen")
-    lines.append("")
-    lines.append(f"- **Total checks:** {summary.get('total_checks', 0)}")
-    lines.append(f"- **Passed:** {summary.get('passed', 0)}")
-    lines.append(f"- **Failed:** {summary.get('failed', 0)}")
-    lines.append(f"- **Warned:** {summary.get('warned', 0)}")
-    lines.append(f"- **Skipped:** {summary.get('skipped', 0)}")
-    lines.append(f"- **Errors:** {summary.get('errors', 0)}")
-    lines.append("")
-
-    # Hallazgos por severidad
-    by_sev = summary.get("by_severity", {})
-    lines.append("### Por severidad")
-    lines.append("")
-    for sev in ["P0", "P1", "P2", "P3", "P4"]:
-        count = by_sev.get(sev, 0)
-        lines.append(f"- {severity_emoji(sev)} **{sev}:** {count}")
-    lines.append("")
-
-    # Diff temporal contra auditoria previa (--prev o historial con findings)
-    prev_findings = _extract_prev_findings(history, prev_data)
-    if prev_findings is not None:
-        diff = diff_findings(prev_findings, findings)
-        lines.append("## Diff temporal (vs auditoria previa)")
-        lines.append("")
-        for key, label in (
-            ("nuevos", "🆕 Nuevos"),
-            ("resueltos", "✅ Resueltos"),
-            ("persistentes", "🔁 Persistentes"),
-            ("regresados", "⚠️ Regresados"),
-        ):
-            items = diff[key]
-            lines.append(f"### {label} ({len(items)})")
-            lines.append("")
-            for item in items:
-                lines.append(f"- {item}")
-            lines.append("")
-
-    # Hallazgos detallados
-    if findings:
-        lines.append("## Hallazgos")
-        lines.append("")
-        for sev in ["P0", "P1", "P2", "P3", "P4"]:
-            sev_findings = [f for f in findings if f.get("severity") == sev]
-            if not sev_findings:
-                continue
-            lines.append(f"### {severity_emoji(sev)} {sev} ({len(sev_findings)})")
-            lines.append("")
-            for f in sev_findings:
-                lines.append(f"**{f.get('title', 'Sin título')}**")
-                lines.append(f"- ID: `{f.get('id', 'N/A')}`")
-                lines.append(f"- Categoría: {f.get('category', 'N/A')}")
-                lines.append(f"- Estado: {f.get('status', 'N/A')}")
-                if f.get("description"):
-                    lines.append(f"- Descripción: {_html.escape(f.get('description'))}")
-                if f.get("evidence"):
-                    lines.append(f"- Evidencia: `{_html.escape(f.get('evidence'))}`")
-                if f.get("remediation"):
-                    lines.append(f"- Remediación: {_html.escape(f.get('remediation'))}")
-                lines.append("")
-
-    # Footer
+    lines = _md_header(meta)
+    lines.extend(_md_health(hs))
+    lines.extend(_md_trend(history, hs.get("overall", 0)))
+    lines.extend(_md_summary(summary))
+    lines.extend(_md_diff(history, prev_data, findings))
+    lines.extend(_md_findings(findings))
     lines.append("---")
     lines.append(f"*Generado por mantenimiento-linux v{SKILL_VERSION}*")
 
     return "\n".join(lines)
 
 
-def render_html(data, history=None, prev_data=None):
+def _html_severity_badges(summary: dict[str, Any]) -> str:
+    by_sev = summary.get("by_severity", {})
+    return "".join(f'<span class="badge {sev}">{sev}: {by_sev.get(sev, 0)}</span> ' for sev in SEVERITIES)
+
+
+def _html_finding(f: dict[str, Any], sev: str) -> str:
+    status = f.get("status", "N/A")
+    title_text = _html.escape(f.get("title", "Sin título"))
+    out = f"""            <div class="finding {sev}">
+                <h4><span class="badge {sev}">{sev}</span>
+                <span class="badge {status}">{status}</span> {title_text}</h4>
+                <div class="detail"><strong>ID:</strong> {_html.escape(f.get("id", "N/A"))} ·
+                <strong>Categoría:</strong> {_html.escape(f.get("category", "N/A"))}</div>
+"""
+    if f.get("description"):
+        out += f'                <div class="detail">{_html.escape(str(f.get("description", "")))}</div>\n'
+    if f.get("evidence"):
+        out += (
+            '                <div class="detail"><strong>Evidencia:</strong> <code>'
+            f"{_html.escape(str(f.get('evidence')))}</code></div>\n"
+        )
+    if f.get("remediation"):
+        out += (
+            '                <div class="remediation"><strong>Remediación:</strong> '
+            f"{_html.escape(str(f.get('remediation', '')))}</div>\n"
+        )
+    return out + "            </div>\n"
+
+
+def _html_findings(findings: list[Any]) -> str:
+    if not findings:
+        return ""
+    out = """        <div class="section">
+            <h2>Hallazgos</h2>
+"""
+    for sev in SEVERITIES:
+        for f in [item for item in findings if item.get("severity") == sev]:
+            out += _html_finding(f, sev)
+    return out + "        </div>\n"
+
+
+def _html_diff(history: list[Any] | None, prev_data: dict[str, Any] | None, findings: list[Any]) -> str:
+    prev_findings = _extract_prev_findings(history, prev_data)
+    if prev_findings is None:
+        return ""
+    diff = diff_findings(prev_findings, findings)
+    out = """        <div class="section">
+            <h2>Diff temporal (vs auditoria previa)</h2>
+"""
+    for key, label in (
+        ("nuevos", "Nuevos"),
+        ("resueltos", "Resueltos"),
+        ("persistentes", "Persistentes"),
+        ("regresados", "Regresados"),
+    ):
+        items = diff[key]
+        out += f"            <h3>{label} ({len(items)})</h3>\n"
+        for item in items:
+            out += f"            <div class='detail'>- {_html.escape(item)}</div>\n"
+    return out + "        </div>\n"
+
+
+def render_html(data: dict[str, Any], history: list[Any] | None = None, prev_data: dict[str, Any] | None = None) -> str:
     """Genera informe HTML."""
     meta = data.get("metadata", {})
     hs = data.get("health_score", {})
@@ -269,7 +366,7 @@ def render_html(data, history=None, prev_data=None):
     summary = data.get("summary", {})
     overall = hs.get("overall", 0)
 
-    score_color = "#28a745" if overall >= 85 else "#ffc107" if overall >= 70 else "#dc3545"
+    score_color = "#28a745" if overall >= SCORE_GOOD else "#ffc107" if overall >= SCORE_WARN else "#dc3545"
 
     html = f"""<!DOCTYPE html>
 <html lang="es">
@@ -279,20 +376,27 @@ def render_html(data, history=None, prev_data=None):
     <title>Informe mantenimiento-linux - {meta.get("hostname", "N/A")}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f5f5f5; color: #333; line-height: 1.6; }}
         .container {{ max-width: 900px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+        .header {{ background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
         .header h1 {{ font-size: 24px; margin-bottom: 8px; }}
         .header .meta {{ color: #666; font-size: 14px; }}
-        .score-card {{ background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }}
-        .score-circle {{ width: 120px; height: 120px; border-radius: 50%; background: {score_color}; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; }}
+        .score-card {{ background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }}
+        .score-circle {{ width: 120px; height: 120px; border-radius: 50%;
+        background: {score_color}; color: #fff; display: inline-flex;
+        align-items: center; justify-content: center; font-size: 36px; font-weight: bold; }}
         .score-breakdown {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }}
         .score-item {{ background: #f8f9fa; padding: 12px; border-radius: 6px; text-align: center; }}
         .score-item .label {{ font-size: 12px; color: #666; text-transform: uppercase; }}
         .score-item .value {{ font-size: 24px; font-weight: bold; }}
-        .section {{ background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+        .section {{ background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
         .section h2 {{ font-size: 18px; margin-bottom: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; }}
-        .finding {{ border-left: 4px solid #ddd; padding: 12px 16px; margin-bottom: 12px; background: #fafafa; border-radius: 0 4px 4px 0; }}
+        .finding {{ border-left: 4px solid #ddd; padding: 12px 16px; margin-bottom: 12px;
+        background: #fafafa; border-radius: 0 4px 4px 0; }}
         .finding.P0 {{ border-left-color: #dc3545; }}
         .finding.P1 {{ border-left-color: #fd7e14; }}
         .finding.P2 {{ border-left-color: #ffc107; }}
@@ -301,7 +405,8 @@ def render_html(data, history=None, prev_data=None):
         .finding h3 {{ font-size: 14px; margin-bottom: 4px; }}
         .finding .detail {{ font-size: 13px; color: #666; }}
         .finding .remediation {{ font-size: 13px; color: #0d6efd; margin-top: 4px; }}
-        .badge {{ display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: #fff; }}
+        .badge {{ display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px;
+        font-weight: bold; color: #fff; }}
         .badge.P0 {{ background: #dc3545; }}
         .badge.P1 {{ background: #fd7e14; }}
         .badge.P2 {{ background: #ffc107; color: #333; }}
@@ -381,57 +486,16 @@ def render_html(data, history=None, prev_data=None):
             <div style="margin-top: 16px;">
 """
 
-    by_sev = summary.get("by_severity", {})
-    for sev in ["P0", "P1", "P2", "P3", "P4"]:
-        count = by_sev.get(sev, 0)
-        html += f'<span class="badge {sev}">{sev}: {count}</span> '
+    html += _html_severity_badges(summary)
 
     html += """
             </div>
         </div>
 """
 
-    if findings:
-        html += """        <div class="section">
-            <h2>Hallazgos</h2>
-"""
-        for sev in ["P0", "P1", "P2", "P3", "P4"]:
-            sev_findings = [f for f in findings if f.get("severity") == sev]
-            if not sev_findings:
-                continue
-            for f in sev_findings:
-                status = f.get("status", "N/A")
-                title_text = _html.escape(f.get("title", "Sin título"))
-                html += f"""            <div class="finding {sev}">
-                <h4><span class="badge {sev}">{sev}</span> <span class="badge {status}">{status}</span> {title_text}</h4>
-                <div class="detail"><strong>ID:</strong> {_html.escape(f.get("id", "N/A"))} · <strong>Categoría:</strong> {_html.escape(f.get("category", "N/A"))}</div>
-"""
-                if f.get("description"):
-                    html += f'                <div class="detail">{_html.escape(str(f.get("description", "")))}</div>\n'
-                if f.get("evidence"):
-                    html += f'                <div class="detail"><strong>Evidencia:</strong> <code>{_html.escape(str(f.get("evidence")))}</code></div>\n'
-                if f.get("remediation"):
-                    html += f'                <div class="remediation"><strong>Remediación:</strong> {_html.escape(str(f.get("remediation", "")))}</div>\n'
-                html += "            </div>\n"
-        html += "        </div>\n"
+    html += _html_findings(findings)
 
-    prev_findings = _extract_prev_findings(history, prev_data)
-    if prev_findings is not None:
-        diff = diff_findings(prev_findings, findings)
-        html += """        <div class="section">
-            <h2>Diff temporal (vs auditoria previa)</h2>
-"""
-        for key, label in (
-            ("nuevos", "Nuevos"),
-            ("resueltos", "Resueltos"),
-            ("persistentes", "Persistentes"),
-            ("regresados", "Regresados"),
-        ):
-            items = diff[key]
-            html += f"            <h3>{label} ({len(items)})</h3>\n"
-            for item in items:
-                html += f"            <div class='detail'>- {_html.escape(item)}</div>\n"
-        html += "        </div>\n"
+    html += _html_diff(history, prev_data, findings)
 
     html += f"""        <footer>
             Generado por mantenimiento-linux v{SKILL_VERSION} · {meta.get("timestamp", "")}
@@ -443,8 +507,30 @@ def render_html(data, history=None, prev_data=None):
     return html
 
 
+def _render_optimize(data: dict[str, Any]) -> str:
+    findings = data.get("findings", [])
+    lines = [
+        "# Plan de Optimización - mantenimiento-linux",
+        "",
+        f"**Generado:** {datetime.now(UTC).isoformat()}",
+        "",
+    ]
+    for sev in SEVERITIES[:4]:
+        sev_findings = [f for f in findings if f.get("severity") == sev]
+        if not sev_findings:
+            continue
+        lines.append(f"## {sev} - {len(sev_findings)} acciones")
+        lines.append("")
+        for f in sev_findings:
+            lines.append(f"### {f.get('title', 'Sin título')}")
+            lines.append(f"- **ID:** {f.get('id', 'N/A')}")
+            lines.append(f"- **Riesgo:** {f.get('risk_level', 'N/A')}")
+            lines.append(f"- **Remediación:** {f.get('remediation', 'N/A')}")
+            lines.append("")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
-    import argparse
 
     parser = argparse.ArgumentParser(description="Genera informe de mantenimiento-linux")
     parser.add_argument("--input", "-i", required=True, help="Archivo JSON de auditoría")
@@ -476,28 +562,7 @@ def main(argv: list[str] | None = None) -> int:
     prev_data = load_json(args.prev) if args.prev else None
 
     if args.mode == "optimize":
-        # Generar plan de optimización basado en hallazgos
-        findings = data.get("findings", [])
-        lines = []
-        lines.append("# Plan de Optimización - mantenimiento-linux")
-        lines.append("")
-        lines.append(f"**Generado:** {datetime.now(timezone.utc).isoformat()}")
-        lines.append("")
-
-        for sev in ["P0", "P1", "P2", "P3"]:
-            sev_findings = [f for f in findings if f.get("severity") == sev]
-            if not sev_findings:
-                continue
-            lines.append(f"## {sev} - {len(sev_findings)} acciones")
-            lines.append("")
-            for f in sev_findings:
-                lines.append(f"### {f.get('title', 'Sin título')}")
-                lines.append(f"- **ID:** {f.get('id', 'N/A')}")
-                lines.append(f"- **Riesgo:** {f.get('risk_level', 'N/A')}")
-                lines.append(f"- **Remediación:** {f.get('remediation', 'N/A')}")
-                lines.append("")
-
-        output = "\n".join(lines)
+        output = _render_optimize(data)
         ext = ".md"
     elif args.format == "html":
         output = render_html(data, history, prev_data)
