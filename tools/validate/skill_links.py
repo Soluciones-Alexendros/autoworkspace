@@ -24,6 +24,7 @@ ADR_CITE_RE = re.compile(
 BROKEN: list[str] = []
 ADR_STATUS_ERRORS: list[str] = []
 TERM_ERRORS: list[str] = []
+TermPatterns = list[tuple["re.Pattern[str]", str, object]]
 
 GLOSSARY_REL = "docs/GLOSARIO.md"
 TERM_SUFFIXES = {".md", ".yml", ".yaml", ".json"}
@@ -87,32 +88,39 @@ def _term_files(root: Path) -> list[Path]:
     return out
 
 
-def check_terminology(root: Path) -> None:
-    """Reject the glossary's forbidden patterns in live texts."""
-    entries = load_terminology(root)
-    if not entries:
-        return
-    compiled: list[tuple[re.Pattern[str], str, object]] = []
+def _compile_terms(entries: list[dict[str, object]]) -> TermPatterns:
+    compiled: TermPatterns = []
     for entry in entries:
         pattern = entry.get("pattern")
         use = entry.get("use")
-        if not isinstance(pattern, str) or not isinstance(use, str):
+        if isinstance(pattern, str) and isinstance(use, str):
+            compiled.append((re.compile(pattern), use, entry.get("allow_paths")))
+    return compiled
+
+
+def _scan_lines(rel: str, lines: list[str], compiled: TermPatterns) -> None:
+    for i, line in enumerate(lines, 1):
+        if TERM_OK_RE.search(line):
             continue
-        compiled.append((re.compile(pattern), use, entry.get("allow_paths")))
+        for regex, use, allow_paths in compiled:
+            if _allowed(rel, allow_paths):
+                continue
+            for m in regex.finditer(line):
+                TERM_ERRORS.append(f"{rel}:{i}: '{m.group(0)}' → usa '{use}'")
+
+
+def check_terminology(root: Path) -> None:
+    """Reject the glossary's forbidden patterns in live texts."""
+    compiled = _compile_terms(load_terminology(root))
+    if not compiled:
+        return
     for path in _term_files(root):
         rel = path.relative_to(root).as_posix()
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except (UnicodeDecodeError, OSError):
             continue
-        for i, line in enumerate(lines, 1):
-            if TERM_OK_RE.search(line):
-                continue
-            for regex, use, allow_paths in compiled:
-                if _allowed(rel, allow_paths):
-                    continue
-                for m in regex.finditer(line):
-                    TERM_ERRORS.append(f"{rel}:{i}: '{m.group(0)}' → usa '{use}'")
+        _scan_lines(rel, lines, compiled)
 
 
 def load_adr_status(root: Path) -> dict[str, tuple[Path, str]]:
