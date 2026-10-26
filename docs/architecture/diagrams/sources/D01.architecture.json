@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Capas de autoworkspace",
+    "subtitle": "El canon de flota: skills y herramientas, y lo que se propaga a los repos de producto",
+    "output": "docs/architecture/diagrams/rendered/D01.html",
+    "locale": "es",
+    "animation": "none",
+    "visual_preset": "blueprint"
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 4,
+    "gapX": 80,
+    "gapY": 110
+  },
+  "components": [
+    {
+      "id": "agents",
+      "row": 0,
+      "col": 0,
+      "type": "external",
+      "label": "Agentes de código",
+      "sublabel": "sesión con la skill cargada",
+      "tag": "OpenCode · Claude · Codex"
+    },
+    {
+      "id": "skills",
+      "row": 0,
+      "col": 1,
+      "type": "frontend",
+      "label": "skills/",
+      "sublabel": "SKILL.md por skill",
+      "tag": "16 skills · 5 dominios"
+    },
+    {
+      "id": "tools",
+      "row": 0,
+      "col": 2,
+      "type": "backend",
+      "label": "tools/",
+      "sublabel": "validadores",
+      "tag": "validadores deterministas"
+    },
+    {
+      "id": "canon",
+      "row": 0,
+      "col": 3,
+      "type": "cloud",
+      "label": "Canon CI",
+      "sublabel": "reusable-<stack>.yml",
+      "tag": "ci-gate"
+    },
+    {
+      "id": "stacks",
+      "row": 1,
+      "col": 3,
+      "type": "backend",
+      "label": "stacks/",
+      "sublabel": "stacks/<stack>/ci.yml",
+      "tag": "4 stacks"
+    },
+    {
+      "id": "templates",
+      "row": 1,
+      "col": 2,
+      "type": "frontend",
+      "label": "templates/repo/",
+      "sublabel": "esqueleto de producto",
+      "tag": "bootstrap"
+    },
+    {
+      "id": "docs",
+      "row": 1,
+      "col": 1,
+      "type": "database",
+      "label": "docs/",
+      "sublabel": "canon, guías y runbooks",
+      "tag": "GLOSARIO · plan-template"
+    },
+    {
+      "id": "adr",
+      "row": 1,
+      "col": 0,
+      "type": "database",
+      "label": "decisions/",
+      "sublabel": "ADR-0001 … ADR-0016",
+      "tag": "decisiones con estado"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "autoworkspace (host del canon)",
+      "wraps": [
+        "skills",
+        "tools",
+        "canon",
+        "stacks",
+        "templates",
+        "docs",
+        "adr"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "agents",
+      "to": "skills",
+      "label": "carga",
+      "variant": "emphasis"
+    },
+    {
+      "from": "skills",
+      "to": "tools",
+      "label": "invoca",
+      "variant": "emphasis"
+    },
+    {
+      "from": "tools",
+      "to": "canon",
+      "label": "valida",
+      "variant": "emphasis"
+    },
+    {
+      "from": "canon",
+      "to": "stacks",
+      "label": "propaga",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "from": "canon",
+      "to": "templates",
+      "label": "propaga",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "from": "adr",
+      "to": "docs",
+      "label": "fundamenta",
+      "variant": "dashed"
+    },
+    {
+      "from": "docs",
+      "to": "skills",
+      "label": "documenta",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Superficies",
+      "items": [
+        "skills/: una carpeta por skill, con SKILL.md y execution.yaml",
+        "tools/: validadores y rutas del ciclo, sin dependencias externas",
+        "docs/: canon de flota, guías, runbooks y decisiones"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Lo que se propaga",
+      "items": [
+        ".github/workflows/reusable-<stack>.yml es el canon que llaman los productos",
+        "stacks/<stack>/ci.yml fija el pin exacto del reusable por stack",
+        "templates/repo/ arranca un producto nuevo con el mismo contrato"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trazabilidad",
+      "items": [
+        "Cada decisión vive en un ADR con estado normalizado",
+        "El glosario fija el vocabulario y lo valida en CI",
+        "Los criterios de un plan se pegan con su salida literal"
+      ]
+    }
+  ]
+}

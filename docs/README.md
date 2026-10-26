@@ -20,6 +20,7 @@
 | ---------------------------------------------------- | -------------------------------------------------------------------- |
 | [REUTILIZACION.md](REUTILIZACION.md)                 | Alinear un repo existente; crear desde `templates/repo/`             |
 | [architecture/overview.md](architecture/overview.md) | Diseño del canon                                                     |
+| [architecture/diagrams/](architecture/diagrams/)     | Diagramas D01–D04: fuentes JSON + `make diagrams` (HTML = artefacto) |
 | [architecture/decisions/](architecture/decisions/)   | ADRs (0001…0016)                                                     |
 | [guides/](guides/)                                   | Setup, estilo, tests                                                 |
 | [runbooks/](runbooks/)                               | Deploy, rollback, secretos                                           |

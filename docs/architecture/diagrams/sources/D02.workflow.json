@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Flujo en dos fases",
+    "subtitle": "Rama de tarea → PR de tarea → plan/* → PR del plan → main → tag v* → publicación",
+    "output": "docs/architecture/diagrams/rendered/D02.html",
+    "locale": "es",
+    "animation": "none",
+    "visual_preset": "blueprint"
+  },
+  "lanes": [
+    { "id": "author", "label": "Rama de tarea" },
+    { "id": "plan", "label": "Rama de plan" },
+    { "id": "main", "label": "main" },
+    { "id": "release", "label": "Release" }
+  ],
+  "phases": [
+    {
+      "id": "fase1",
+      "label": "Fase 1 · integración",
+      "fromCol": 0,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "fase2",
+      "label": "Fase 2 · publicación",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "task_branch",
+    "task_pr",
+    "plan_branch",
+    "plan_pr",
+    "main_squash",
+    "cut_tag",
+    "publish"
+  ],
+  "nodes": [
+    {
+      "id": "task_branch",
+      "lane": "author",
+      "col": 0,
+      "type": "frontend",
+      "label": "Rama de tarea",
+      "sublabel": "<tipo>/<slug>",
+      "tag": "sale de plan/*"
+    },
+    {
+      "id": "task_pr",
+      "lane": "author",
+      "col": 1,
+      "type": "frontend",
+      "label": "PR de tarea",
+      "sublabel": "hacia plan/*",
+      "tag": "Conventional"
+    },
+    {
+      "id": "plan_branch",
+      "lane": "plan",
+      "col": 2,
+      "type": "backend",
+      "label": "plan/<id>",
+      "sublabel": "squash del PR",
+      "tag": "Fase 1"
+    },
+    {
+      "id": "plan_pr",
+      "lane": "plan",
+      "col": 3,
+      "type": "backend",
+      "label": "PR del plan",
+      "sublabel": "borrador",
+      "tag": "COMMIT_OVERRIDE"
+    },
+    {
+      "id": "main_squash",
+      "lane": "main",
+      "col": 4,
+      "type": "cloud",
+      "label": "main",
+      "sublabel": "squash del plan",
+      "tag": "firma de GitHub"
+    },
+    {
+      "id": "cut_tag",
+      "lane": "main",
+      "col": 5,
+      "type": "cloud",
+      "label": "tag v*",
+      "sublabel": "release.yml",
+      "tag": "cut_tag.py"
+    },
+    {
+      "id": "publish",
+      "lane": "release",
+      "col": 5,
+      "type": "external",
+      "label": "Publicación",
+      "sublabel": "Release",
+      "tag": "provenance"
+    }
+  ],
+  "edges": [
+    { "from": "task_branch", "to": "task_pr" },
+    {
+      "from": "task_pr",
+      "to": "plan_branch",
+      "label": "ci-gate + squash",
+      "variant": "emphasis"
+    },
+    { "from": "plan_branch", "to": "plan_pr" },
+    {
+      "from": "plan_pr",
+      "to": "main_squash",
+      "label": "ci-gate + squash",
+      "variant": "emphasis"
+    },
+    {
+      "from": "main_squash",
+      "to": "cut_tag",
+      "label": "release.yml",
+      "variant": "dashed",
+      "labelAt": [563, 415]
+    },
+    {
+      "from": "cut_tag",
+      "to": "publish",
+      "label": "Release",
+      "variant": "emphasis",
+      "labelDy": 11
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Fase 1 · integración",
+      "items": [
+        "Cada tarea es una rama y un PR hacia plan/<id>, nunca hacia main",
+        "El squash solo ocurre con ci-gate en verde; sin --merge, sin --rebase y sin --admin",
+        "Al cerrar la fase se entrega el informe de STOP y se espera al Arquitecto"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Fase 2 · publicación",
+      "items": [
+        "El PR del plan se abre en borrador y lo fusiona Alejandro",
+        "release.yml corta el tag v* al fusionar; nunca se crea a mano",
+        "Nada se publica desde un PR de tarea"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Cuándo se para",
+      "items": [
+        "Un criterio con un código de salida distinto del esperado es una desviación y se reporta",
+        "Un PR que toca rutas de política queda verde con policy-exception y lo fusiona el Arquitecto",
+        "Un fallo de ci-gate ajeno a los cambios de la tarea, dos veces seguidas, para la fase"
+      ]
+    }
+  ]
+}
