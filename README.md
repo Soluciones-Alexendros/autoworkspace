@@ -137,7 +137,7 @@ El cuerpo debe incluir `## Overview` y `## When to Use`. Las skills que empaquet
 
 Las flechas (`→ otra-skill`) de las descripciones deben apuntar a una skill existente en este catálogo.
 
-## Canon de flota (repo-standard)
+## Canon de flota
 
 Este repositorio aloja el contrato P0/P1 de la flota. Índice rápido:
 

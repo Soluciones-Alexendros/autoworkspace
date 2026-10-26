@@ -1,4 +1,4 @@
-<!-- docs/plan-template.md · cabecera OBLIGATORIA de todo plan-prompt (canon repo-standard, alojado en autoworkspace tras P11). No editar por plan: solo rellenar los campos <...>. -->
+<!-- docs/plan-template.md · cabecera OBLIGATORIA de todo plan-prompt (canon de flota, autoworkspace). No editar por plan: solo rellenar los campos <...>. -->
 
 NORMA DE FLOTA (autoworkspace docs/plan-template.md @ <SHA>). Plan <ID> «<título>» · repo(s): <owner/repo>.
 
