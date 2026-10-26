@@ -33,16 +33,16 @@ def _git_init(root: Path) -> None:
 
 
 class InicioPlanTests(unittest.TestCase):
-    def test_help_exit_0(self):
+    def test_help_exit_0(self) -> None:
         with self.assertRaises(SystemExit) as ctx:
             inicio_plan.main(["--help"])
         self.assertEqual(ctx.exception.code, 0)
 
-    def test_ruta_inexistente_exit_2(self):
+    def test_ruta_inexistente_exit_2(self) -> None:
         rc = inicio_plan.main(["/no/existe/este/repo"])
         self.assertEqual(rc, 2)
 
-    def test_tablero_en_repo_minimo(self):
+    def test_tablero_en_repo_minimo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "repo"
             out = Path(tmp) / "out"
@@ -68,7 +68,7 @@ class InicioPlanTests(unittest.TestCase):
             self.assertIn("**Semáforo**", md)
             self.assertIn(data["semaforo"], ("verde", "amarillo", "rojo"))
 
-    def test_html_escapa_contenido(self):
+    def test_html_escapa_contenido(self) -> None:
         rep = {
             "repo": "/tmp/x",
             "nombre": "a<b>",
