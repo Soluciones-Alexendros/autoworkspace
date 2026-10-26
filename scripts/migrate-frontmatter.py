@@ -6,17 +6,22 @@ Idempotent: safe to re-run.
 """
 
 import pathlib
+import shutil
+import subprocess
 import sys
+from typing import Any
 
 import yaml
 
+FRONTMATTER_PARTS = 3
 
-def split_frontmatter(text: str, path: pathlib.Path):
+
+def split_frontmatter(text: str, path: pathlib.Path) -> tuple[dict[str, Any] | None, str]:
     if not text.startswith("---"):
         print(f"SKIP (no frontmatter): {path}")
         return None, text
     parts = text.split("---", 2)
-    if len(parts) < 3:
+    if len(parts) < FRONTMATTER_PARTS:
         print(f"SKIP (malformed frontmatter): {path}")
         return None, text
     try:
@@ -30,7 +35,7 @@ def split_frontmatter(text: str, path: pathlib.Path):
     return fm, parts[2]
 
 
-def dump_frontmatter(fm: dict) -> str:
+def dump_frontmatter(fm: dict[str, Any]) -> str:
     body = yaml.safe_dump(
         fm,
         default_flow_style=False,
@@ -79,9 +84,6 @@ def main() -> int:
     print(f"Done: {changed} skills migrated")
     # Normalize formatting so migrated files stay Prettier-clean (yaml.safe_dump
     # does not match Prettier's YAML/Markdown style). Best-effort, non-fatal.
-    import shutil
-    import subprocess
-
     if shutil.which("npx"):
         try:
             subprocess.run(
