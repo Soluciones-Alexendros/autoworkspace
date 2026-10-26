@@ -7,7 +7,9 @@ Comprueba que todo enlace relativo [t](ruta) apunte a un fichero existente
 Cubre: skills/, docs/, .github/, tools/, README.md y CHANGELOG.md.
 Después aplica el glosario: lee el bloque máquina de docs/GLOSARIO.md y
 rechaza los términos prohibidos en los textos vivos.
-Exit 0 sin rotos ni términos prohibidos; 1 en caso contrario.
+Por último valida que todo enlace a github.com de docs/, templates/ y la raíz
+tenga un owner del canon o de la lista permitida del script.
+Exit 0 sin rotos, términos prohibidos ni owners no permitidos; 1 en caso contrario.
 """
 
 import fnmatch
@@ -40,6 +42,27 @@ TERM_SCAN_ROOT = (
 )
 TERM_OK_RE = re.compile(r"<!--\s*term-ok:")
 TERM_SKIP_PARTS = {".git", "__pycache__", "node_modules", ".cache"}
+
+LINK_SCAN_DIRS = ("docs", "templates")
+LINK_SUFFIXES = {".md", ".yml", ".yaml"}
+GITHUB_URL_RE = re.compile(r"https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)")
+ALLOWED_OWNERS = frozenset(
+    {
+        "Soluciones-Alexendros",
+        "Alexendros",
+        "tt-a1i",  # Archify: fuentes de diagramas (T5)
+        "actions",  # GitHub official actions
+        "github",  # github/codeql-action
+        "google",  # google/osv-scanner-action
+        "astral-sh",  # setup-uv
+        "docker",  # docker/* official actions
+        "softprops",  # action-gh-release
+        "pypa",  # trusted publishing
+        "mozilla",  # CODE_OF_CONDUCT: escalera de aplicación
+        "apps",  # github.com/apps/<slug>: páginas de GitHub App
+    }
+)
+OWNER_ERRORS: list[str] = []
 
 
 def load_terminology(root: Path) -> list[dict[str, object]]:
@@ -121,6 +144,36 @@ def check_terminology(root: Path) -> None:
         except (UnicodeDecodeError, OSError):
             continue
         _scan_lines(rel, lines, compiled)
+
+
+def _link_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for name in TERM_SCAN_ROOT:
+        path = root / name
+        if path.is_file():
+            files.append(path)
+    for dirname in LINK_SCAN_DIRS:
+        base = root / dirname
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if path.is_file() and path.suffix in LINK_SUFFIXES:
+                files.append(path)
+    return [p for p in files if not (TERM_SKIP_PARTS & set(p.parts))]
+
+
+def check_github_owners(root: Path) -> None:
+    """Reject github.com links whose owner is outside the fleet allowlist."""
+    for path in _link_files(root):
+        rel = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for i, line in enumerate(text.splitlines(), 1):
+            if TERM_OK_RE.search(line):
+                continue
+            for m in GITHUB_URL_RE.finditer(line):
+                if m.group(1) in ALLOWED_OWNERS:
+                    continue
+                OWNER_ERRORS.append(f"{rel}:{i}: '{m.group(0)}' → owner no permitido")
 
 
 def load_adr_status(root: Path) -> dict[str, tuple[Path, str]]:
@@ -223,6 +276,7 @@ def main() -> int:
         check_md(md)
     check_adr_citations(ROOT)
     check_terminology(ROOT)
+    check_github_owners(ROOT)
     print(f"md revisados: {len(mds)}, rotos: {len(BROKEN)}, adr_citas: {len(ADR_STATUS_ERRORS)}")
     for b in BROKEN:
         print("BROKEN", b)
@@ -231,7 +285,10 @@ def main() -> int:
     print(f"terminología: {len(TERM_ERRORS)} hallazgo(s)")
     for t in TERM_ERRORS:
         print("TERM", t)
-    ok = not BROKEN and not ADR_STATUS_ERRORS and not TERM_ERRORS
+    print(f"owners: {len(OWNER_ERRORS)} hallazgo(s)")
+    for o in OWNER_ERRORS:
+        print("OWNER", o)
+    ok = not BROKEN and not ADR_STATUS_ERRORS and not TERM_ERRORS and not OWNER_ERRORS
     print("LINKS:", "OK" if ok else "CON-FALLOS")
     return 0 if ok else 1
 
