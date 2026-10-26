@@ -19,12 +19,8 @@ def fixture_root(tmp_path, readme_version, package_version):
     """Repositorio mínimo y coherente; solo varía la versión de README/package."""
     import json
 
-    (tmp_path / "package.json").write_text(
-        json.dumps({"name": "t", "version": package_version}), encoding="utf-8"
-    )
-    (tmp_path / "README.md").write_text(
-        f"# t\n\nVersión **{readme_version}**. Skills.\n", encoding="utf-8"
-    )
+    (tmp_path / "package.json").write_text(json.dumps({"name": "t", "version": package_version}), encoding="utf-8")
+    (tmp_path / "README.md").write_text(f"# t\n\nVersión **{readme_version}**. Skills.\n", encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text(
         f"# Changelog\n\n## [Unreleased]\n\n- pending\n\n## [{package_version}] - 2026-10-26\n\n- x\n",
         encoding="utf-8",
