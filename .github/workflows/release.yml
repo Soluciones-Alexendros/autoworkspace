@@ -21,9 +21,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
           python-version: "3.12"
+          enable-cache: false
       - run: uv sync --frozen
       - name: Validate
         run: |
@@ -51,10 +53,10 @@ jobs:
         if: github.ref == 'refs/heads/main' && steps.cut.outputs.tagged == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.cut.outputs.version }}
         run: |
           set -euo pipefail
-          VERSION="${{ steps.cut.outputs.version }}"
-          git push origin "v${VERSION}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "v${VERSION}"
           gh release create "v${VERSION}" --notes-file notes.md --verify-tag
 
   provenance:
@@ -72,9 +74,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Archive source
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
         run: |
           set -euo pipefail
-          VERSION="${{ needs.publish.outputs.version }}"
           if [ -z "$VERSION" ]; then VERSION="${GITHUB_REF_NAME#v}"; fi
           git archive --format=tar.gz --prefix="autoworkspace-${VERSION}/" -o "autoworkspace-${VERSION}.tar.gz" HEAD
           echo "ARCHIVE=autoworkspace-${VERSION}.tar.gz" >> "$GITHUB_ENV"

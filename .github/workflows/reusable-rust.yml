@@ -102,7 +102,7 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@d6912b47771be2c443ec90dbb3d28e023987e782 # v2.62.1
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov@0.9.1
       - name: Test + coverage
         env:
           COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
@@ -207,7 +207,7 @@ jobs:
       - name: Install cargo-deny o cargo-audit
         uses: taiki-e/install-action@d6912b47771be2c443ec90dbb3d28e023987e782 # v2.62.1
         with:
-          tool: cargo-deny,cargo-audit
+          tool: cargo-deny@0.20.2,cargo-audit@0.22.2
       - name: Security check
         env:
           WD: ${{ inputs.working-directory }}
