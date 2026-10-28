@@ -19,15 +19,16 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-static.yml@c6674366d2e4e7bfa8a2ba0a5cdaea06ff795ee4 # v6.0.0
+    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-static.yml@676be757002f5208a1201a72e4f61e5081a540d4 # v6.0.0
     with:
       quality-command: |
         set -euo pipefail
         tmpdir="$(mktemp -d)"
-        (
-          cd "$tmpdir"
-          curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash
-        )
+        archive="actionlint_1.7.12_linux_amd64.tar.gz"
+        curl -fsSL -o "$tmpdir/$archive" \
+          "https://github.com/rhysd/actionlint/releases/download/v1.7.12/${archive}"
+        echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $tmpdir/$archive" | sha256sum -c -
+        tar -xzf "$tmpdir/$archive" -C "$tmpdir" actionlint
         "$tmpdir/actionlint" -color
         make validate
       test-command: make test
