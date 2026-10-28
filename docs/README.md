@@ -24,6 +24,7 @@
 | [guides/](guides/)                                   | Setup, estilo, tests                                                 |
 | [runbooks/](runbooks/)                               | Deploy, rollback, secretos                                           |
 | [plan-template.md](plan-template.md)                 | Cabecera NORMA DE FLOTA + esqueleto de plan-prompt                   |
+| [GLOSARIO.md](GLOSARIO.md)                           | Términos canónicos + bloque de terminología validado                 |
 | [plans/](plans/)                                     | Plan-prompts P1–P11 (Notion → `NOTION_POLICY_PAGE`)                  |
 | [archives/](archives/)                               | Documentos históricos retirados (`skill-spec-v3`, `migration-v2-v3`) |
 

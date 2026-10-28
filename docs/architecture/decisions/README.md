@@ -19,7 +19,7 @@ Prioridad: **P0** (hacer pronto) · **P1** (después de P0). Un ADR puede estar 
 | [ADR-0003](./ADR-0003-job-build-y-required-checks.md)          | Cuándo el job `build` es required               | Superseded by ADR-0013         | P0        |
 | [ADR-0004](./ADR-0004-renovate-org-y-dependabot.md)            | Renovate org y política Dependabot              | Accepted                       | P0        |
 | [ADR-0005](./ADR-0005-secret-scanning-org.md)                  | Secret scanning / push protection org           | Accepted                       | P0        |
-| [ADR-0006](./ADR-0006-reviews-por-perfil.md)                   | Reviews por perfil y label `automerge`          | Superseded by ADR-0012         | P1        |
+| [ADR-0006](./ADR-0006-reviews-por-perfil.md)                   | Reviews por perfil y `automerge` (retirada)     | Superseded by ADR-0012         | P1        |
 | [ADR-0007](./ADR-0007-coverage-gate-opcional.md)               | Coverage ≥70% como gate opcional                | Proposed                       | P1        |
 | [ADR-0008](./ADR-0008-snippets-reales-post-oleada.md)          | Snippets Astro y Python skills                  | Proposed                       | P1        |
 | [ADR-0009](./ADR-0009-scorecard-cumplimiento-p0.md)            | Scorecard P0 rojo/ámbar/verde                   | Proposed                       | P1        |

@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Validador de enlaces relativos en todos los .md del repo.
+"""Validador de enlaces relativos y de terminología en el repo.
 
 Uso: python3 tools/validate/skill_links.py [--root DIR]
 Comprueba que todo enlace relativo [t](ruta) apunte a un fichero existente
 (ignora URLs http/https, anclas puras y enlaces externos declarados).
 Cubre: skills/, docs/, .github/, tools/, README.md y CHANGELOG.md.
-Exit 0 sin rotos; 1 con rotos.
+Después aplica el glosario: lee el bloque máquina de docs/GLOSARIO.md y
+rechaza los términos prohibidos en los textos vivos.
+Exit 0 sin rotos ni términos prohibidos; 1 en caso contrario.
 """
 
+import fnmatch
+import json
 import re
 import sys
 from pathlib import Path
@@ -19,6 +23,104 @@ ADR_CITE_RE = re.compile(
 )
 BROKEN: list[str] = []
 ADR_STATUS_ERRORS: list[str] = []
+TERM_ERRORS: list[str] = []
+TermPatterns = list[tuple["re.Pattern[str]", str, object]]
+
+GLOSSARY_REL = "docs/GLOSARIO.md"
+TERM_SUFFIXES = {".md", ".yml", ".yaml", ".json"}
+TERM_SCAN_DIRS = ("docs", "templates", "stacks", ".github")
+TERM_SCAN_ROOT = (
+    "README.md",
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+)
+TERM_OK_RE = re.compile(r"<!--\s*term-ok:")
+TERM_SKIP_PARTS = {".git", "__pycache__", "node_modules", ".cache"}
+
+
+def load_terminology(root: Path) -> list[dict[str, object]]:
+    """Read the machine block of docs/GLOSARIO.md (```json ... ```)."""
+    glossary = root / GLOSSARY_REL
+    if not glossary.is_file():
+        return []
+    text = glossary.read_text(encoding="utf-8")
+    for m in re.finditer(r"```json\n(.*?)\n```", text, re.S):
+        try:
+            data = json.loads(m.group(1))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict) and isinstance(data.get("forbidden"), list):
+            return [e for e in data["forbidden"] if isinstance(e, dict)]
+    return []
+
+
+def _allowed(rel: str, allow_paths: object) -> bool:
+    if not isinstance(allow_paths, list):
+        return False
+    return any(isinstance(p, str) and fnmatch.fnmatch(rel, p) for p in allow_paths)
+
+
+def _term_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for name in TERM_SCAN_ROOT:
+        path = root / name
+        if path.is_file():
+            files.append(path)
+    for dirname in TERM_SCAN_DIRS:
+        base = root / dirname
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if path.is_file() and path.suffix in TERM_SUFFIXES:
+                files.append(path)
+    out: list[Path] = []
+    for path in files:
+        if TERM_SKIP_PARTS & set(path.parts):
+            continue
+        rel = path.relative_to(root).as_posix()
+        if rel == GLOSSARY_REL:
+            continue
+        out.append(path)
+    return out
+
+
+def _compile_terms(entries: list[dict[str, object]]) -> TermPatterns:
+    compiled: TermPatterns = []
+    for entry in entries:
+        pattern = entry.get("pattern")
+        use = entry.get("use")
+        if isinstance(pattern, str) and isinstance(use, str):
+            compiled.append((re.compile(pattern), use, entry.get("allow_paths")))
+    return compiled
+
+
+def _scan_lines(rel: str, lines: list[str], compiled: TermPatterns) -> None:
+    for i, line in enumerate(lines, 1):
+        if TERM_OK_RE.search(line):
+            continue
+        for regex, use, allow_paths in compiled:
+            if _allowed(rel, allow_paths):
+                continue
+            for m in regex.finditer(line):
+                TERM_ERRORS.append(f"{rel}:{i}: '{m.group(0)}' → usa '{use}'")
+
+
+def check_terminology(root: Path) -> None:
+    """Reject the glossary's forbidden patterns in live texts."""
+    compiled = _compile_terms(load_terminology(root))
+    if not compiled:
+        return
+    for path in _term_files(root):
+        rel = path.relative_to(root).as_posix()
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (UnicodeDecodeError, OSError):
+            continue
+        _scan_lines(rel, lines, compiled)
 
 
 def load_adr_status(root: Path) -> dict[str, tuple[Path, str]]:
@@ -120,13 +222,18 @@ def main() -> int:
     for md in mds:
         check_md(md)
     check_adr_citations(ROOT)
+    check_terminology(ROOT)
     print(f"md revisados: {len(mds)}, rotos: {len(BROKEN)}, adr_citas: {len(ADR_STATUS_ERRORS)}")
     for b in BROKEN:
         print("BROKEN", b)
     for e in ADR_STATUS_ERRORS:
         print("ADR", e)
-    print("LINKS:", "OK" if not BROKEN and not ADR_STATUS_ERRORS else "CON-FALLOS")
-    return 1 if BROKEN or ADR_STATUS_ERRORS else 0
+    print(f"terminología: {len(TERM_ERRORS)} hallazgo(s)")
+    for t in TERM_ERRORS:
+        print("TERM", t)
+    ok = not BROKEN and not ADR_STATUS_ERRORS and not TERM_ERRORS
+    print("LINKS:", "OK" if ok else "CON-FALLOS")
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
