@@ -172,33 +172,6 @@ jobs:
           path: docs/architecture/diagrams/rendered/
           retention-days: 14
 
-  diagrams:
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Checkout de Archify al SHA del catálogo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: tt-a1i/archify
-          ref: 208acba8d412335185b2056fedf54b3405df43fb
-          path: .cache/archify
-          persist-credentials: false
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
-        with:
-          node-version: "24"
-      - name: Generar diagramas
-        run: make diagrams
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: diagrams
-          path: docs/architecture/diagrams/rendered/
-          retention-days: 14
-
   ci-gate:
     name: ci-gate
     needs:
