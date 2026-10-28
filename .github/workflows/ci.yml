@@ -56,12 +56,11 @@ jobs:
       smoke-command: bash scripts/smoke.sh
 
   # Verifica el direccionamiento que usarán los callers (ruta completa + SHA).
-  # SHA se actualiza al tip de esta rama tras el push de T5.
   caller-reusable-path:
     permissions:
       contents: read
       pull-requests: read
-    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-static.yml@c6674366d2e4e7bfa8a2ba0a5cdaea06ff795ee4
+    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-static.yml@676be757002f5208a1201a72e4f61e5081a540d4 # v6.0.0
     with:
       quality-command: "echo caller-path-ok"
       test-command: "echo caller-path-ok"
@@ -138,9 +137,13 @@ jobs:
           python-version: "3.12"
       - run: uv sync --frozen
       - name: Exigir bump de metadata.version en skills cambiadas
-        run: uv run python3 tools/version/bump.py --check --auto --base origin/${{ github.event.pull_request.base.ref || 'main' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: uv run python3 tools/version/bump.py --check --auto --base "origin/${BASE_REF}"
       - name: Exigir package.json por delante del tag si cambia el circuito de release
-        run: uv run python3 tools/version/cut_tag.py --check-repo --base origin/${{ github.event.pull_request.base.ref || 'main' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: uv run python3 tools/version/cut_tag.py --check-repo --base "origin/${BASE_REF}"
 
   ci-gate:
     name: ci-gate
