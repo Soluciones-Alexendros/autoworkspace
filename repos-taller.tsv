@@ -1,0 +1,20 @@
+# Repositorios del taller — 2026-10-28
+## Una línea por repo: nombre<TAB>url<TAB>rama
+alexendrosdev	https://github.com/Alexendros/alexendrosdev.git	ci/v2-t0-ci-gate
+alexendrosme	https://github.com/Soluciones-Alexendros/website-alexendrosme.git	fix/release-0.15.2
+ecommerce-graficasnasve	https://github.com/Soluciones-Alexendros/ecommerce-graficasnasve.git	docs/checklist-prod
+ecommerce-rejasballesta	https://github.com/Iniciativas-Alexendros/ecommerce-rejasballesta.git	chore/org-rename-complete
+frontvalencia	https://github.com/Soluciones-Alexendros/website-frontvalencia.git	ci/secrets-sca
+landingpage-template	https://github.com/Soluciones-Alexendros/website-landingpage-template.git	ci/secrets-sca
+saas-afiladocs	https://github.com/Iniciativas-Alexendros/saas-afiladocs.git	ci/sca
+saas-atlaps	https://github.com/Iniciativas-Alexendros/saas-atlaps.git	chore/replace-org-ref
+vapelog	https://github.com/Soluciones-Alexendros/vapelog.git	test/catalog-preview
+ALIGNUX	https://github.com/Soluciones-Alexendros/alignux.git	chore/bump-app-60f51fc
+archmaker	https://github.com/Soluciones-Alexendros/archmaker.git	fix/publish-attest-pin
+askartask	https://github.com/Iniciativas-Alexendros/askartask.git	chore/replace-org-ref
+autoworkspace	https://github.com/Soluciones-Alexendros/autoworkspace.git	refactor/p12-t6-web
+clienteafirma-alexendros	https://github.com/Soluciones-Alexendros/clienteafirma-alexendros.git	master
+keybackcon	https://github.com/Soluciones-Alexendros/keybackcon.git	main
+protonsuite-tools	https://github.com/Soluciones-Alexendros/protonsuite-tools.git	ci/audit-high
+repo-standard	https://github.com/soluciones-alexendros/repo-standard	main
+zedazo	git@github.com:Soluciones-Alexendros/zedazo.git	refactor/web-ligera
