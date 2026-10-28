@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -24,7 +25,7 @@ def _write(root: Path, rel: str, content: str = "") -> Path:
 
 
 class ScanRepoTests(unittest.TestCase):
-    def test_ratio_ignora_package_json_como_codigo(self):
+    def test_ratio_ignora_package_json_como_codigo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, "package.json", '{"name":"x","dependencies":{"a":"1.0.0"}}')
@@ -34,7 +35,7 @@ class ScanRepoTests(unittest.TestCase):
             self.assertEqual(rep["tests"]["ficheros_codigo"], 1)
             self.assertEqual(rep["tests"]["ficheros_test"], 1)
 
-    def test_src_integration_no_es_suite_de_tests(self):
+    def test_src_integration_no_es_suite_de_tests(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, "src/integration/client.py", "def connect():\n    pass\n")
@@ -43,7 +44,7 @@ class ScanRepoTests(unittest.TestCase):
             self.assertEqual(rep["tests"]["ficheros_test"], 0)
             self.assertEqual(rep["tests"]["ficheros_codigo"], 2)
 
-    def test_app_tsx_no_es_nombre_invalido(self):
+    def test_app_tsx_no_es_nombre_invalido(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, "src/App.tsx", "export default function App() { return null }\n")
@@ -56,7 +57,7 @@ class ScanRepoTests(unittest.TestCase):
             espacios = rep["nombrado"].get("con_espacios", [])
             self.assertTrue(any("Bad Name.py" in p for p in espacios))
 
-    def test_requirements_con_rango_no_es_sin_version(self):
+    def test_requirements_con_rango_no_es_sin_version(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(
@@ -70,7 +71,7 @@ class ScanRepoTests(unittest.TestCase):
             self.assertNotIn("flask", joined)
             self.assertIn("orphan", joined)
 
-    def test_env_versionado_y_example_excluido(self):
+    def test_env_versionado_y_example_excluido(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, ".env", "KEY=short\n")
@@ -84,7 +85,7 @@ class ScanRepoTests(unittest.TestCase):
             self.assertNotIn(".env.example", envs)
             self.assertNotIn(".env.sample", envs)
 
-    def test_secreto_en_docs_confianza_baja_sin_valor(self):
+    def test_secreto_en_docs_confianza_baja_sin_valor(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(
@@ -123,14 +124,14 @@ class ScanRepoTests(unittest.TestCase):
                 self.assertIn("fingerprint", s)
                 self.assertEqual(len(s["fingerprint"]), 16)
 
-    def test_directorios_test_guardan_ruta(self):
+    def test_directorios_test_guardan_ruta(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, "pkg/tests/test_a.py", "def test_a():\n    assert True\n")
             rep = scan_repo.scan(str(root))
             self.assertIn("pkg/tests", rep["tests"]["directorios_test"])
 
-    def test_package_json_latest_y_lock_ausente(self):
+    def test_package_json_latest_y_lock_ausente(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(
@@ -146,7 +147,7 @@ class ScanRepoTests(unittest.TestCase):
 
 
 class PureFunctionGoldens(unittest.TestCase):
-    def test_version_is_unpinned_dorado(self):
+    def test_version_is_unpinned_dorado(self) -> None:
         self.assertTrue(scan_repo.version_is_unpinned(""))
         self.assertTrue(scan_repo.version_is_unpinned("*"))
         self.assertTrue(scan_repo.version_is_unpinned("latest"))
@@ -155,7 +156,7 @@ class PureFunctionGoldens(unittest.TestCase):
         self.assertFalse(scan_repo.version_is_unpinned("^1.0.0"))
         self.assertFalse(scan_repo.version_is_unpinned("1.2.3"))
 
-    def test_pip_line_unpinned_dorado(self):
+    def test_pip_line_unpinned_dorado(self) -> None:
         self.assertFalse(scan_repo.pip_line_unpinned(""))
         self.assertFalse(scan_repo.pip_line_unpinned("# comentario"))
         self.assertFalse(scan_repo.pip_line_unpinned("-r other.txt"))
@@ -164,7 +165,7 @@ class PureFunctionGoldens(unittest.TestCase):
         self.assertTrue(scan_repo.pip_line_unpinned("orphan"))
         self.assertTrue(scan_repo.pip_line_unpinned("django"))
 
-    def test_is_env_file_dorado(self):
+    def test_is_env_file_dorado(self) -> None:
         self.assertTrue(scan_repo.is_env_file(".env"))
         self.assertTrue(scan_repo.is_env_file(".env.local"))
         self.assertFalse(scan_repo.is_env_file(".env.example"))
@@ -172,7 +173,7 @@ class PureFunctionGoldens(unittest.TestCase):
         self.assertFalse(scan_repo.is_env_file(".env.template"))
         self.assertFalse(scan_repo.is_env_file("app.py"))
 
-    def test_naming_is_suspicious_dorado(self):
+    def test_naming_is_suspicious_dorado(self) -> None:
         self.assertEqual(scan_repo.naming_is_suspicious("Bad Name.py", ".py"), "con_espacios")
         self.assertIsNone(scan_repo.naming_is_suspicious("README.md", ".md"))
         self.assertIsNone(scan_repo.naming_is_suspicious("Makefile", ""))
@@ -180,7 +181,7 @@ class PureFunctionGoldens(unittest.TestCase):
         self.assertEqual(scan_repo.naming_is_suspicious("MiModulo.py", ".py"), "con_mayusculas")
         self.assertIsNone(scan_repo.naming_is_suspicious("modulo.py", ".py"))
 
-    def test_is_dedicated_test_path_dorado(self):
+    def test_is_dedicated_test_path_dorado(self) -> None:
         self.assertTrue(scan_repo.is_dedicated_test_path("tests/test_a.py", "test_a.py"))
         self.assertTrue(scan_repo.is_dedicated_test_path("src/test_app.py", "test_app.py"))
         self.assertTrue(scan_repo.is_dedicated_test_path("pkg/tests/helpers.py", "helpers.py"))
@@ -188,19 +189,19 @@ class PureFunctionGoldens(unittest.TestCase):
         self.assertFalse(scan_repo.is_dedicated_test_path("src/testing/helpers.py", "helpers.py"))
         self.assertFalse(scan_repo.is_dedicated_test_path("src/app.py", "app.py"))
 
-    def test_path_confidence_dorado(self):
+    def test_path_confidence_dorado(self) -> None:
         self.assertEqual(scan_repo.path_confidence("scripts/scan_repo.py"), "omitido")
         self.assertEqual(scan_repo.path_confidence("docs/ejemplo.md"), "baja")
         self.assertEqual(scan_repo.path_confidence("tests/test_a.py"), "baja")
         self.assertEqual(scan_repo.path_confidence("src/app.py"), "alta")
 
-    def test_should_ignore_dirname_dorado(self):
+    def test_should_ignore_dirname_dorado(self) -> None:
         self.assertTrue(scan_repo.should_ignore_dirname(".git"))
         self.assertTrue(scan_repo.should_ignore_dirname("node_modules"))
         self.assertTrue(scan_repo.should_ignore_dirname("pkg.egg-info"))
         self.assertFalse(scan_repo.should_ignore_dirname("src"))
 
-    def test_to_markdown_contiene_secciones(self):
+    def test_to_markdown_contiene_secciones(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, "src/app.py", "print(1)\n")
@@ -211,7 +212,7 @@ class PureFunctionGoldens(unittest.TestCase):
             self.assertIn("## Ficheros estándar", md)
             self.assertIn("## Alertas", md)
 
-    def test_duplicados_exactos_por_hash(self):
+    def test_duplicados_exactos_por_hash(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, "a.txt", "mismo contenido\n")
@@ -222,21 +223,21 @@ class PureFunctionGoldens(unittest.TestCase):
 
 
 class ScanRepoCliHardening(unittest.TestCase):
-    def test_help_exit_0(self):
+    def test_help_exit_0(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             scan_repo.main(["--help"])
         self.assertEqual(cm.exception.code, 0)
 
-    def test_args_invalidos_exit_2(self):
+    def test_args_invalidos_exit_2(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             scan_repo.main(["--opcion-inexistente"])
         self.assertEqual(cm.exception.code, 2)
 
-    def test_repo_inexistente_exit_1(self):
+    def test_repo_inexistente_exit_1(self) -> None:
         rc = scan_repo.main([os.path.join(tempfile.gettempdir(), "scan_repo_no_existe_xyz")])
         self.assertEqual(rc, 1)
 
-    def test_repo_valido_exit_0_con_json_md(self):
+    def test_repo_valido_exit_0_con_json_md(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, "src/app.py", "print(1)\n")
@@ -256,34 +257,33 @@ class ScanRepoCliHardening(unittest.TestCase):
 class CheckProductStructureCli(unittest.TestCase):
     SH = str(SCRIPTS / "check-product-structure.sh")
 
-    def _run(self, *args):
-        import subprocess
-
+    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["bash", self.SH, *args],
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
 
-    def test_help_exit_0(self):
+    def test_help_exit_0(self) -> None:
         p = self._run("--help")
         self.assertEqual(p.returncode, 0)
         self.assertIn("Uso:", p.stdout)
 
-    def test_args_invalidos_exit_2(self):
+    def test_args_invalidos_exit_2(self) -> None:
         p = self._run("--opcion-inexistente")
         self.assertEqual(p.returncode, 2)
 
-    def test_perfil_invalido_exit_2(self):
+    def test_perfil_invalido_exit_2(self) -> None:
         p = self._run(".", "--profile", "P9")
         self.assertEqual(p.returncode, 2)
 
-    def test_repo_inexistente_exit_2(self):
+    def test_repo_inexistente_exit_2(self) -> None:
         p = self._run(os.path.join(tempfile.gettempdir(), "check_ps_no_existe_xyz"))
         self.assertEqual(p.returncode, 2)
 
-    def test_repo_vacio_fallo_controlado_exit_1(self):
+    def test_repo_vacio_fallo_controlado_exit_1(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             p = self._run(tmp)
             self.assertEqual(p.returncode, 1)

@@ -6,6 +6,8 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `plan-continue` 4.3.5 -> 4.3.6 (patch)
+
 - `local-maintenance` 5.1.5 -> 5.1.6 (patch)
 - `local-proton` 5.1.3 -> 5.1.4 (patch)
 - `local-security` 5.1.2 -> 5.1.3 (patch)
