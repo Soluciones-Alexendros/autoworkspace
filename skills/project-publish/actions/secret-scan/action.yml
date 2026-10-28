@@ -1,10 +1,5 @@
 name: secret-scan
-description: "Escaneo de secretos con gitleaks (sin subir SARIF con posible material sensible)"
-inputs:
-  enable-comments:
-    description: "'true' solo en pull_request; los push escanean sin comentar"
-    required: false
-    default: "false"
+description: "Escaneo de secretos con gitleaks 8.30.1 (binario fijado por SHA-256; sin subir SARIF con posible material sensible)"
 runs:
   using: composite
   steps:
@@ -12,8 +7,15 @@ runs:
       with:
         fetch-depth: 0
         persist-credentials: false
-    - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+    - name: Instalar gitleaks 8.30.1 y escanear el historial
+      shell: bash
       env:
-        GITHUB_TOKEN: ${{ github.token }}
-        GITLEAKS_ENABLE_COMMENTS: ${{ inputs.enable-comments }}
-        GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+        GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+      run: |
+        set -euo pipefail
+        archive="gitleaks_8.30.1_linux_x64.tar.gz"
+        curl -fsSL -o "$archive" \
+          "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/${archive}"
+        echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum -c -
+        tar -xzf "$archive" gitleaks
+        ./gitleaks detect --source . --redact --verbose
