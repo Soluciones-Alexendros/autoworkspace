@@ -234,7 +234,9 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
   Reestructuración a 4 familias por fase SDLC (disenar/construir/verificar/operar); fusión email-proton+protonpass → construir-proton-suite v1.0.0; dominios alignux, datos, integraciones suprimidos
 
-## [1.0.0] - 2026-09-27
+## 1.0.0 - 2026-09-27
+
+> Tag `v1.0.0` no publicado en el remoto (solo existió en local): sin enlace de comparación.
 
 - Consolidación FASE-4 (18 skills, 7 dominios): `docs/TAXONOMY.md`, `README.md` y `tools/validate/skill_spec.py` alineados a los nombres reales; `web-seguridad` con cuerpo íntegramente en ES (tecnicismos en inglés preservados).
 - Tabla de renombros/fusiones:
@@ -269,6 +271,5 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 [3.0.1]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v2.0.0...v2.2.0
-[2.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v0.1.0...v1.0.0
+[2.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v0.1.0...v2.0.0
 [0.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/releases/tag/v0.1.0
