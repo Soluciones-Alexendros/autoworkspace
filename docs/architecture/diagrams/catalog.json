@@ -1,0 +1,37 @@
+{
+  "renderer": {
+    "repo": "tt-a1i/archify",
+    "sha": "208acba8d412335185b2056fedf54b3405df43fb",
+    "version": "3.2.0"
+  },
+  "diagrams": [
+    {
+      "id": "D01",
+      "type": "architecture",
+      "title": "Capas de autoworkspace",
+      "source": "docs/architecture/diagrams/sources/D01.architecture.json",
+      "adr": "ADR-0016"
+    },
+    {
+      "id": "D02",
+      "type": "workflow",
+      "title": "Flujo en dos fases",
+      "source": "docs/architecture/diagrams/sources/D02.workflow.json",
+      "adr": "ADR-0013"
+    },
+    {
+      "id": "D03",
+      "type": "sequence",
+      "title": "Agregación de ci-gate",
+      "source": "docs/architecture/diagrams/sources/D03.sequence.json",
+      "adr": "ADR-0013"
+    },
+    {
+      "id": "D04",
+      "type": "lifecycle",
+      "title": "Ciclo de vida de un ADR",
+      "source": "docs/architecture/diagrams/sources/D04.lifecycle.json",
+      "adr": "ADR-0002"
+    }
+  ]
+}

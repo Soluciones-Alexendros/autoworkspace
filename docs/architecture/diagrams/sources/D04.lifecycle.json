@@ -1,0 +1,116 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Ciclo de vida de un ADR",
+    "subtitle": "Estados normalizados que valida el canon antes de publicarse",
+    "output": "docs/architecture/diagrams/rendered/D04.html",
+    "locale": "es",
+    "animation": "none",
+    "visual_preset": "blueprint"
+  },
+  "mainPath": ["draft", "proposed", "accepted", "superseded"],
+  "states": [
+    {
+      "id": "draft",
+      "type": "start",
+      "label": "Borrador",
+      "sublabel": "propuesta en discusión",
+      "tag": "sin estado",
+      "step": "01"
+    },
+    {
+      "id": "proposed",
+      "type": "active",
+      "label": "Proposed",
+      "sublabel": "decisión abierta",
+      "tag": "pendiente",
+      "step": "02"
+    },
+    {
+      "id": "accepted",
+      "type": "success",
+      "label": "Accepted",
+      "sublabel": "decisión vigente",
+      "tag": "se aplica",
+      "step": "03"
+    },
+    {
+      "id": "superseded",
+      "type": "neutral",
+      "label": "Superseded",
+      "sublabel": "sustituido por otro ADR",
+      "tag": "histórico",
+      "step": "04"
+    },
+    {
+      "id": "partial",
+      "type": "waiting",
+      "label": "Superseded in part by",
+      "sublabel": "parte del ADR sigue vigente",
+      "tag": "histórico en parte"
+    },
+    {
+      "id": "deprecated",
+      "type": "failure",
+      "label": "Deprecated",
+      "sublabel": "decisión retirada sin sustituto",
+      "tag": "terminal"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "draft-proposed",
+      "from": "draft",
+      "to": "proposed",
+      "label": "se abre la discusión"
+    },
+    {
+      "id": "proposed-accepted",
+      "from": "proposed",
+      "to": "accepted",
+      "label": "se decide",
+      "variant": "emphasis"
+    },
+    {
+      "id": "accepted-superseded",
+      "from": "accepted",
+      "to": "superseded",
+      "label": "ADR nuevo que lo sustituye"
+    },
+    {
+      "id": "accepted-partial",
+      "from": "accepted",
+      "to": "partial",
+      "label": "sustitución parcial",
+      "variant": "dashed"
+    },
+    {
+      "id": "accepted-deprecated",
+      "from": "accepted",
+      "to": "deprecated",
+      "label": "se retira sin sustituto",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Camino principal",
+      "items": [
+        "Un ADR nace como borrador y pasa a Proposed cuando se abre la decisión",
+        "Accepted significa que se aplica y que el canon lo valida",
+        "Un ADR superseded conserva el cuerpo y pierde autoridad"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Por qué se conserva",
+      "items": [
+        "El histórico explica por qué el canon actual es como es",
+        "El body de un ADR superseded no se reescribe",
+        "Cada estado se escribe igual en el frontmatter y en el índice"
+      ]
+    }
+  ]
+}

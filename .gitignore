@@ -41,3 +41,7 @@ proteccion-*.zip
 .env
 .env.*
 !.env.example
+
+# Diagramas: el HTML es artefacto de CI, no se versiona (P12 T5)
+docs/architecture/diagrams/rendered/
+.cache/

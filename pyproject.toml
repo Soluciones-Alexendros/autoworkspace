@@ -175,3 +175,9 @@ module = [
 ]
 ignore_errors = true
 # END GENERATED: quality-debt
+
+# Terceros sin stubs publicados (P12 T5): se declaran aquí una sola vez, sin
+# silenciar los módulos propios.
+[[tool.mypy.overrides]]
+module = ["yaml", "jsonschema"]
+ignore_missing_imports = true
