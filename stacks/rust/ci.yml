@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-rust.yml@c6674366d2e4e7bfa8a2ba0a5cdaea06ff795ee4 # v6.0.0
+    uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-rust.yml@676be757002f5208a1201a72e4f61e5081a540d4 # v6.0.0
     with:
       msrv: ""
       clippy-pedantic: true
