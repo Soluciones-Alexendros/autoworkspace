@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 try:
     import yaml
@@ -28,6 +29,8 @@ SKILL_TOKEN_RE = re.compile(r"\b((?:plan|local|project|web|role)-[a-z0-9-]+)\b")
 ARROW_RE = re.compile(r"→\s*`?((?:plan|local|project|web|role)-[a-z0-9-]+)`?")
 H2_RE = re.compile(r"^## (.+?)\s*$", re.M)
 PROHIBITED_DIRS = {"agents", "infrastructure", "languages"}
+MAX_DESCRIPTION_CHARS = 1024
+MAX_NAME_CHARS = 64
 DOMINIOS = {"plan", "local", "project", "web", "role"}
 TIPOS = {"atomic", "orchestrator", "router", "audit"}
 REQUIRED_H2 = ("Overview", "When to Use")
@@ -52,7 +55,7 @@ def err(skill: str, msg: str) -> None:
     ERRORS.append(f"[{skill}] {msg}")
 
 
-def parse_frontmatter(text: str, skill: str) -> dict | None:
+def parse_frontmatter(text: str, skill: str) -> dict[str, object] | None:
     if not text.startswith("---\n"):
         err(skill, "SKILL.md no empieza con '---'")
         return None
@@ -142,7 +145,7 @@ def check_catalog(root: Path, names: set[str]) -> None:
 
 
 def check_description(skill: str, desc: str, names: set[str]) -> None:
-    if not (1 <= len(desc) <= 1024):
+    if not (1 <= len(desc) <= MAX_DESCRIPTION_CHARS):
         err(skill, f"description len={len(desc)} (1-1024)")
     if "Use when" not in desc:
         err(skill, "description without 'Use when'")
@@ -175,8 +178,7 @@ def check_headings(skill: str, body: str, needs_tools: bool) -> None:
             err(skill, f"SKILL.md coincide con patrón privado configurado ({pat!r})")
 
 
-def check_residues(root: Path, sdir: Path) -> None:
-    skill = sdir.name
+def _check_forbidden_layout(skill: str, sdir: Path) -> None:
     for d in PROHIBITED_DIRS:
         if (sdir / d).is_dir():
             err(skill, f"directorio prohibido: {d}/")
@@ -187,6 +189,9 @@ def check_residues(root: Path, sdir: Path) -> None:
                 err(skill, f"references/ contiene subdirectorio: {sub.name}/")
     if list(sdir.glob(".archivado*")):
         err(skill, "contiene .archivado*")
+
+
+def _check_tracked_files(skill: str, root: Path, sdir: Path) -> None:
     rel = str(sdir.relative_to(root))
     for tracked in git_ls_files(root, rel):
         name = Path(tracked).name
@@ -196,6 +201,12 @@ def check_residues(root: Path, sdir: Path) -> None:
             err(skill, f"residuo rastreado: {tracked}")
         if ".pytest_cache" in tracked:
             err(skill, f"residuo rastreado: {tracked}")
+
+
+def check_residues(root: Path, sdir: Path) -> None:
+    skill = sdir.name
+    _check_forbidden_layout(skill, sdir)
+    _check_tracked_files(skill, root, sdir)
 
 
 def check_smoke(sdir: Path) -> None:
@@ -223,21 +234,11 @@ def check_upstash_modes(sdir: Path) -> None:
                 err(sdir.name, f"modes/{mode.name}/references/ contiene subdirectorio: {sub.name}/")
 
 
-def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
-    skill = sdir.name
-    f = sdir / "SKILL.md"
-    if not f.is_file():
-        err(skill, "falta SKILL.md")
-        return
-    text = f.read_text(encoding="utf-8")
-    fm = parse_frontmatter(text, skill)
-    if fm is None:
-        return
-
+def _check_frontmatter_name(skill: str, fm: dict[str, Any], names: set[str]) -> None:
     name = fm.get("name", "")
     if name != skill:
         err(skill, f"name '{name}' != carpeta '{skill}'")
-    if not NAME_RE.match(str(name)) or len(str(name)) > 64:
+    if not NAME_RE.match(str(name)) or len(str(name)) > MAX_NAME_CHARS:
         err(skill, f"name inválido: '{name}'")
 
     desc = fm.get("description", "")
@@ -249,12 +250,9 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
     if fm.get("license") != "MIT":
         err(skill, "license != MIT")
 
-    meta = fm.get("metadata", {})
-    if not isinstance(meta, dict):
-        err(skill, "metadata debe ser un dict")
-        return
 
-    required_meta = {
+def _check_metadata(skill: str, meta: dict[str, Any]) -> None:
+    required_meta: dict[str, str | None] = {
         "author": None,
         "version": None,
         "domain": None,
@@ -279,6 +277,8 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
     if tipo and tipo not in TIPOS:
         err(skill, f"unknown type: {tipo} (must be one of: {', '.join(sorted(TIPOS))})")
 
+
+def _check_body_size(skill: str, text: str) -> str:
     body = text.split("\n---", 1)[-1]
     body_lines = len(body.splitlines())
     if body_lines > MAX_BODY_LINES:
@@ -286,9 +286,30 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
     body_tokens = estimate_tokens(body)
     if body_tokens > MAX_BODY_TOKENS:
         err(skill, f"cuerpo ~{body_tokens} tokens (> {MAX_BODY_TOKENS})")
+    return body
 
-    needs_tools = has_exec_scripts(sdir)
-    check_headings(skill, body, needs_tools)
+
+def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
+    skill = sdir.name
+    f = sdir / "SKILL.md"
+    if not f.is_file():
+        err(skill, "falta SKILL.md")
+        return
+    text = f.read_text(encoding="utf-8")
+    fm = parse_frontmatter(text, skill)
+    if fm is None:
+        return
+
+    _check_frontmatter_name(skill, fm, names)
+
+    meta = fm.get("metadata", {})
+    if not isinstance(meta, dict):
+        err(skill, "metadata debe ser un dict")
+        return
+    _check_metadata(skill, meta)
+
+    body = _check_body_size(skill, text)
+    check_headings(skill, body, has_exec_scripts(sdir))
     check_residues(root, sdir)
     check_smoke(sdir)
     check_upstash_modes(sdir)

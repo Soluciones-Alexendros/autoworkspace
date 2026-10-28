@@ -251,8 +251,8 @@ def check_md(md: Path) -> None:
             continue
         if in_fence:
             continue  # enlaces de ejemplo dentro de bloques de código
-        line = re.sub(r"`[^`]*`", "", line)  # ignorar `código inline` de ejemplo
-        for m in LINK_RE.finditer(line):
+        stripped = re.sub(r"`[^`]*`", "", line)  # ignorar `código inline` de ejemplo
+        for m in LINK_RE.finditer(stripped):
             target = m.group(1).strip()
             if target.startswith(("http://", "https://", "#", "mailto:")):
                 continue

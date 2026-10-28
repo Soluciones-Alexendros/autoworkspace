@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else Path(__file__).resolve().parents[2]
@@ -50,7 +51,7 @@ def check_tracked(root: Path) -> None:
             ERRORS.append(f"secreto rastreado: {rel}")
 
 
-def iter_text_files(root: Path):
+def iter_text_files(root: Path) -> Iterator[Path]:
     for path in root.rglob("*"):
         if not path.is_file():
             continue

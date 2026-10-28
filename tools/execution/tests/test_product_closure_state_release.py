@@ -1,4 +1,4 @@
-"""Product closure: state/idempotency (V26–V30) and release readiness (V44–V45)."""
+"""Product closure: state/idempotency (V26-V30) and release readiness (V44-V45)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import sys
 import threading
 import uuid
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -23,7 +24,7 @@ DIG = "d" * 64
 CUT = ROOT / "tools" / "version" / "cut_tag.py"
 
 
-def _store(repo: Path, phase="DEFINE", op="plan_specification", **kw):
+def _store(repo: Path, phase: str = "DEFINE", op: str = "plan_specification", **kw: Any) -> str:
     art = repo / "artifact.txt"
     if not art.exists():
         art.write_text("ok")
@@ -48,14 +49,14 @@ def _store(repo: Path, phase="DEFINE", op="plan_specification", **kw):
     )
 
 
-def test_v26_concurrent_no_lost_update(tmp_path):
+def test_v26_concurrent_no_lost_update(tmp_path: Path) -> None:
     (tmp_path / ".autoworkspace").mkdir()
     (tmp_path / "c").write_text("z")
     rids = [_store(tmp_path) for _ in range(2)]
     results, errors = [], []
     barrier = threading.Barrier(2)
 
-    def w(rid):
+    def w(rid: str) -> None:
         barrier.wait()
         try:
             s = advance_status(
@@ -79,7 +80,7 @@ def test_v26_concurrent_no_lost_update(tmp_path):
     assert sorted(results) == [1, 2]
 
 
-def test_v28_resolve_awaiting_public(tmp_path):
+def test_v28_resolve_awaiting_public(tmp_path: Path) -> None:
     (tmp_path / ".autoworkspace").mkdir()
     (tmp_path / "c").write_text("z")
     advance_status(tmp_path, phase="DEFINE", allow_awaiting=True, evidence_ok=False)
@@ -101,7 +102,7 @@ def test_v28_resolve_awaiting_public(tmp_path):
     assert s["state_revision"] == 1
 
 
-def test_v29_receipt_survives_compaction(tmp_path):
+def test_v29_receipt_survives_compaction(tmp_path: Path) -> None:
     (tmp_path / ".autoworkspace").mkdir()
     (tmp_path / "c").write_text("z")
     # Seed >200 fake completions then replay original
@@ -149,12 +150,13 @@ def _init_release_repo(tmp: Path, version: str, notes_section: str | None) -> Pa
     return tmp
 
 
-def test_v44_readiness_fails_missing_yanked(tmp_path):
+def test_v44_readiness_fails_missing_yanked(tmp_path: Path) -> None:
     repo = _init_release_repo(tmp_path / "a", "9.9.9", None)
     r = subprocess.run(
         [sys.executable, str(CUT), "--root", str(repo), "--check-readiness"],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert r.returncode == 1
     assert "not_ready" in r.stdout or "fail" in r.stdout.lower()
@@ -168,12 +170,13 @@ def test_v44_readiness_fails_missing_yanked(tmp_path):
         [sys.executable, str(CUT), "--root", str(repo2), "--check-readiness"],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert r2.returncode == 1
     assert "yanked" in r2.stdout.lower() or "YANKED" in r2.stdout
 
 
-def test_v45_readiness_ok_and_ordinary_skip(tmp_path):
+def test_v45_readiness_ok_and_ordinary_skip(tmp_path: Path) -> None:
     repo = _init_release_repo(
         tmp_path / "c",
         "9.9.7",
@@ -183,6 +186,7 @@ def test_v45_readiness_ok_and_ordinary_skip(tmp_path):
         [sys.executable, str(CUT), "--root", str(repo), "--check-readiness"],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert r.returncode == 0
     # Ordinary cut without notes → skip 0 (not published)
@@ -191,6 +195,7 @@ def test_v45_readiness_ok_and_ordinary_skip(tmp_path):
         [sys.executable, str(CUT), "--root", str(empty)],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert r2.returncode == 0
     assert "skip" in r2.stdout.lower()
@@ -199,5 +204,6 @@ def test_v45_readiness_ok_and_ordinary_skip(tmp_path):
         [sys.executable, str(CUT), "--root", str(empty), "--strict-readiness"],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert r3.returncode == 1

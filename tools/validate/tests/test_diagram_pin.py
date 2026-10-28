@@ -26,7 +26,7 @@ def _workflow() -> dict[str, Any]:
 
 
 def _diagram_steps() -> list[dict[str, Any]]:
-    steps = _workflow()["jobs"]["diagrams"]["steps"]
+    steps: list[dict[str, Any]] = _workflow()["jobs"]["diagrams"]["steps"]
     return [step for step in steps if step.get("uses", "").startswith("actions/checkout")]
 
 

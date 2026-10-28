@@ -11,6 +11,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -99,7 +100,7 @@ def route(repo: Path, phase: str, *, bump: bool, note: str, init: bool = False) 
     return result
 
 
-def main(argv: list[str] | None = None) -> int:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Autoworkspace phase router")
     ap.add_argument("--repo", default=".", help="Target repository path")
     ap.add_argument("--phase", choices=PHASES, help="Pipeline phase")
@@ -124,93 +125,98 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--note", default="", help="Optional status history note")
     ap.add_argument("--json", action="store_true", help="JSON output")
-    args = ap.parse_args(argv)
-    repo = Path(args.repo).resolve()
-    if not repo.is_dir():
-        print(f"ERROR: not a directory: {repo}", file=sys.stderr)
-        return 2
+    return ap.parse_args(argv)
 
-    if args.init and not args.phase and not args.list and not args.status:
-        ensure_scaffold(repo)
-        print(json.dumps({"init": True, "repo": str(repo)}) if args.json else f"initialized {repo}/.autoworkspace")
-        return 0
 
-    if args.list:
-        try:
-            if args.init:
-                ensure_scaffold(repo)
-            project = load_project(repo)
-            allowed = filter_skills(load_catalog(), project)
-        except ProjectConfigError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 2
-        print(json.dumps({"allowed_skills": allowed}) if args.json else "\n".join(allowed))
-        return 0
+def _fail(message: object) -> int:
+    print(f"ERROR: {message}", file=sys.stderr)
+    return 2
 
-    if args.status:
-        try:
-            status = load_status(repo)
-        except Exception as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 2
-        print(json.dumps(status, ensure_ascii=False, indent=2) if args.json else status)
-        return 0
 
-    if not args.phase:
-        print("ERROR: --phase required unless --init/--list/--status", file=sys.stderr)
-        return 2
+def _cmd_init(repo: Path, args: argparse.Namespace) -> int:
+    ensure_scaffold(repo)
+    print(json.dumps({"init": True, "repo": str(repo)}) if args.json else f"initialized {repo}/.autoworkspace")
+    return 0
 
-    if args.awaiting_agent:
-        try:
-            data = advance_status(repo, phase=args.phase, note=args.note, evidence_ok=False, allow_awaiting=True)
-        except ValueError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 2
-        print(json.dumps(data, ensure_ascii=False, indent=2) if args.json else f"awaiting_agent phase={args.phase}")
-        return 0
 
-    if args.complete:
-        if not args.run_id:
-            print("ERROR: --complete requires --run-id of validated evidence", file=sys.stderr)
-            return 2
-        try:
-            project = load_project(repo)
-            skill = handoff_for_phase(project, args.phase) or ""
-            catalog = load_catalog()
-            allowed = filter_skills(catalog, project)
-            if skill and skill not in allowed:
-                print(f"ERROR: skill {skill} not in project allowlist", file=sys.stderr)
-                return 2
-            phases = project.get("phases") or list(PHASES)
-            if args.phase not in phases:
-                print(f"ERROR: phase {args.phase} not enabled in project config", file=sys.stderr)
-                return 2
-            data = advance_status(
-                repo,
-                phase=args.phase,
-                skill=skill,
-                note=args.note,
-                evidence_ok=True,
-                run_id=args.run_id,
-            )
-        except ProjectConfigError as exc:
-            print(f"ERROR: invalid project config: {exc}", file=sys.stderr)
-            return 2
-        except (ValueError, FileNotFoundError) as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 2
-        print(
-            json.dumps(data, ensure_ascii=False, indent=2)
-            if args.json
-            else f"completed phase={args.phase} rev={data.get('state_revision')}"
+def _cmd_list(repo: Path, args: argparse.Namespace) -> int:
+    try:
+        if args.init:
+            ensure_scaffold(repo)
+        project = load_project(repo)
+        allowed = filter_skills(load_catalog(), project)
+    except ProjectConfigError as exc:
+        return _fail(exc)
+    print(json.dumps({"allowed_skills": allowed}) if args.json else "\n".join(allowed))
+    return 0
+
+
+def _cmd_status(repo: Path, args: argparse.Namespace) -> int:
+    try:
+        status = load_status(repo)
+    except Exception as exc:  # el CLI informa de cualquier fallo de lectura
+        return _fail(exc)
+    print(json.dumps(status, ensure_ascii=False, indent=2) if args.json else status)
+    return 0
+
+
+def _cmd_awaiting(repo: Path, args: argparse.Namespace) -> int:
+    try:
+        data = advance_status(repo, phase=args.phase, note=args.note, evidence_ok=False, allow_awaiting=True)
+    except ValueError as exc:
+        return _fail(exc)
+    print(json.dumps(data, ensure_ascii=False, indent=2) if args.json else f"awaiting_agent phase={args.phase}")
+    return 0
+
+
+class _InvalidProjectError(Exception):
+    """The project configuration could not be loaded."""
+
+
+def _complete_target(repo: Path, args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    try:
+        project = load_project(repo)
+    except ProjectConfigError as exc:
+        raise _InvalidProjectError(str(exc)) from exc
+    skill = handoff_for_phase(project, args.phase) or ""
+    allowed = filter_skills(load_catalog(), project)
+    if skill and skill not in allowed:
+        raise ValueError(f"skill {skill} not in project allowlist")
+    phases = project.get("phases") or list(PHASES)
+    if args.phase not in phases:
+        raise ValueError(f"phase {args.phase} not enabled in project config")
+    return project, skill
+
+
+def _cmd_complete(repo: Path, args: argparse.Namespace) -> int:
+    if not args.run_id:
+        return _fail("--complete requires --run-id of validated evidence")
+    try:
+        _project, skill = _complete_target(repo, args)
+        data = advance_status(
+            repo,
+            phase=args.phase,
+            skill=skill,
+            note=args.note,
+            evidence_ok=True,
+            run_id=args.run_id,
         )
-        return 0
+    except _InvalidProjectError as exc:
+        return _fail(f"invalid project config: {exc}")
+    except (ValueError, FileNotFoundError) as exc:
+        return _fail(exc)
+    if args.json:
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+    else:
+        print(f"completed phase={args.phase} rev={data.get('state_revision')}")
+    return 0
 
+
+def _cmd_route(repo: Path, args: argparse.Namespace) -> int:
     try:
         out = route(repo, args.phase, bump=args.bump, note=args.note, init=args.init)
     except ProjectConfigError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+        return _fail(exc)
     if args.json:
         print(json.dumps(out, ensure_ascii=False, indent=2))
     else:
@@ -219,6 +225,34 @@ def main(argv: list[str] | None = None) -> int:
         print(f"allowed={len(out['allowed_skills'])} skills")
         print(f"→ invoke skill tool / read skills/{out['skill']}/SKILL.md (route ≠ execute)")
     return 0
+
+
+def _dispatch_phase(repo: Path, args: argparse.Namespace) -> int:
+    if not args.phase:
+        return _fail("--phase required unless --init/--list/--status")
+    if args.awaiting_agent:
+        return _cmd_awaiting(repo, args)
+    if args.complete:
+        return _cmd_complete(repo, args)
+    return _cmd_route(repo, args)
+
+
+def _dispatch(repo: Path, args: argparse.Namespace) -> int:
+    if args.init and not args.phase and not args.list and not args.status:
+        return _cmd_init(repo, args)
+    if args.list:
+        return _cmd_list(repo, args)
+    if args.status:
+        return _cmd_status(repo, args)
+    return _dispatch_phase(repo, args)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    repo = Path(args.repo).resolve()
+    if not repo.is_dir():
+        return _fail(f"not a directory: {repo}")
+    return _dispatch(repo, args)
 
 
 if __name__ == "__main__":

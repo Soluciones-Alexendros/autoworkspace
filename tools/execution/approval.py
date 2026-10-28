@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,7 +28,7 @@ class ApprovalDecision:
     covers_digest: str
 
 
-def plan_digest(
+def plan_digest(  # noqa: PLR0913  # digest del plan: keyword-only, espejo de la operación
     operation_id: str,
     target: str,
     params: dict[str, Any],
@@ -119,8 +120,6 @@ class InteractiveProvider(ApprovalProvider):
 
 
 def sys_stdin_isatty() -> bool:
-    import sys
-
     return sys.stdin.isatty()
 
 
