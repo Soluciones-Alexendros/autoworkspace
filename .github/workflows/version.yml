@@ -18,6 +18,10 @@ jobs:
           python-version: "3.12"
       - run: uv sync --frozen
       - name: Exigir bump de metadata.version en skills cambiadas
-        run: uv run python3 tools/version/bump.py --check --auto --base origin/${{ github.event.pull_request.base.ref || 'main' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: uv run python3 tools/version/bump.py --check --auto --base "origin/${BASE_REF}"
       - name: Exigir package.json por delante del tag si cambia el circuito de release
-        run: uv run python3 tools/version/cut_tag.py --check-repo --base origin/${{ github.event.pull_request.base.ref || 'main' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: uv run python3 tools/version/cut_tag.py --check-repo --base "origin/${BASE_REF}"
