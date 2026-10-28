@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """apparmor_lifecycle.py - Ciclo de vida de perfiles AppArmor (por defecto dry-run).
 
 genprof/autodep -> complain -> soak de dias de uso real -> aa-logprof -> enforce.
@@ -25,7 +26,8 @@ import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger("seguridad.apparmor")
 
@@ -42,14 +44,14 @@ def _setup_logging(verbose: bool = False) -> None:
 
 
 def utcnow() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def which(cmd: str) -> str | None:
     return shutil.which(cmd)
 
 
-def load_state(path: str) -> dict:
+def load_state(path: str) -> dict[str, Any]:
     try:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
@@ -58,7 +60,7 @@ def load_state(path: str) -> dict:
         return {}
 
 
-def save_state(path: str, data: dict) -> bool:
+def save_state(path: str, data: dict[str, Any]) -> bool:
     try:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as fh:
@@ -77,8 +79,7 @@ def validate_logprof_parseable(profile: str) -> bool:
     try:
         proc = subprocess.run(
             ["sh", "-c", "echo F | aa-logprof -f /etc/apparmor.d/" + profile],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=30,
             text=True,
             check=False,
@@ -88,7 +89,7 @@ def validate_logprof_parseable(profile: str) -> bool:
         return False
 
 
-def cmd_status(state: dict) -> int:
+def cmd_status(state: dict[str, Any]) -> int:
     profiles = state.get("profiles", {})
     if not profiles:
         print("sin perfiles en seguimiento")

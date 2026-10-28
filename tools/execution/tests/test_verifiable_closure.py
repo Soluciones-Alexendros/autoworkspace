@@ -38,6 +38,10 @@ from execution.preflight import preflight_contract  # noqa: E402
 from execution.registry import get_handler, register_handler  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "tools" / "workspace-router"))
+
+sys.path.insert(0, str(ROOT / "skills" / "local-maintenance" / "scripts"))
+
+import clean_routine as cr  # noqa: E402  # requiere el sys.path de skills/local-maintenance/scripts
 from status_bump import advance_status  # noqa: E402
 
 
@@ -493,16 +497,14 @@ def test_content_manifest_schema(tmp_path: Path) -> None:
 
 def test_v02_dispatch_plan_includes_effective_params(monkeypatch: pytest.MonkeyPatch) -> None:
     """Approved plan must include keep_versions/journal/pkg_mgr used by cleaners."""
-    sys.path.insert(0, str(ROOT / "skills" / "local-maintenance" / "scripts"))
-    import clean_routine as cr  # noqa: PLC0415  # import opcional: requiere el sys.path de skills/local-maintenance/scripts
 
-    monkeypatch.setattr(cr, "SNAPSHOT_ID", "snap-v02")
-    monkeypatch.setattr(cr, "PKG_MGR", "apt")
-    monkeypatch.setattr(cr, "KEEP_VERSIONS", 5)
-    monkeypatch.setattr(cr, "JOURNAL_VACUUM_TIME", "3d")
-    monkeypatch.setattr(cr, "JOURNAL_VACUUM_SIZE", "100M")
-    monkeypatch.setattr(cr, "DRY_RUN", False)
-    monkeypatch.setattr(cr, "WITH_FIRMWARE", False)
+    monkeypatch.setattr(cr._STATE, "snapshot_id", "snap-v02")
+    monkeypatch.setattr(cr._STATE, "pkg_mgr", "apt")
+    monkeypatch.setattr(cr._STATE, "keep_versions", 5)
+    monkeypatch.setattr(cr._STATE, "journal_vacuum_time", "3d")
+    monkeypatch.setattr(cr._STATE, "journal_vacuum_size", "100M")
+    monkeypatch.setattr(cr._STATE, "dry_run", False)
+    monkeypatch.setattr(cr._STATE, "with_firmware", False)
 
     captured = {}
 
@@ -510,7 +512,7 @@ def test_v02_dispatch_plan_includes_effective_params(monkeypatch: pytest.MonkeyP
         captured["params"] = dict(params)
         return OpResult(op, "succeeded", 0, 1, "", "mutate-host", run_id="x", plan_digest="d")
 
-    monkeypatch.setattr("execution.ops.run_registered", fake_registered)
+    monkeypatch.setattr(cr, "run_registered", fake_registered)
     # ensure import path for dispatch
     monkeypatch.setattr(cr, "hostname", lambda: "testhost")
     rc = cr.dispatch_operation("clean_journal")
@@ -525,11 +527,9 @@ def test_v02_dispatch_plan_includes_effective_params(monkeypatch: pytest.MonkeyP
 
 def test_v02_handler_uses_plan_params_not_stale_globals(monkeypatch: pytest.MonkeyPatch) -> None:
     """After approval, handler must apply keep_versions from params even if global differs."""
-    sys.path.insert(0, str(ROOT / "skills" / "local-maintenance" / "scripts"))
-    import clean_routine as cr  # noqa: PLC0415  # import opcional: requiere el sys.path de skills/local-maintenance/scripts
 
-    monkeypatch.setattr(cr, "KEEP_VERSIONS", 99)  # stale global
-    monkeypatch.setattr(cr, "PKG_MGR", "wrong")
+    monkeypatch.setattr(cr._STATE, "keep_versions", 99)  # stale state
+    monkeypatch.setattr(cr._STATE, "pkg_mgr", "wrong")
     seen = {}
 
     def spy_run_capture(cmd: list[str], timeout: int = 10) -> tuple[int, str]:

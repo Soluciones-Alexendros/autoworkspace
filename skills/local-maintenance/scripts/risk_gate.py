@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """risk_gate.py - Validador determinista pre-ejecución.
 
 Port Python de risk_gate.sh. Clasifica comandos en R0/R1/R2/R3 antes de
@@ -15,6 +16,7 @@ import argparse
 import logging
 import re
 import sys
+from typing import Any
 
 from common import GREEN, RED, YELLOW, color
 
@@ -129,7 +131,7 @@ R1_PATTERNS = (
 )
 
 
-def matches_pattern(cmd: str, patterns: tuple) -> bool:
+def matches_pattern(cmd: str, patterns: tuple[str, ...]) -> bool:
     for pattern in patterns:
         try:
             if re.search(pattern, cmd):
@@ -157,7 +159,7 @@ def _strip_wrappers(cmd: str) -> str:
         text = new
 
 
-def _candidates(cmd: str) -> list:
+def _candidates(cmd: str) -> list[str]:
     """Comando normalizado + contenido de subshells $(...) y `...`.
 
     Evita evasion por envoltura: `sudo pacman -Syu`, `env FOO=1 rm -rf /`
@@ -248,7 +250,7 @@ KNOWN_OPERATIONS = {
 }
 
 
-def authorize_operation(operation_id: str, params: dict | None = None) -> tuple[bool, str]:
+def authorize_operation(operation_id: str, params: dict[str, Any] | None = None) -> tuple[bool, str]:
     """Deny-by-default for typed operations. Unknown ids are never allowed.
 
     ``approved`` / env tokens are never consent. Mutators must go through
@@ -269,6 +271,28 @@ def authorize_operation(operation_id: str, params: dict | None = None) -> tuple[
     return True, "ok"
 
 
+def _validate_r1(cmd: str, snapshot_id: str) -> int:
+    if not snapshot_id:
+        logger.warning("R1 DENY sin snapshot: %s", cmd)
+        print(color(f"[R1] DENY: {cmd} (requiere snapshot previo)", YELLOW))
+        return 1
+    print(color(f"[R1] ALLOW (con snapshot {snapshot_id}): {cmd}", YELLOW))
+    return 0
+
+
+def _validate_r2(cmd: str, snapshot_id: str, *, approved: bool) -> int:
+    if not approved:
+        logger.warning("R2 DENY sin aprobación: %s", cmd)
+        print(color(f"[R2] DENY: {cmd} (requiere aprobación humana explícita)", YELLOW))
+        return 1
+    if not snapshot_id:
+        logger.warning("R2 DENY sin snapshot: %s", cmd)
+        print(color(f"[R2] DENY: {cmd} (requiere snapshot previo)", YELLOW))
+        return 1
+    print(color(f"[R2] ALLOW (con snapshot {snapshot_id} y aprobación): {cmd}", YELLOW))
+    return 0
+
+
 def validate(cmd: str, snapshot_id: str = "", approved: bool = False) -> int:
     risk_level = classify_command(cmd)
 
@@ -276,23 +300,9 @@ def validate(cmd: str, snapshot_id: str = "", approved: bool = False) -> int:
         print(color(f"[R0] ALLOW: {cmd}", GREEN))
         return 0
     if risk_level == "R1":
-        if not snapshot_id:
-            logger.warning("R1 DENY sin snapshot: %s", cmd)
-            print(color(f"[R1] DENY: {cmd} (requiere snapshot previo)", YELLOW))
-            return 1
-        print(color(f"[R1] ALLOW (con snapshot {snapshot_id}): {cmd}", YELLOW))
-        return 0
+        return _validate_r1(cmd, snapshot_id)
     if risk_level == "R2":
-        if not approved:
-            logger.warning("R2 DENY sin aprobación: %s", cmd)
-            print(color(f"[R2] DENY: {cmd} (requiere aprobación humana explícita)", YELLOW))
-            return 1
-        if not snapshot_id:
-            logger.warning("R2 DENY sin snapshot: %s", cmd)
-            print(color(f"[R2] DENY: {cmd} (requiere snapshot previo)", YELLOW))
-            return 1
-        print(color(f"[R2] ALLOW (con snapshot {snapshot_id} y aprobación): {cmd}", YELLOW))
-        return 0
+        return _validate_r2(cmd, snapshot_id, approved=approved)
     # R3
     logger.error("R3 BLOCKED: %s", cmd)
     print(color(f"[R3] BLOCKED: {cmd} (prohibido por deny-list)", RED))
@@ -326,8 +336,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     try:
         rc = 0
-        for line in sys.stdin:
-            line = line.strip()
+        for raw in sys.stdin:
+            line = raw.strip()
             if not line:
                 continue
             r = validate(line)

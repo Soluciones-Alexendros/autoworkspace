@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """forense_collector.py - Recetas de forense-logs.md a cronologia JSON (solo lectura).
 
 Recetas: auth (SSH/login sospechoso), sudo (uso de privilegios),
@@ -17,7 +18,8 @@ import logging
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger("seguridad.forense")
 
@@ -54,11 +56,11 @@ def run_cmd(cmd: str, timeout: int = 120) -> str:
 
 
 def utcnow() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def collect_auth(since: str) -> list[dict]:
-    events: list[dict] = []
+def collect_auth(since: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
     out = run_cmd(
         f"journalctl _COMM=sshd --since \"{since}\" --no-pager 2>/dev/null | grep -iE 'failed|accepted' | head -50"
     )
@@ -72,8 +74,8 @@ def collect_auth(since: str) -> list[dict]:
     return events
 
 
-def collect_sudo(since: str) -> list[dict]:
-    events: list[dict] = []
+def collect_sudo(since: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
     out = run_cmd(
         f"journalctl _COMM=sudo --since \"{since}\" --no-pager 2>/dev/null | grep -E 'COMMAND|user' | head -50"
     )
@@ -83,8 +85,8 @@ def collect_sudo(since: str) -> list[dict]:
     return events
 
 
-def collect_apparmor(since: str) -> list[dict]:
-    events: list[dict] = []
+def collect_apparmor(since: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
     if which("ausearch") is None:
         return [{"ts": "", "source": "ausearch", "summary": "ausearch no disponible"}]
     out = run_cmd(f"ausearch -m avc -ts {since} 2>/dev/null | grep 'apparmor=\"DENIED\"' | head -30")
@@ -94,8 +96,8 @@ def collect_apparmor(since: str) -> list[dict]:
     return events
 
 
-def collect_watch_key(key: str, since: str) -> list[dict]:
-    events: list[dict] = []
+def collect_watch_key(key: str, since: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
     if which("ausearch") is None:
         return [{"ts": "", "source": "ausearch", "summary": "ausearch no disponible"}]
     out = run_cmd(f"ausearch -k {key} -ts {since} 2>/dev/null | head -30")
@@ -105,8 +107,8 @@ def collect_watch_key(key: str, since: str) -> list[dict]:
     return events
 
 
-def collect_pid(pid: str, since: str) -> list[dict]:
-    events: list[dict] = []
+def collect_pid(pid: str, since: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
     if which("ausearch") is not None:
         out = run_cmd(f"ausearch -p {pid} -ts {since} 2>/dev/null | head -20")
         for line in out.splitlines():
@@ -136,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     _setup_logging(args.verbose)
 
     clock = run_cmd("timedatectl 2>/dev/null | head -5").strip()
-    events: list[dict] = []
+    events: list[dict[str, Any]] = []
     if args.recipe in ("auth", "timeline"):
         events += collect_auth("24 hours ago" if args.since == "today" else args.since)
     if args.recipe in ("sudo", "timeline"):

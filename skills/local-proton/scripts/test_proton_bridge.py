@@ -1,164 +1,177 @@
 #!/usr/bin/env python3
+
 """Tests hardening para proton_bridge.py (sin red real: monkeypatch IMAP/SMTP)."""
 
 from __future__ import annotations
 
+import os
 import sys
 import unittest
+from collections.abc import Sequence
 from email.message import EmailMessage
 from pathlib import Path
+from typing import Any, Literal, cast
+from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+TOOLS = Path(__file__).resolve().parents[3] / "tools"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
 
 import proton_bridge  # noqa: E402
+from execution.approval import (  # noqa: E402
+    ApprovalDecision,
+    ApprovalProvider,
+    ApprovalRequest,
+)
 
 
 class FakeIMAP:
-    def __init__(self, *a, **k):
-        self.selected = None
-        self.stored = []
+    def __init__(self, *a: str, **k: Any) -> None:
+        self.selected: tuple[str, bool] | None = None
+        self.stored: list[tuple[Any, str, Any]] = []
 
-    def starttls(self, ssl_context=None):
+    def starttls(self, ssl_context: Any = None) -> None:
         return None
 
-    def login(self, user, password):
+    def login(self, user: str, password: str) -> tuple[str, Sequence[Any]]:
         return ("OK", [])
 
-    def select(self, box, readonly=True):
+    def select(self, box: str, readonly: bool = True) -> tuple[str, Sequence[Any]]:
         self.selected = (box, readonly)
         return ("OK", [])
 
-    def search(self, *args):
+    def search(self, *args: str) -> tuple[str, Sequence[bytes]]:
         return ("OK", [b"1 2"])
 
-    def fetch(self, uid, _spec):
-        raw = b"From: Test <t@example.com>\r\nSubject: Hola\r\nMessage-ID: <1>\r\nDate: Thu, 01 Jan 2026 00:00:00 +0000\r\n\r\nBody"
+    def fetch(self, uid: Any, _spec: Any) -> tuple[str, Sequence[tuple[bytes, bytes]]]:
+        raw = (
+            b"From: Test <t@example.com>\r\nSubject: Hola\r\nMessage-ID: <1>\r\n"
+            b"Date: Thu, 01 Jan 2026 00:00:00 +0000\r\n\r\nBody"
+        )
         return ("OK", [(b"1", raw)])
 
-    def list(self):
+    def list(self) -> tuple[str, Sequence[bytes]]:
         return ("OK", [b'(HasNoChildren) "/" "INBOX"'])
 
-    def store(self, uid, flag, val):
+    def store(self, uid: Any, flag: str, val: Any) -> tuple[str, Sequence[Any]]:
         self.stored.append((uid, flag, val))
         return ("OK", [])
 
-    def __enter__(self):
+    def __enter__(self) -> FakeIMAP:
         return self
 
-    def __exit__(self, *a):
+    def __exit__(self, *a: str) -> Literal[False]:
         return False
 
 
 class FakeSMTP:
     sent = None
 
-    def __init__(self, *a, **k):
+    def __init__(self, *a: str, **k: Any) -> None:
         pass
 
-    def starttls(self, context=None):
+    def starttls(self, context: Any = None) -> None:
         return None
 
-    def login(self, user, password):
+    def login(self, user: str, password: str) -> None:
         return None
 
-    def send_message(self, msg):
+    def send_message(self, msg: Any) -> None:
         FakeSMTP.sent = msg
 
-    def __enter__(self):
+    def __enter__(self) -> FakeSMTP:
         return self
 
-    def __exit__(self, *a):
+    def __exit__(self, *a: str) -> Literal[False]:
         return False
 
 
-def _with_creds(testcase):
-    testcase._old = dict(proton_bridge.os.environ)
-    proton_bridge.os.environ["PROTON_USER"] = "u@example.com"
-    proton_bridge.os.environ["PROTON_PASS"] = "bridge-pass"
-    testcase.addCleanup(lambda: proton_bridge.os.environ.clear() or proton_bridge.os.environ.update(testcase._old))
+def _with_creds(testcase: Any) -> None:
+    testcase._old = dict(os.environ)
+    os.environ["PROTON_USER"] = "u@example.com"
+    os.environ["PROTON_PASS"] = "bridge-pass"
+
+    def _restore_env() -> None:
+        os.environ.clear()
+        os.environ.update(testcase._old)
+
+    testcase.addCleanup(_restore_env)
 
 
 class ProtonBridgeCli(unittest.TestCase):
-    def test_help_exit_0(self):
+    def test_help_exit_0(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             proton_bridge.main(["--help"])
         self.assertEqual(cm.exception.code, 0)
 
-    def test_subcommand_help_exit_0(self):
+    def test_subcommand_help_exit_0(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             proton_bridge.main(["unread", "--help"])
         self.assertEqual(cm.exception.code, 0)
 
-    def test_args_invalidos_exit_2(self):
+    def test_args_invalidos_exit_2(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             proton_bridge.main(["--opcion-inexistente"])
         self.assertEqual(cm.exception.code, 2)
 
-    def test_sin_subcomando_exit_2(self):
+    def test_sin_subcomando_exit_2(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             proton_bridge.main([])
         self.assertEqual(cm.exception.code, 2)
 
-    def test_credenciales_ausentes_exit_1(self):
-        old = dict(proton_bridge.os.environ)
+    def test_credenciales_ausentes_exit_1(self) -> None:
+        old = dict(os.environ)
         try:
-            proton_bridge.os.environ.pop("PROTON_USER", None)
-            proton_bridge.os.environ.pop("PROTON_PASS", None)
+            os.environ.pop("PROTON_USER", None)
+            os.environ.pop("PROTON_PASS", None)
             rc = proton_bridge.main(["unread"])
             self.assertEqual(rc, 1)
         finally:
-            proton_bridge.os.environ.clear()
-            proton_bridge.os.environ.update(old)
+            os.environ.clear()
+            os.environ.update(old)
 
-    def test_bridge_caido_exit_1(self):
+    def test_bridge_caido_exit_1(self) -> None:
         _with_creds(self)
 
-        def _boom(*a, **k):
+        def _boom(*a: str, **k: Any) -> None:
             raise OSError("conexión rechazada (simulada)")
 
         old = proton_bridge.connect
-        proton_bridge.connect = _boom
+        proton_bridge.connect = cast("Any", _boom)
         try:
             rc = proton_bridge.main(["unread"])
             self.assertEqual(rc, 1)
         finally:
             proton_bridge.connect = old
 
-    def test_unread_ok_con_mock(self):
+    def test_unread_ok_con_mock(self) -> None:
         _with_creds(self)
         old = proton_bridge.connect
-        proton_bridge.connect = lambda *a, **k: FakeIMAP()
+        proton_bridge.connect = lambda *a, **k: cast("Any", FakeIMAP())
         try:
             rc = proton_bridge.main(["unread", "--limit", "5"])
             self.assertEqual(rc, 0)
         finally:
             proton_bridge.connect = old
 
-    def test_send_blocked_without_approval(self):
+    def test_send_blocked_without_approval(self) -> None:
         _with_creds(self)
         rc = proton_bridge.main(["send", "--to", "a@b.com", "--subject", "s", "--body", "b"])
         self.assertEqual(rc, 1)
 
-    def test_send_ok_con_mock(self):
-        import sys
-        from pathlib import Path
-        from unittest.mock import patch
-
-        tools = Path(__file__).resolve().parents[3] / "tools"
-        sys.path.insert(0, str(tools))
-        from execution.approval import ApprovalDecision, ApprovalProvider, ApprovalRequest
-
+    def test_send_ok_con_mock(self) -> None:
         class Allow(ApprovalProvider):
             def decide(self, request: ApprovalRequest) -> ApprovalDecision:
                 return ApprovalDecision(True, "test", "test", request.plan_digest)
 
         _with_creds(self)
         old_c, old_s = proton_bridge.connect, proton_bridge.connect_smtp
-        proton_bridge.connect = lambda *a, **k: FakeIMAP()
-        proton_bridge.connect_smtp = lambda *a, **k: FakeSMTP()
+        proton_bridge.connect = lambda *a, **k: cast("Any", FakeIMAP())
+        proton_bridge.connect_smtp = lambda *a, **k: cast("Any", FakeSMTP())
         try:
-            with patch("execution.ops.provider_from_env", lambda: Allow()):
+            with patch("execution.ops.provider_from_env", Allow):
                 rc = proton_bridge.main(
                     [
                         "send",
@@ -176,15 +189,15 @@ class ProtonBridgeCli(unittest.TestCase):
             proton_bridge.connect = old_c
             proton_bridge.connect_smtp = old_s
 
-    def test_fetch_no_encontrado_exit_1(self):
+    def test_fetch_no_encontrado_exit_1(self) -> None:
         _with_creds(self)
 
         class Empty(FakeIMAP):
-            def fetch(self, uid, _spec):  # type: ignore[override]
+            def fetch(self, uid: Any, _spec: Any) -> tuple[str, list[Any]]:
                 return ("OK", [None])
 
         old = proton_bridge.connect
-        proton_bridge.connect = lambda *a, **k: Empty()
+        proton_bridge.connect = lambda *a, **k: cast("Any", Empty())
         try:
             rc = proton_bridge.main(["fetch", "--uid", "999"])
             self.assertEqual(rc, 1)
@@ -193,38 +206,38 @@ class ProtonBridgeCli(unittest.TestCase):
 
 
 class ProtonBridgePure(unittest.TestCase):
-    def test_decode_header_value(self):
+    def test_decode_header_value(self) -> None:
         self.assertEqual(proton_bridge.decode_header_value(""), "")
         self.assertEqual(proton_bridge.decode_header_value(None), "")
         self.assertEqual(proton_bridge.decode_header_value("Hola"), "Hola")
 
-    def test_extract_body_simple(self):
+    def test_extract_body_simple(self) -> None:
         msg = EmailMessage()
         msg.set_content("cuerpo plano")
         self.assertIn("cuerpo plano", proton_bridge.extract_body(msg))
 
-    def test_get_config_lee_entorno(self):
-        old = dict(proton_bridge.os.environ)
+    def test_get_config_lee_entorno(self) -> None:
+        old = dict(os.environ)
         try:
-            proton_bridge.os.environ["PROTON_USER"] = "x@y.com"
-            proton_bridge.os.environ["PROTON_PASS"] = "p"
+            os.environ["PROTON_USER"] = "x@y.com"
+            os.environ["PROTON_PASS"] = "p"
             _, _, _, _, user, pw = proton_bridge.get_config()
             self.assertEqual(user, "x@y.com")
             self.assertEqual(pw, "p")
         finally:
-            proton_bridge.os.environ.clear()
-            proton_bridge.os.environ.update(old)
+            os.environ.clear()
+            os.environ.update(old)
 
-    def test_require_creds_falla_sin_env(self):
-        old = dict(proton_bridge.os.environ)
+    def test_require_creds_falla_sin_env(self) -> None:
+        old = dict(os.environ)
         try:
-            proton_bridge.os.environ.pop("PROTON_USER", None)
-            proton_bridge.os.environ.pop("PROTON_PASS", None)
+            os.environ.pop("PROTON_USER", None)
+            os.environ.pop("PROTON_PASS", None)
             with self.assertRaises(proton_bridge.ProtonBridgeError):
                 proton_bridge.require_creds()
         finally:
-            proton_bridge.os.environ.clear()
-            proton_bridge.os.environ.update(old)
+            os.environ.clear()
+            os.environ.update(old)
 
 
 if __name__ == "__main__":

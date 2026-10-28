@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """clean_routine.py - Limpieza aprobada (cache, journal, huérfanos, temporales).
 
 Single path: operation_id → validate → approve → handler → record.
@@ -7,11 +8,16 @@ Single path: operation_id → validate → approve → handler → record.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import hashlib
 import json
 import logging
 import os
 import sys
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from common import (
     BLUE,
@@ -32,22 +38,37 @@ try:
 except ImportError:  # pragma: no cover
     risk_gate = None  # type: ignore
 
+import snapshot_state as snap
+
 # Ensure tools/ is importable for execution registry
 _TOOLS = Path(__file__).resolve().parents[3] / "tools"
 if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
-DRY_RUN = True
-EXECUTE = False
-SNAPSHOT_ID = ""
-OUTPUT_FILE = ""
-JSON_OUTPUT = ""
-PKG_MGR = ""
-KEEP_VERSIONS = 3
-JOURNAL_VACUUM_TIME = "7d"
-JOURNAL_VACUUM_SIZE = "500M"
-JSON_MODE = False
-WITH_FIRMWARE = False
+from execution.ops import run_registered  # noqa: E402  # requiere _TOOLS en sys.path
+from execution.registry import register_handler  # noqa: E402  # requiere _TOOLS en sys.path
+
+
+@dataclass
+class _CleanState:
+    """Estado del proceso; sustituye a las variables globales de módulo."""
+
+    dry_run: bool = True
+    execute: bool = False
+    snapshot_id: str = ""
+    output_file: str = ""
+    json_output: str = ""
+    pkg_mgr: str = ""
+    keep_versions: int = 3
+    journal_vacuum_time: str = "7d"
+    journal_vacuum_size: str = "500M"
+    json_mode: bool = False
+    with_firmware: bool = False
+
+
+_STATE = _CleanState()
+
+REQUIRED_META_FIELDS = ("id", "target_host", "backend", "coverage", "content_hash")
 ACTION_RESULTS: list[dict[str, object]] = []
 
 logger = logging.getLogger("mantenimiento.clean")
@@ -115,25 +136,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def apply_args(args: argparse.Namespace) -> None:
-    global DRY_RUN, EXECUTE, SNAPSHOT_ID, OUTPUT_FILE, JSON_OUTPUT
-    global KEEP_VERSIONS, JOURNAL_VACUUM_TIME, JOURNAL_VACUUM_SIZE, JSON_MODE
-    global WITH_FIRMWARE
     if args.execute:
-        DRY_RUN, EXECUTE = False, True
+        _STATE.dry_run, _STATE.execute = False, True
     else:
-        DRY_RUN, EXECUTE = True, False
-    SNAPSHOT_ID = args.snapshot_id or ""
-    OUTPUT_FILE = args.output or ""
-    KEEP_VERSIONS = args.keep_versions
-    JOURNAL_VACUUM_TIME = args.journal_time
-    JOURNAL_VACUUM_SIZE = args.journal_size
-    WITH_FIRMWARE = bool(args.firmware)
+        _STATE.dry_run, _STATE.execute = True, False
+    _STATE.snapshot_id = args.snapshot_id or ""
+    _STATE.output_file = args.output or ""
+    _STATE.keep_versions = args.keep_versions
+    _STATE.journal_vacuum_time = args.journal_time
+    _STATE.journal_vacuum_size = args.journal_size
+    _STATE.with_firmware = bool(args.firmware)
     if args.json is not None:
-        JSON_MODE = True
-        JSON_OUTPUT = args.json or ""
+        _STATE.json_mode = True
+        _STATE.json_output = args.json or ""
     else:
-        JSON_MODE = False
-        JSON_OUTPUT = ""
+        _STATE.json_mode = False
+        _STATE.json_output = ""
 
 
 def _record(action: str, status: str, rc: int = 0, detail: str = "") -> None:
@@ -147,37 +165,37 @@ def _snapshot_dir() -> str:
     )
 
 
-def validate_snapshot(snapshot_id: str) -> tuple[bool, str]:
-    """Validate snapshot id, directory, coverage and integrity before mutation."""
+def _snapshot_id_error(snapshot_id: str) -> str | None:
     if not snapshot_id or "/" in snapshot_id or snapshot_id in (".", ".."):
-        return False, "invalid snapshot_id"
-    path = os.path.join(_snapshot_dir(), snapshot_id)
-    if not os.path.isdir(path):
-        return False, f"snapshot directory missing: {path}"
+        return "invalid snapshot_id"
+    return None
+
+
+def _load_snapshot_meta(path: str) -> tuple[dict[str, Any] | None, str]:
     meta_path = os.path.join(path, "metadata.json")
     if not os.path.isfile(meta_path):
-        return False, "metadata.json missing"
+        return None, "metadata.json missing"
     try:
         with open(meta_path, encoding="utf-8") as fh:
             meta = json.load(fh)
     except (OSError, json.JSONDecodeError) as exc:
-        return False, f"metadata unreadable: {exc}"
+        return None, f"metadata unreadable: {exc}"
     if not isinstance(meta, dict):
-        return False, "metadata must be an object"
+        return None, "metadata must be an object"
+    return meta, ""
+
+
+def _missing_meta_field(meta: dict[str, Any]) -> str | None:
     # Require explicit identity and scope — incomplete metadata is insufficient (H08)
-    for key in ("id", "target_host", "backend", "coverage", "content_hash"):
+    for key in REQUIRED_META_FIELDS:
         val = meta.get(key)
         if val is None or (isinstance(val, str) and not str(val).strip()):
-            return False, f"metadata missing required field: {key}"
-    if meta.get("id") != snapshot_id:
-        return False, "metadata id does not match snapshot_id"
-    if meta.get("backend_status") == "failed":
-        return False, "snapshot backend_status=failed"
-    if meta.get("recovery_scope") in (None, "", "none") and meta.get("backend_required"):
-        return False, "recovery_scope insufficient with required backend"
-    # Recompute content hash over inventory files (exclude metadata.json itself)
-    import hashlib
+            return f"metadata missing required field: {key}"
+    return None
 
+
+def _content_digest(path: str) -> str:
+    # Recompute content hash over inventory files (exclude metadata.json itself)
     h = hashlib.sha256()
     for dirpath, _, filenames in os.walk(path):
         for name in sorted(filenames):
@@ -190,47 +208,73 @@ def validate_snapshot(snapshot_id: str) -> tuple[bool, str]:
                 with open(fp, "rb") as fh:
                     for chunk in iter(lambda: fh.read(65536), b""):
                         h.update(chunk)
-    digest = h.hexdigest()
-    if digest != str(meta.get("content_hash")):
-        return False, "snapshot content_hash mismatch"
+    return h.hexdigest()
+
+
+def _snapshot_meta_error(meta: dict[str, Any], snapshot_id: str, path: str) -> str | None:
+    missing = _missing_meta_field(meta)
+    if missing:
+        return missing
+    if meta.get("id") != snapshot_id:
+        return "metadata id does not match snapshot_id"
+    if meta.get("backend_status") == "failed":
+        return "snapshot backend_status=failed"
+    if meta.get("recovery_scope") in (None, "", "none") and meta.get("backend_required"):
+        return "recovery_scope insufficient with required backend"
+    if _content_digest(path) != str(meta.get("content_hash")):
+        return "snapshot content_hash mismatch"
+    return None
+
+
+def validate_snapshot(snapshot_id: str) -> tuple[bool, str]:
+    """Validate snapshot id, directory, coverage and integrity before mutation."""
+    id_error = _snapshot_id_error(snapshot_id)
+    if id_error:
+        return False, id_error
+    path = os.path.join(_snapshot_dir(), snapshot_id)
+    if not os.path.isdir(path):
+        return False, f"snapshot directory missing: {path}"
+    meta, meta_error = _load_snapshot_meta(path)
+    if meta is None:
+        return False, meta_error
+    error = _snapshot_meta_error(meta, snapshot_id, path)
+    if error:
+        return False, error
     return True, path
 
 
-def effective_operation_params() -> dict:
+def effective_operation_params() -> dict[str, Any]:
     """Full effective plan — everything handlers may use (not just snapshot_id)."""
     return {
-        "snapshot_id": SNAPSHOT_ID,
-        "pkg_mgr": PKG_MGR,
-        "keep_versions": KEEP_VERSIONS,
-        "journal_time": JOURNAL_VACUUM_TIME,
-        "journal_size": JOURNAL_VACUUM_SIZE,
-        "with_firmware": WITH_FIRMWARE,
+        "snapshot_id": _STATE.snapshot_id,
+        "pkg_mgr": _STATE.pkg_mgr,
+        "keep_versions": _STATE.keep_versions,
+        "journal_time": _STATE.journal_vacuum_time,
+        "journal_size": _STATE.journal_vacuum_size,
+        "with_firmware": _STATE.with_firmware,
     }
 
 
-def apply_operation_params(params: dict) -> None:
+def apply_operation_params(params: dict[str, Any]) -> None:
     """Bind approved plan into process state before handler body runs."""
-    global SNAPSHOT_ID, PKG_MGR, KEEP_VERSIONS, JOURNAL_VACUUM_TIME, JOURNAL_VACUUM_SIZE
-    global WITH_FIRMWARE
     if params.get("snapshot_id"):
-        SNAPSHOT_ID = str(params["snapshot_id"])
+        _STATE.snapshot_id = str(params["snapshot_id"])
     if "pkg_mgr" in params and params["pkg_mgr"] is not None:
-        PKG_MGR = str(params["pkg_mgr"])
+        _STATE.pkg_mgr = str(params["pkg_mgr"])
     if "keep_versions" in params and params["keep_versions"] is not None:
-        KEEP_VERSIONS = int(params["keep_versions"])
+        _STATE.keep_versions = int(params["keep_versions"])
     if "journal_time" in params and params["journal_time"] is not None:
-        JOURNAL_VACUUM_TIME = str(params["journal_time"])
+        _STATE.journal_vacuum_time = str(params["journal_time"])
     if "journal_size" in params and params["journal_size"] is not None:
-        JOURNAL_VACUUM_SIZE = str(params["journal_size"])
+        _STATE.journal_vacuum_size = str(params["journal_size"])
     if "with_firmware" in params and params["with_firmware"] is not None:
-        WITH_FIRMWARE = bool(params["with_firmware"])
+        _STATE.with_firmware = bool(params["with_firmware"])
 
 
 def _register_handlers() -> None:
-    from execution.registry import register_handler
 
-    def _wrap(fn):
-        def handler(params: dict) -> int:
+    def _wrap(fn: Callable[..., Any]) -> Callable[..., Any]:
+        def handler(params: dict[str, Any]) -> int:
             apply_operation_params(params or {})
             result = fn()
             # None is never success — let run_registered treat it as blocked.
@@ -251,32 +295,26 @@ def _register_handlers() -> None:
     register_handler("validate_snapshot", _handle_validate_snapshot)
 
 
-def _handle_create_snapshot(params: dict) -> int:
+def _handle_create_snapshot(params: dict[str, Any]) -> int:
     """Invoke snapshot backend in-process after registry approval (no env consent)."""
-    global SNAPSHOT_ID
     apply_operation_params(params or {})
-    sid = params.get("snapshot_id") or SNAPSHOT_ID
+    sid = params.get("snapshot_id") or _STATE.snapshot_id
     if not sid:
         sid = f"snap-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}"
-        SNAPSHOT_ID = sid
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    if script_dir not in sys.path:
-        sys.path.insert(0, script_dir)
-    import snapshot_state as snap
-
+        _STATE.snapshot_id = sid
     base_dir = params.get("snapshot_dir") or _snapshot_dir()
     rc = snap.create_snapshot_backend(sid, base_dir)
     if rc != 0:
         log_error(f"Creación de snapshot falló (rc={rc})")
         return rc
-    SNAPSHOT_ID = sid
-    log_info(f"Snapshot ID: {SNAPSHOT_ID}")
+    _STATE.snapshot_id = sid
+    log_info(f"Snapshot ID: {_STATE.snapshot_id}")
     return 0
 
 
-def _handle_validate_snapshot(params: dict) -> int:
+def _handle_validate_snapshot(params: dict[str, Any]) -> int:
     apply_operation_params(params or {})
-    sid = str(params.get("snapshot_id") or SNAPSHOT_ID)
+    sid = str(params.get("snapshot_id") or _STATE.snapshot_id)
     ok, detail = validate_snapshot(sid)
     if not ok:
         log_error(f"Snapshot inválido: {detail}")
@@ -286,16 +324,14 @@ def _handle_validate_snapshot(params: dict) -> int:
 
 def dispatch_operation(operation_id: str) -> int:
     """Single path: dry-run simulates; execute goes through registry approval + handler."""
-    if operation_id == "update_firmware" and not WITH_FIRMWARE:
+    if operation_id == "update_firmware" and not _STATE.with_firmware:
         _record(operation_id, "skipped", 0, "requires --firmware")
         return 0
 
-    if DRY_RUN:
+    if _STATE.dry_run:
         log_info(f"[DRY-RUN] {operation_id}")
         _record(operation_id, "simulated", 0, "dry-run")
         return 0
-
-    from execution.ops import run_registered
 
     params = effective_operation_params()
     result = run_registered(operation_id, params, target=hostname() or ".")
@@ -314,21 +350,21 @@ def dispatch_operation(operation_id: str) -> int:
 
 def clean_package_cache() -> int:
     log_info("=== Limpieza de caché de paquetes ===")
-    if PKG_MGR == "pacman":
+    if _STATE.pkg_mgr == "pacman":
         cache_size = run("du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1", timeout=30).strip()
         log_info(f"Tamaño actual: {cache_size}")
-        rc, _ = run_capture(f"paccache -r -k {KEEP_VERSIONS} 2>/dev/null", timeout=600)
+        rc, _ = run_capture(f"paccache -r -k {_STATE.keep_versions} 2>/dev/null", timeout=600)
         if rc != 0:
             log_warn("paccache falló")
             raise RuntimeError("paccache failed")
-    elif PKG_MGR == "apt":
+    elif _STATE.pkg_mgr == "apt":
         cache_size = run("du -sh /var/cache/apt/archives 2>/dev/null | cut -f1", timeout=30).strip()
         log_info(f"Tamaño actual: {cache_size}")
         rc, _ = run_capture("apt-get autoclean 2>/dev/null", timeout=600)
         if rc != 0:
             log_warn("apt-get autoclean falló")
             raise RuntimeError("apt autoclean failed")
-    elif PKG_MGR == "dnf":
+    elif _STATE.pkg_mgr == "dnf":
         cache_size = run("du -sh /var/cache/dnf 2>/dev/null | cut -f1", timeout=30).strip()
         log_info(f"Tamaño actual: {cache_size}")
         rc, _ = run_capture("dnf clean packages -y 2>/dev/null", timeout=600)
@@ -343,7 +379,7 @@ def clean_journal() -> int:
     journal_size = run("journalctl --disk-usage 2>/dev/null", timeout=15).strip()
     log_info(f"Tamaño actual: {journal_size}")
     rc, _ = run_capture(
-        f"journalctl --vacuum-time={JOURNAL_VACUUM_TIME} --vacuum-size={JOURNAL_VACUUM_SIZE} 2>/dev/null",
+        f"journalctl --vacuum-time={_STATE.journal_vacuum_time} --vacuum-size={_STATE.journal_vacuum_size} 2>/dev/null",
         timeout=600,
     )
     if rc != 0:
@@ -354,7 +390,7 @@ def clean_journal() -> int:
 
 def clean_orphans() -> int:
     log_info("=== Limpieza de paquetes huérfanos ===")
-    if PKG_MGR == "pacman":
+    if _STATE.pkg_mgr == "pacman":
         orphans = run("pacman -Qtdq 2>/dev/null", timeout=60).strip()
         orphan_list = [p for p in orphans.splitlines() if p.strip()]
         if not orphan_list:
@@ -366,12 +402,12 @@ def clean_orphans() -> int:
             rc, _ = run_capture(f"pacman -Rns {pkg} --noconfirm 2>/dev/null", timeout=600)
             if rc != 0:
                 log_warn(f"No se pudo eliminar {pkg}")
-    elif PKG_MGR == "apt":
+    elif _STATE.pkg_mgr == "apt":
         rc, _ = run_capture("apt autoremove --purge -y 2>/dev/null", timeout=600)
         if rc != 0:
             log_warn("apt autoremove falló")
             raise RuntimeError("apt autoremove failed")
-    elif PKG_MGR == "dnf":
+    elif _STATE.pkg_mgr == "dnf":
         rc, _ = run_capture("dnf autoremove -y 2>/dev/null", timeout=600)
         if rc != 0:
             log_warn("dnf autoremove falló")
@@ -404,7 +440,7 @@ def update_firmware() -> int:
     if which("fwupdmgr") is None:
         log_info("fwupd no instalado")
         return 0
-    if not WITH_FIRMWARE:
+    if not _STATE.with_firmware:
         log_info("Omitido: requiere --firmware explicito (R2)")
         return 0
     rc, _ = run_capture("fwupdmgr update 2>/dev/null", timeout=900)
@@ -415,14 +451,12 @@ def update_firmware() -> int:
 
 
 def clean_userspace_caches() -> int:
-    import os as _os
-
     log_info("=== Caches userspace ===")
-    home = _os.path.expanduser("~")
-    cache_dir = _os.path.join(home, ".cache")
+    home = os.path.expanduser("~")
+    cache_dir = os.path.join(home, ".cache")
     size = run(f"du -sh {cache_dir} 2>/dev/null | cut -f1", timeout=60).strip()
     log_info(f"Tamano ~/.cache: {size or '?'}")
-    thumb = _os.path.join(cache_dir, "thumbnails")
+    thumb = os.path.join(cache_dir, "thumbnails")
     run(f"rm -rf {thumb}/* 2>/dev/null", timeout=120)
     run(
         f"find {cache_dir} -type f -atime +30 ! -path '*mozilla*' ! -path '*chromium*' "
@@ -452,15 +486,15 @@ def verify_clean() -> None:
 
 def generate_json_output() -> None:
     json_file = (
-        JSON_OUTPUT
+        _STATE.json_output
         or f"clean-routine-{utcnow_iso().replace('-', '').replace(':', '').replace('T', '-').replace('Z', '')}.json"
     )
     actions = list(ACTION_RESULTS)
     if not actions:
         for name in CLEAN_OPS:
-            if name == "update_firmware" and not WITH_FIRMWARE:
+            if name == "update_firmware" and not _STATE.with_firmware:
                 actions.append({"action": name, "status": "skipped", "rc": 0, "detail": ""})
-            elif DRY_RUN:
+            elif _STATE.dry_run:
                 actions.append({"action": name, "status": "simulated", "rc": 0, "detail": ""})
             else:
                 actions.append({"action": name, "status": "failed", "rc": 1, "detail": "no result recorded"})
@@ -473,9 +507,9 @@ def generate_json_output() -> None:
             "timestamp": utcnow_iso(),
             "mode": "clean-routine",
             "hostname": hostname(),
-            "distro": PKG_MGR,
-            "dry_run": DRY_RUN,
-            "snapshot_id": SNAPSHOT_ID or "none",
+            "distro": _STATE.pkg_mgr,
+            "dry_run": _STATE.dry_run,
+            "snapshot_id": _STATE.snapshot_id or "none",
             "skill_version": SKILL_VERSION,
         },
         "actions": actions,
@@ -498,10 +532,8 @@ def generate_json_output() -> None:
 
 def _ensure_snapshot_for_execute() -> int:
     """Authorize snapshot create/validate before any host effect."""
-    global SNAPSHOT_ID
-    from execution.ops import run_registered
 
-    if not SNAPSHOT_ID:
+    if not _STATE.snapshot_id:
         log_warn("No se especificó --snapshot-id. Creando snapshot (requiere aprobación)...")
         result = run_registered("create_snapshot", {}, target=hostname() or ".")
         if result.outcome != "succeeded":
@@ -511,7 +543,7 @@ def _ensure_snapshot_for_execute() -> int:
     else:
         result = run_registered(
             "validate_snapshot",
-            {"snapshot_id": SNAPSHOT_ID},
+            {"snapshot_id": _STATE.snapshot_id},
             target=hostname() or ".",
         )
         # validate_snapshot is read — still go through registry
@@ -519,11 +551,11 @@ def _ensure_snapshot_for_execute() -> int:
             # read ops shouldn't block on approval; treat handler failure
             pass
         if result.outcome not in ("succeeded",) and result.outcome != "blocked":
-            ok, detail = validate_snapshot(SNAPSHOT_ID)
+            ok, detail = validate_snapshot(_STATE.snapshot_id)
             if not ok:
                 _record("validate_snapshot", "failed", 1, detail)
                 return 1
-        ok, detail = validate_snapshot(SNAPSHOT_ID)
+        ok, detail = validate_snapshot(_STATE.snapshot_id)
         if not ok:
             log_error(f"Snapshot inválido: {detail}")
             _record("validate_snapshot", "failed", 1, detail)
@@ -532,8 +564,7 @@ def _ensure_snapshot_for_execute() -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
-    global SNAPSHOT_ID, PKG_MGR
+def _init_runtime(argv: list[str] | None) -> int | None:
     ACTION_RESULTS.clear()
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -541,53 +572,80 @@ def main(argv: list[str] | None = None) -> int:
     apply_args(args)
     _register_handlers()
 
-    PKG_MGR = detect_pkg_mgr()
-    if not PKG_MGR:
+    _STATE.pkg_mgr = detect_pkg_mgr()
+    if not _STATE.pkg_mgr:
         logger.error("No se pudo detectar gestor de paquetes")
         log_error("No se pudo detectar gestor de paquetes")
         return 1
 
     log_info("Iniciando rutina de limpieza")
-    log_info("Modo: " + ("DRY-RUN" if DRY_RUN else "EJECUCIÓN"))
-    log_info(f"Gestor de paquetes: {PKG_MGR}")
+    log_info("Modo: " + ("DRY-RUN" if _STATE.dry_run else "EJECUCIÓN"))
+    log_info(f"Gestor de paquetes: {_STATE.pkg_mgr}")
+    return None
 
-    if EXECUTE:
-        snap_rc = _ensure_snapshot_for_execute()
-        if snap_rc != 0:
-            if JSON_MODE:
-                try:
-                    generate_json_output()
-                except (OSError, TypeError, ValueError):
-                    pass
-            return snap_rc
 
-    for op_id in CLEAN_OPS:
-        dispatch_operation(op_id)
+def _preflight_snapshot() -> int | None:
+    if not _STATE.execute:
+        return None
+    snap_rc = _ensure_snapshot_for_execute()
+    if snap_rc == 0:
+        return None
+    if _STATE.json_mode:
+        with contextlib.suppress(OSError, TypeError, ValueError):
+            generate_json_output()
+    return snap_rc
 
-    if EXECUTE and not any(a.get("status") == "blocked" for a in ACTION_RESULTS):
-        # Post-clean verify is read-only
-        try:
-            verify_clean()
-        except Exception as exc:
-            log_warn(f"verify_clean: {exc}")
 
-    failed = sum(1 for a in ACTION_RESULTS if a.get("status") in ("failed", "blocked"))
+def _post_verify() -> None:
+    if not _STATE.execute or any(a.get("status") == "blocked" for a in ACTION_RESULTS):
+        return
+    # Post-clean verify is read-only
+    try:
+        verify_clean()
+    except Exception as exc:
+        log_warn(f"verify_clean: {exc}")
+
+
+def _emit_summary(failed: int) -> None:
     if failed:
         log_error(f"Rutina finalizada con {failed} acción(es) fallidas/bloqueadas")
     else:
         log_info("Rutina de limpieza completada")
 
-    if JSON_MODE:
+
+def _final_rc(failed: int) -> int:
+    if not _STATE.execute:
+        return 0
+    if failed:
+        return 1
+    if any(a.get("status") == "blocked" for a in ACTION_RESULTS):
+        return 3
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    init_rc = _init_runtime(argv)
+    if init_rc is not None:
+        return init_rc
+
+    preflight_rc = _preflight_snapshot()
+    if preflight_rc is not None:
+        return preflight_rc
+
+    for op_id in CLEAN_OPS:
+        dispatch_operation(op_id)
+
+    _post_verify()
+    failed = sum(1 for a in ACTION_RESULTS if a.get("status") in ("failed", "blocked"))
+    _emit_summary(failed)
+
+    if _STATE.json_mode:
         try:
             generate_json_output()
         except (OSError, TypeError, ValueError) as exc:
             logger.error("no se pudo generar JSON: %s", exc)
             return 1
-    if failed and EXECUTE:
-        return 1
-    if any(a.get("status") == "blocked" for a in ACTION_RESULTS) and EXECUTE:
-        return 3
-    return 0
+    return _final_rc(failed)
 
 
 if __name__ == "__main__":
