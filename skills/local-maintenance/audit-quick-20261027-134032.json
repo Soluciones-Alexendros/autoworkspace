@@ -1,0 +1,189 @@
+{
+  "metadata": {
+    "timestamp": "2026-10-27T12:40:34Z",
+    "mode": "audit-quick",
+    "hostname": "alexendros-aerox16",
+    "distro": "ubuntu",
+    "family": "debian",
+    "version_id": "26.04",
+    "version_codename": "resolute",
+    "kernel": "7.0.0-38-generic",
+    "duration_seconds": 1,
+    "skill_version": "5.1.6"
+  },
+  "health_score": {
+    "overall": 92,
+    "check_coverage": 10,
+    "categories_scored": 100,
+    "security": 100,
+    "updates": 100,
+    "hygiene": 100,
+    "resources": 20,
+    "stability": 100
+  },
+  "findings": [
+    {
+      "id": "PKG-01",
+      "category": "updates",
+      "severity": "P1",
+      "title": "Sin actualizaciones pendientes",
+      "description": "Sistema actualizado",
+      "control": "PKG-01",
+      "status": "PASS",
+      "evidence": "0 actualizaciones",
+      "remediation": "",
+      "risk_level": "R0"
+    },
+    {
+      "id": "PKG-03",
+      "category": "updates",
+      "severity": "P1",
+      "title": "Kernel running coincide con instalado",
+      "description": "No hay reinicio pendiente de kernel",
+      "control": "PKG-03",
+      "status": "PASS",
+      "evidence": "running: 7.0.0-38-generic, installed: 7.0.0-38-generic",
+      "remediation": "",
+      "risk_level": "R0"
+    },
+    {
+      "id": "PKG-05",
+      "category": "hygiene",
+      "severity": "P3",
+      "title": "Sin paquetes huerfanos",
+      "description": "Limpio",
+      "control": "PKG-05",
+      "status": "PASS",
+      "evidence": "0 huerfanos",
+      "remediation": "",
+      "risk_level": "R0"
+    },
+    {
+      "id": "PKG-07",
+      "category": "hygiene",
+      "severity": "P2",
+      "title": "Sin archivos de configuracion pendientes",
+      "description": "Configuraciones al dia",
+      "control": "PKG-07",
+      "status": "PASS",
+      "evidence": "0 pendientes",
+      "remediation": "",
+      "risk_level": "R0"
+    },
+    {
+      "id": "NET-04",
+      "category": "security",
+      "severity": "P0",
+      "title": "SSH escuchando en interfaz especifica",
+      "description": "No expuesto a todas las interfaces",
+      "control": "NET-04",
+      "status": "PASS",
+      "evidence": "ss -tuln | grep :22 -> tcp   LISTEN 0      128                                  127.0.0.1:22         0.0.0.0:*   \ntcp   LISTEN 0      128                                10.93.74.27:22         0.0.0.0:*",
+      "remediation": "",
+      "risk_level": "R0"
+    },
+    {
+      "id": "FS-10",
+      "category": "resources",
+      "severity": "P1",
+      "title": "Disco / al 100%",
+      "description": "Espacio critico, riesgo de fallo",
+      "control": "FS-10",
+      "status": "FAIL",
+      "evidence": "df -h / -> 100%",
+      "remediation": "Limpiar espacio o expandir particion",
+      "risk_level": "R2"
+    },
+    {
+      "id": "FS-10",
+      "category": "resources",
+      "severity": "P4",
+      "title": "Disco /sys/firmware/efi/efivars al 40%",
+      "description": "Espacio adecuado",
+      "control": "FS-10",
+      "status": "PASS",
+      "evidence": "df -h /sys/firmware/efi/efivars -> 40%",
+      "remediation": "",
+      "risk_level": "R0"
+    },
+    {
+      "id": "FS-10",
+      "category": "resources",
+      "severity": "P4",
+      "title": "Disco /boot/efi al 1%",
+      "description": "Espacio adecuado",
+      "control": "FS-10",
+      "status": "PASS",
+      "evidence": "df -h /boot/efi -> 1%",
+      "remediation": "",
+      "risk_level": "R0"
+    },
+    {
+      "id": "LOG-06",
+      "category": "stability",
+      "severity": "P3",
+      "title": "32 errores (prioridad 0-3) en ultimas 24h",
+      "description": "Algunos errores en logs",
+      "control": "LOG-06",
+      "status": "PASS",
+      "evidence": "journalctl -p 0..3 --since '24h' -> 32 lineas",
+      "remediation": "Monitorear",
+      "risk_level": "R0"
+    },
+    {
+      "id": "SRV-02",
+      "category": "resources",
+      "severity": "P1",
+      "title": "3 servicios systemd fallidos",
+      "description": "Servicios que no iniciaron correctamente — riesgo de disponibilidad",
+      "control": "SRV-02",
+      "status": "FAIL",
+      "evidence": "systemctl --failed -> 3",
+      "remediation": "Investigar con systemctl status <servicio> y journalctl -u <servicio>",
+      "risk_level": "R2"
+    }
+  ],
+  "summary": {
+    "total_checks": 10,
+    "passed": 8,
+    "failed": 2,
+    "warned": 0,
+    "skipped": 0,
+    "errors": 0,
+    "check_coverage": 10,
+    "category_coverage": {
+      "security": {
+        "total": 1,
+        "scorable": 1,
+        "unscored": 0
+      },
+      "updates": {
+        "total": 2,
+        "scorable": 2,
+        "unscored": 0
+      },
+      "hygiene": {
+        "total": 2,
+        "scorable": 2,
+        "unscored": 0
+      },
+      "resources": {
+        "total": 4,
+        "scorable": 4,
+        "unscored": 0
+      },
+      "stability": {
+        "total": 1,
+        "scorable": 1,
+        "unscored": 0
+      }
+    },
+    "by_severity": {
+      "P0": 1,
+      "P1": 4,
+      "P2": 1,
+      "P3": 2,
+      "P4": 2
+    }
+  }
+}
