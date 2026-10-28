@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Coherencia de versión de repo, changelog y workflows.
+"""Coherencia de versión de repo, changelog, README y workflows.
 
 Uso:
   python3 tools/validate/release_coherence.py [--root DIR] [--release-gate]
@@ -16,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else Path(__file__).resolve().parents[2]
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+README_VERSION_RE = re.compile(r"Versión \*\*(\d+\.\d+\.\d+)\*\*")
 CHANGELOG_H2 = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\] - (\d{4}-\d{2}-\d{2})(.*)$")
 USES_RE = re.compile(r"^\s+uses:\s+(\S+)", re.M)
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -37,6 +38,22 @@ def package_version(root: Path) -> str | None:
         err(f"package.json version no semver: {ver!r}")
         return None
     return ver
+
+
+def check_readme_version(root: Path, version: str | None) -> None:
+    path = root / "README.md"
+    if not path.is_file():
+        err("falta README.md")
+        return
+    found = README_VERSION_RE.findall(path.read_text(encoding="utf-8"))
+    if not found:
+        err("README.md sin línea 'Versión **X.Y.Z**'")
+        return
+    if version is None:
+        return
+    for value in found:
+        if value != version:
+            err(f"README.md declara Versión **{value}** y package.json.version es {version}")
 
 
 def changelog_sections(text: str) -> dict[str, dict]:
@@ -146,6 +163,7 @@ def main() -> int:
     release_gate = "--release-gate" in sys.argv
     root = ROOT
     version = package_version(root)
+    check_readme_version(root, version)
     check_changelog(root, version, release_gate)
     check_workflows(root)
     print(f"errores: {len(ERRORS)}")

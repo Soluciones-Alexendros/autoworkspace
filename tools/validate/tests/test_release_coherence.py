@@ -15,6 +15,59 @@ def load(path, name):
     return mod
 
 
+def fixture_root(tmp_path, readme_version, package_version):
+    """Repositorio mínimo y coherente; solo varía la versión de README/package."""
+    import json
+
+    (tmp_path / "package.json").write_text(json.dumps({"name": "t", "version": package_version}), encoding="utf-8")
+    (tmp_path / "README.md").write_text(f"# t\n\nVersión **{readme_version}**. Skills.\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(
+        f"# Changelog\n\n## [Unreleased]\n\n- pending\n\n## [{package_version}] - 2026-10-26\n\n- x\n",
+        encoding="utf-8",
+    )
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "ci.yml").write_text(
+        "name: ci\non: push\npermissions:\n  contents: read\njobs:\n"
+        "  ok:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n"
+        "    steps:\n      - run: echo ok\n",
+        encoding="utf-8",
+    )
+    return tmp_path
+
+
+def run_coherence(coh, root):
+    coh.ERRORS.clear()
+    version = coh.package_version(root)
+    coh.check_readme_version(root, version)
+    coh.check_changelog(root, version, False)
+    coh.check_workflows(root)
+    return list(coh.ERRORS)
+
+
+def test_readme_version_mismatch_fails(tmp_path):
+    """README «Versión **5.1.0**» con package.json 6.0.0 debe fallar."""
+    coh = load(COH, "release_coherence")
+    root = fixture_root(tmp_path, "5.1.0", "6.0.0")
+    errors = run_coherence(coh, root)
+    assert any("README.md declara Versión **5.1.0**" in e for e in errors), errors
+
+
+def test_readme_version_matches_package(tmp_path):
+    coh = load(COH, "release_coherence")
+    root = fixture_root(tmp_path, "6.0.0", "6.0.0")
+    assert run_coherence(coh, root) == []
+
+
+def test_repo_head_passes_readme_version():
+    """El README real del repo declara la versión de package.json."""
+    coh = load(COH, "release_coherence")
+    root = COH.resolve().parents[2]
+    coh.ERRORS.clear()
+    coh.check_readme_version(root, coh.package_version(root))
+    assert coh.ERRORS == []
+
+
 def test_changelog_em_dash_rejected():
     coh = load(COH, "release_coherence")
     coh.ERRORS.clear()

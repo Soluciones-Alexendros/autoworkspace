@@ -8,24 +8,24 @@
 
 ## Guías de producto
 
-| Documento                          | Contenido                                                 |
-| ---------------------------------- | --------------------------------------------------------- |
-| [STANDARD.md](STANDARD.md)         | Contrato de `SKILL.md` (frontmatter, longitud, headings)  |
-| [TAXONOMY.md](TAXONOMY.md)         | Dominios y tipos de skill                                 |
-| [skill-spec.md](skill-spec.md)     | Spec de skills (antes `docs/repo-standard/skill-spec.md`) |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Puntero a la guía canónica en la raíz                     |
+| Documento                          | Contenido                                                |
+| ---------------------------------- | -------------------------------------------------------- |
+| [STANDARD.md](STANDARD.md)         | Contrato de `SKILL.md` (frontmatter, longitud, headings) |
+| [TAXONOMY.md](TAXONOMY.md)         | Dominios y tipos de skill                                |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Puntero a la guía canónica en la raíz                    |
 
 ## Canon de flota
 
-| Documento                                            | Contenido                                                |
-| ---------------------------------------------------- | -------------------------------------------------------- |
-| [REUTILIZACION.md](REUTILIZACION.md)                 | Alinear un repo existente; crear desde `templates/repo/` |
-| [architecture/overview.md](architecture/overview.md) | Diseño del canon                                         |
-| [architecture/decisions/](architecture/decisions/)   | ADRs (0001…0016)                                         |
-| [guides/](guides/)                                   | Setup, estilo, tests                                     |
-| [runbooks/](runbooks/)                               | Deploy, rollback, secretos                               |
-| [plan-template.md](plan-template.md)                 | Cabecera NORMA DE FLOTA + esqueleto de plan-prompt       |
-| [plans/](plans/)                                     | Plan-prompts P1–P11 (Notion → `NOTION_POLICY_PAGE`)      |
+| Documento                                            | Contenido                                                            |
+| ---------------------------------------------------- | -------------------------------------------------------------------- |
+| [REUTILIZACION.md](REUTILIZACION.md)                 | Alinear un repo existente; crear desde `templates/repo/`             |
+| [architecture/overview.md](architecture/overview.md) | Diseño del canon                                                     |
+| [architecture/decisions/](architecture/decisions/)   | ADRs (0001…0016)                                                     |
+| [guides/](guides/)                                   | Setup, estilo, tests                                                 |
+| [runbooks/](runbooks/)                               | Deploy, rollback, secretos                                           |
+| [plan-template.md](plan-template.md)                 | Cabecera NORMA DE FLOTA + esqueleto de plan-prompt                   |
+| [plans/](plans/)                                     | Plan-prompts P1–P11 (Notion → `NOTION_POLICY_PAGE`)                  |
+| [archives/](archives/)                               | Documentos históricos retirados (`skill-spec-v3`, `migration-v2-v3`) |
 
 Política vigente: check único `ci-gate`, merge `gh pr merge --auto --squash`, **sin** exigir etiqueta `automerge` ([ADR-0012](architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md), [ADR-0013](architecture/decisions/ADR-0013-check-unico-ci-gate.md)).
 

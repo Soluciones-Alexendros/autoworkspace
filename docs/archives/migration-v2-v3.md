@@ -1,5 +1,7 @@
 # Migración v2 → v3.0 (OpenCode, vendor-neutral)
 
+> **Archivado (P12):** sustituido por [docs/STANDARD.md](../STANDARD.md) y [docs/TAXONOMY.md](../TAXONOMY.md). Se conserva solo como referencia histórica.
+
 ## Breaking changes
 
 - Renaming ES → EN: operar-* → operate-_, verificar-_ → verify-_, construir-_ → build-_, disenar-_ → design-*

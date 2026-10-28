@@ -49,14 +49,15 @@ Per-task role selection (backend / front / design / clean-code) is mandatory whe
 
 ## Continuous integration
 
-| Workflow       | Job(s)                                           | Role                                            |
-| -------------- | ------------------------------------------------ | ----------------------------------------------- |
-| `ci.yml`       | `pipeline`, `hygiene`, `validate`, **`ci-gate`** | Canon caller + gate agregado                    |
-| `quality.yml`  | `hygiene`                                        | Required clásico hasta P9                       |
-| `validate.yml` | `validate`                                       | Required clásico hasta P9                       |
-| `version.yml`  | `check-bump`                                     | Skill `metadata.version` bump on PRs (hasta P2) |
-| `release.yml`  | `publish` (+ provenance)                         | Tag cut and GitHub Release on `main`            |
-| `security.yml` | `actionlint`                                     | Workflow lint                                   |
+| Workflow         | Job(s)                                                                                                                  | Role                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `ci.yml`         | `pipeline-python`, `pipeline-node`, `canon`, `caller-reusable-path`, `hygiene`, `validate`, `check-bump`, **`ci-gate`** | Caller local + gate agregado (`ci-gate.needs` con los siete anteriores) |
+| `quality.yml`    | `hygiene`                                                                                                               | Required clásico hasta P9                                               |
+| `validate.yml`   | `validate`                                                                                                              | Required clásico hasta P9                                               |
+| `version.yml`    | `check-bump`                                                                                                            | Skill `metadata.version` bump on PRs (hasta P2)                         |
+| `release.yml`    | `publish`, `provenance`                                                                                                 | Tag cut, GitHub Release y atestación on `main`                          |
+| `security.yml`   | `actionlint`                                                                                                            | Workflow lint                                                           |
+| `reusable-*.yml` | `quality`, `test`, `build`, `smoke`, `e2e`, `link-check`, `security` (según stack)                                      | Reusables llamados por SHA desde `stacks/<stack>/ci.yml`                |
 
 Local equivalents: `make validate`, `make lint`, `make test`, `make smoke`.
 
