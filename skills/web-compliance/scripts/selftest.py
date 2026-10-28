@@ -19,6 +19,8 @@ import argparse
 import logging
 import os
 import sys
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger("auditoria360.selftest")
 
@@ -32,11 +34,18 @@ import contrast  # noqa: E402
 import report as report_mod  # noqa: E402
 import score as score_mod  # noqa: E402
 
-RESULTADOS = []
+RESULTADOS: list[tuple[str, str, str]] = []
+
+# Constantes con nombre (P12 T6e): sustituyen literales mágicos.
+MIN_REGISTRY_CHECKS = 40
+WEIGHT_TOLERANCE = 0.001
+EXIT_USAGE = 2
+PCT_FULL = 100
+PCT_HALF = 50
 
 
-def test(nombre):
-    def deco(fn):
+def test(nombre: str) -> Callable[[Callable[[], None]], None]:
+    def deco(fn: Callable[[], None]) -> None:
         try:
             fn()
             RESULTADOS.append((nombre, "PASS", ""))
@@ -50,7 +59,7 @@ def test(nombre):
     return deco
 
 
-def _by_key(res):
+def _by_key(res: dict[str, Any]) -> dict[str, Any]:
     return {c["script_key"]: c for c in res["checks"]}
 
 
@@ -58,20 +67,20 @@ def _by_key(res):
 
 
 @test("configs/checks.json y thresholds.json válidos y coherentes")
-def _():
-    reg, th = score_mod.load_configs()
+def _configs_coherentes() -> None:
+    reg, _th = score_mod.load_configs()
     ids = [c["id"] for c in reg["checks"]]
     assert len(ids) == len(set(ids)), "IDs duplicados en el registry"
-    assert len(ids) >= 40, f"Registry con {len(ids)} checks (<40)"
+    assert len(ids) >= MIN_REGISTRY_CHECKS, f"Registry con {len(ids)} checks (<{MIN_REGISTRY_CHECKS})"
     for c in reg["checks"]:
         assert c["pilar"] in reg["pilares"], f"{c['id']} con pilar desconocido {c['pilar']}"
         assert c["severidad"] in ("Crítico", "Alto", "Medio", "Bajo"), f"{c['id']} severidad inválida"
     peso = sum(p["peso"] for p in reg["pilares"].values())
-    assert abs(peso - 1.0) < 0.001, f"Pesos de pilares suman {peso} (debe ser 1.0)"
+    assert abs(peso - 1.0) < WEIGHT_TOLERANCE, f"Pesos de pilares suman {peso} (debe ser 1.0)"
 
 
 @test("todos los script_key del registry tienen check implementado en audit_page")
-def _():
+def _registry_keys_implemented() -> None:
     reg, _ = score_mod.load_configs()
     keys_registry = {c["script_key"] for c in reg["checks"] if c.get("script_key")}
     res = audit_page.audit(file=os.path.join(FIXTURES, "page_pass.html"))
@@ -84,7 +93,7 @@ def _():
 
 
 @test("audit_page: fixture PASS supera checks clave")
-def _():
+def _audit_pass_fixture() -> None:
     res = audit_page.audit(file=os.path.join(FIXTURES, "page_pass.html"))
     assert res["error"] is None, f"error inesperado: {res['error']}"
     c = _by_key(res)
@@ -106,7 +115,7 @@ def _():
 
 
 @test("audit_page: fixture FAIL detecta violaciones clave")
-def _():
+def _audit_fail_fixture() -> None:
     res = audit_page.audit(file=os.path.join(FIXTURES, "page_fail.html"))
     c = _by_key(res)
     esperado_fail = ["html_lang", "viewport", "skip_link", "jsonld", "headings", "title"]
@@ -117,14 +126,14 @@ def _():
 
 
 @test("audit_page: URL inalcanzable produce error controlado y exit 2")
-def _():
+def _audit_unreachable_url() -> None:
     res = audit_page.audit(url="https://dominio-que-no-existe-xyz.invalid/")
     assert res["error"] is not None, "debería registrar error de red"
     assert res["checks"] == [], "no debe inventar checks ante fallo de obtención"
 
 
 @test("audit_page: hreflang válido con x-default y detección de inválido")
-def _():
+def _audit_hreflang() -> None:
     p = audit_page.PageParser()
     p.feed(
         '<html lang="es"><head>'
@@ -143,14 +152,14 @@ def _():
 
 
 @test("contrast: ratios WCAG de referencia")
-def _():
+def _contrast_reference_ratios() -> None:
     failures = contrast.selftest()
     assert not failures, "; ".join(failures)
 
 
 @test("contrast: color inválido devuelve exit 2 sin romper")
-def _():
-    assert contrast.main(["#zzz", "#fff"]) == 2
+def _contrast_invalid_color() -> None:
+    assert contrast.main(["#zzz", "#fff"]) == EXIT_USAGE
     assert contrast.main(["#000", "#fff"]) == 0
 
 
@@ -158,16 +167,16 @@ def _():
 
 
 @test("score: todo PASS => dictamen POSITIVO")
-def _():
+def _score_all_pass() -> None:
     reg, _ = score_mod.load_configs()
     checks = [{"id": c["id"], "resultado": "PASS"} for c in reg["checks"]]
     sc = score_mod.score(checks)
     assert sc["dictamen"] == "POSITIVO", sc["motivo_dictamen"]
-    assert sc["pct_global"] == 100
+    assert sc["pct_global"] == PCT_FULL
 
 
 @test("score: 1 FAIL crítico => NEGATIVO aunque el resto pase")
-def _():
+def _score_one_critical_fail() -> None:
     reg, _ = score_mod.load_configs()
     checks = [{"id": c["id"], "resultado": "PASS"} for c in reg["checks"]]
     crit = next(c for c in reg["checks"] if c["severidad"] == "Crítico")
@@ -178,18 +187,18 @@ def _():
 
 
 @test("score: N/A se excluye del denominador; WARN cuenta como fallo")
-def _():
+def _score_na_and_warn() -> None:
     reg, _ = score_mod.load_configs()
     checks = [{"id": c["id"], "resultado": "NA"} for c in reg["checks"]]
     checks[0]["resultado"] = "PASS"
     checks[1]["resultado"] = "WARN"
     sc = score_mod.score(checks)
-    assert sc["pct_global"] == 50, sc["pct_global"]
+    assert sc["pct_global"] == PCT_HALF, sc["pct_global"]
     assert sc["dictamen"] in ("PARCIAL", "NEGATIVO")
 
 
 @test("score: acepta salida directa de audit_page (script_key)")
-def _():
+def _score_from_audit() -> None:
     res = audit_page.audit(file=os.path.join(FIXTURES, "page_pass.html"))
     sc = score_mod.score(res["checks"])
     assert sc["pct_global"] is not None
@@ -197,7 +206,7 @@ def _():
 
 
 @test("score: un FAIL no es pisado por un PASS posterior del mismo check")
-def _():
+def _score_fail_not_overwritten() -> None:
     checks = [{"id": "ACC-04", "resultado": "FAIL"}, {"id": "ACC-04", "resultado": "PASS"}]
     sc = score_mod.score(checks)
     acc04 = [h for h in sc["hallazgos"] if h["id"] == "ACC-04"]
@@ -208,7 +217,7 @@ def _():
 
 
 @test("report: genera Markdown con dictamen, matriz y verificación de cierre")
-def _():
+def _report_markdown() -> None:
     reg, _ = score_mod.load_configs()
     checks = [{"id": c["id"], "resultado": "PASS", "evidencia": "test"} for c in reg["checks"]]
     checks[0]["resultado"] = "FAIL"
@@ -223,7 +232,7 @@ def _():
 # ---------------------------------------------------------------- main
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Smoke test integrado de auditoria-360-web (exit 0/1)")
     ap.parse_args(argv)
