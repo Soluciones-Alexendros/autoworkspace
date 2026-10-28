@@ -6,36 +6,37 @@
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
   "dependencyDashboard": true,
-  "platformAutomerge": true,
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "platformAutomerge": false,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 7am on monday"]
   },
   "packageRules": [
     {
-      "description": "Automerge patch, pin y digest",
+      "description": "Patch, pin y digest: sin automerge",
       "matchUpdateTypes": ["patch", "pin", "digest"],
-      "automerge": true,
-      "automergeType": "pr"
-    },
-    {
-      "description": "Agrupar y automergear minors",
-      "matchUpdateTypes": ["minor"],
-      "groupName": "minor dependencies",
-      "automerge": true,
-      "automergeType": "pr"
-    },
-    {
-      "description": "Majors: revisión humana, sin automerge",
-      "matchUpdateTypes": ["major"],
       "automerge": false
     },
     {
-      "description": "Agrupar GitHub Actions no-major",
+      "description": "Agrupar minors: sin automerge",
+      "matchUpdateTypes": ["minor"],
+      "groupName": "minor dependencies",
+      "automerge": false
+    },
+    {
+      "description": "Majors: revisión humana, cuarentena ampliada, sin automerge",
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "14 days",
+      "automerge": false
+    },
+    {
+      "description": "Agrupar GitHub Actions no-major: sin automerge",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "github-actions",
-      "automerge": true
+      "automerge": false
     }
   ]
 }
