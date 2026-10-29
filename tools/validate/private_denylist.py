@@ -129,12 +129,12 @@ def _scan_files(root: Path, files: list[str], patterns: list[re.Pattern[str]]) -
 
 
 def main_with_root(root: Path) -> int:
-    raw, err = _load_raw_config()
-    if err is not None:
-        return _emit_not_run(err)
+    raw, cfg_err = _load_raw_config()
+    if cfg_err is None and raw is not None and raw.strip() == "":
+        cfg_err = "CONFIG_EMPTY"
+    if cfg_err is not None:
+        return _emit_not_run(cfg_err)
     assert raw is not None
-    if raw.strip() == "":
-        return _emit_not_run("CONFIG_EMPTY")
     patterns, perr = _parse_patterns(raw)
     if perr is not None:
         if perr == "CONFIG_EMPTY":
@@ -147,12 +147,12 @@ def main_with_root(root: Path) -> int:
         _emit("ENUM_ERROR")
         return 1
     code = _scan_files(root, enumerated.files, patterns)
-    if code == "CLEAR":
-        _emit("CLEAR")
-        print("DENYLIST: CLEAR")
-        return 0
-    _emit(code)
-    return 1
+    if code != "CLEAR":
+        _emit(code)
+        return 1
+    _emit("CLEAR")
+    print("DENYLIST: CLEAR")
+    return 0
 
 
 def main() -> int:

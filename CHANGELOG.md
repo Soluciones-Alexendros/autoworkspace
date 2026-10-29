@@ -6,10 +6,6 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
-### Fixed
-
-- `private_denylist`: secreto/env ausente, vacío o solo whitespace → `NOT_RUN` (exit 0 + WARN). Fail-closed solo con ≥1 patrón válido (`CLEAR` / `DENYLIST_MATCH` / `REGEX_INVALID`).
-
 ## [7.0.2] - 2026-10-29
 
 ### Fixed
