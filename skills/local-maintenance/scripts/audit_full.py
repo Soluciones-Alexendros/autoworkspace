@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """audit_full.py - Auditoria completa de higiene/updates (P0-P4).
 
 Fase 1: reutiliza audit_quick.run_quick_checks (PKG-01/03/05/07, FS-10,
@@ -16,6 +17,8 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Callable
+from typing import Any
 
 from audit_quick import run_quick_checks
 from common import (
@@ -34,6 +37,8 @@ from common import (
     run,
     sshd_effective,
 )
+
+MIN_FIELDS = 2
 
 log_tag = color("[AUDIT-FULL]", BLUE)
 
@@ -56,12 +61,12 @@ def sshd_eff_get(key: str) -> str:
     """Compat: retained for tests/callers; hardening SSH vive en local-security."""
     for line in sshd_effective().splitlines():
         parts = line.split()
-        if parts and parts[0].lower() == key and len(parts) >= 2:
+        if parts and parts[0].lower() == key and len(parts) >= MIN_FIELDS:
             return parts[1]
     return ""
 
 
-def run_extended_checks(collector: FindingCollector, pkg_mgr: str, runner=None) -> None:
+def run_extended_checks(collector: FindingCollector, pkg_mgr: str, runner: Callable[..., Any] | None = None) -> None:
     """Fase 2: controles extendidos de higiene (solo audit_full)."""
     r = runner if runner is not None else run_check
     print(f"{log_tag} Fase 2: Controles extendidos de higiene (P2-P4)...")
@@ -129,10 +134,15 @@ def main(argv: list[str] | None = None) -> int:
     hs = output["health_score"]
     print(f"{log_tag} Auditoria completada en {duration}s")
     print(
-        f"{log_tag} Health Score: {hs['overall']} (Security: {hs['security']}, Updates: {hs['updates']}, Hygiene: {hs['hygiene']}, Resources: {hs['resources']}, Stability: {hs['stability']})"
+        f"{log_tag} Health Score: {hs['overall']} "
+        f"(Security: {hs['security']}, Updates: {hs['updates']}, "
+        f"Hygiene: {hs['hygiene']}, Resources: {hs['resources']}, "
+        f"Stability: {hs['stability']})"
     )
     print(
-        f"{log_tag} Resultados: {collector.passed} passed, {collector.failed} failed, {collector.warned} warned, {collector.skipped} skipped, {collector.errors} errors"
+        f"{log_tag} Resultados: {collector.passed} passed, "
+        f"{collector.failed} failed, {collector.warned} warned, "
+        f"{collector.skipped} skipped, {collector.errors} errors"
     )
     print(f"{log_tag} Guardado en: {output_file}")
     return 0

@@ -25,153 +25,29 @@ target-version = "py312"
 [tool.ruff.format]
 quote-style = "double"
 
-# BEGIN GENERATED: quality-debt (tools/validate/freeze_quality_debt.py — do not edit by hand)
-# Generated baseline — retire in P12. Do not edit by hand.
-# ruff remaining by rule: PLR2004=135, PLC0415=49, C901=32, PLW0603=26, PLR0912=23, E501=21, PLW1510=20, RUF059=13, PLR0911=12, PLR0913=12, PLR0915=12, PLW0108=10, UP017=10, E741=9, RUF003=9, SIM117=9, RUF043=6, SIM115=6, E402=5, PLR0917=4, PLW2901=4, RUF002=4, SIM105=4, SIM108=4, UP022=4, SIM103=3, F841=2, PLW0602=2, RUF001=2, SIM102=2, B007=1, N806=1, N999=1, RUF005=1
-# mypy remaining by code: no-untyped-def=535, no-untyped-call=368, type-arg=75, import-not-found=26, attr-defined=21, import-untyped=9, var-annotated=8, no-any-return=7, misc=6, assignment=2, func-returns-value=2, arg-type=1, dict-item=1, unused-ignore=1
-
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "C90", "N", "PL", "RUF"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
 
-[tool.ruff.lint.per-file-ignores]
-"scripts/migrate-frontmatter.py" = ["PLC0415", "PLR2004"]
-"skills/local-maintenance/scripts/audit_full.py" = ["E501", "PLR2004"]
-"skills/local-maintenance/scripts/audit_quick.py" = ["E501"]
-"skills/local-maintenance/scripts/check_deps.py" = ["PLR0913", "PLR0917"]
-"skills/local-maintenance/scripts/clean_routine.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLW0602", "PLW0603", "SIM105"]
-"skills/local-maintenance/scripts/common.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0917", "PLR2004", "PLW2901", "RUF059", "UP017", "UP022"]
-"skills/local-maintenance/scripts/probe_system.py" = ["PLR2004"]
-"skills/local-maintenance/scripts/report_render.py" = ["C901", "E501", "PLC0415", "PLR0915", "PLR2004", "UP017"]
-"skills/local-maintenance/scripts/risk_gate.py" = ["PLR0911", "PLW2901"]
-"skills/local-maintenance/scripts/session_logger.py" = ["PLW0603"]
-"skills/local-maintenance/scripts/snapshot_state.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLR0915", "PLR2004"]
-"skills/local-maintenance/scripts/tests/conftest.py" = ["SIM105"]
-"skills/local-maintenance/scripts/tests/test_audit_full.py" = ["PLC0415", "PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_audit_quick.py" = ["PLC0415", "PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_check_deps.py" = ["PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_clean_routine.py" = ["PLR2004"]
-"skills/local-maintenance/scripts/tests/test_common.py" = ["PLR2004", "PLW1510", "RUF059"]
-"skills/local-maintenance/scripts/tests/test_p0_containment.py" = ["PLR2004"]
-"skills/local-maintenance/scripts/tests/test_probe_system.py" = ["PLC0415", "PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_report_render.py" = ["PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_risk_gate.py" = ["PLR2004", "PLW1510"]
-"skills/local-maintenance/scripts/tests/test_session_logger.py" = ["PLC0415", "PLR2004", "PLW1510", "SIM105", "SIM115", "SIM117"]
-"skills/local-maintenance/scripts/tests/test_snapshot_state.py" = ["PLC0415", "PLR2004", "PLW1510", "SIM117"]
-"skills/local-proton/scripts/proton_bridge.py" = ["PLC0415", "RUF059"]
-"skills/local-proton/scripts/test_proton_bridge.py" = ["E501", "PLC0415", "PLW0108"]
-"skills/local-security/scripts/apparmor_lifecycle.py" = ["UP017", "UP022"]
-"skills/local-security/scripts/forense_collector.py" = ["UP017"]
-"skills/local-security/scripts/harden_plan.py" = ["PLR2004"]
-"skills/local-security/scripts/scan_orchestrator.py" = ["E741", "RUF059"]
-"skills/local-security/scripts/test_postura.py" = ["E741", "PLW1510"]
-"skills/local-security/scripts/tests/test_nuevos_scripts.py" = ["E402", "PLC0415", "PLR2004", "PLW1510", "SIM115", "SIM117"]
-"skills/local-security/scripts/vulns_check.py" = ["E741"]
-"skills/plan-continue/scripts/inicio_plan.py" = ["C901", "E501", "PLC0415", "PLR0912", "PLR2004", "UP017"]
-"skills/plan-continue/scripts/scan_repo.py" = ["C901", "PLR0912", "PLR0915", "PLR2004", "PLW2901", "SIM102", "SIM103"]
-"skills/plan-continue/scripts/test_scan_repo.py" = ["PLC0415", "PLW1510"]
-"skills/project-publish/scripts/review-vs-plan.py" = ["PLR2004", "PLW1510"]
-"skills/web-compliance/scripts/audit_page.py" = ["C901", "E741", "F841", "PLR0912", "PLR0915", "PLR2004", "RUF059"]
-"skills/web-compliance/scripts/contrast.py" = ["PLR2004"]
-"skills/web-compliance/scripts/report.py" = ["B007", "C901", "E501", "N806", "PLR0912", "RUF001", "SIM105"]
-"skills/web-compliance/scripts/selftest.py" = ["PLR2004", "RUF059"]
-"skills/web-compliance/tests/test_cli.py" = ["PLR2004"]
-"skills/web-compliance/tests/test_golden_errors.py" = ["PLR0913", "PLR0917", "PLR2004"]
-"tools/contracts/loader.py" = ["C901", "PLR0911", "PLR0912", "PLR0915", "PLR2004", "PLW0603"]
-"tools/contracts/result.py" = ["PLR0913", "UP017"]
-"tools/contracts/tests/test_loader.py" = ["PLR2004"]
-"tools/execution/approval.py" = ["PLC0415", "PLR0913"]
-"tools/execution/evidence.py" = ["C901", "F841", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "SIM108"]
-"tools/execution/ops.py" = ["C901", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR2004"]
-"tools/execution/tests/test_ops_approval.py" = ["PLW0108"]
-"tools/execution/tests/test_product_closure_catalog.py" = ["PLR2004"]
-"tools/execution/tests/test_product_closure_evidence.py" = ["RUF002", "RUF003", "RUF043"]
-"tools/execution/tests/test_product_closure_state_release.py" = ["PLW1510", "RUF002"]
-"tools/execution/tests/test_verifiable_closure.py" = ["PLC0415", "PLR2004", "PLW0108", "RUF002", "RUF003", "RUF043"]
-"tools/skill-router/route.py" = ["C901", "PLR0912"]
-"tools/validate/freeze_quality_debt.py" = ["PLW1510", "RUF005"]
-"tools/validate/release_coherence.py" = ["C901", "PLC0415", "PLR0912"]
-"tools/validate/skill_links.py" = ["PLW2901"]
-"tools/validate/skill_spec.py" = ["C901", "PLR0912", "PLR2004"]
-"tools/validate/tests/test_release_coherence.py" = ["PLC0415"]
-"tools/version/bump.py" = ["C901", "PLR0911", "PLR0912", "PLR2004"]
-"tools/version/cut_tag.py" = ["C901", "PLR0911"]
-"tools/workspace-router/__init__.py" = ["N999"]
-"tools/workspace-router/run.py" = ["C901", "PLR0911", "PLR0912", "PLR0915"]
-"tools/workspace-router/status_bump.py" = ["C901", "PLC0415", "PLR0913", "PLR0915", "PLR2004", "UP017"]
-
 [tool.mypy]
 python_version = "3.12"
 strict = true
 explicit_package_bases = true
+mypy_path = "tools"
+# Exclusions estructurales, no deuda congelada (retirado el baseline en P12 T6e).
+# `tools/workspace-router/` y `tools/skill-router/` son CLIs sin paquete importable
+# (el nombre del directorio lleva guion, lo fija el contrato del router) y los
+# `conftest.py` duplicados chocan entre si al compartir nombre de modulo.
 exclude = [
   'tools/workspace-router/',
   'tools/skill-router/',
   '.*/tests/conftest\.py$',
 ]
 
+# Terceros sin stubs publicados: se declaran aquí una sola vez, sin silenciar
+# los módulos propios.
 [[tool.mypy.overrides]]
-module = [
-  "apparmor_lifecycle",
-  "audit_full",
-  "audit_page",
-  "audit_quick",
-  "clean_routine",
-  "common",
-  "contrast",
-  "forense_collector",
-  "harden_plan",
-  "inicio_plan",
-  "probe_system",
-  "proton_bridge",
-  "report",
-  "report_render",
-  "risk_gate",
-  "scan_orchestrator",
-  "scan_repo",
-  "score",
-  "scripts.migrate-frontmatter",
-  "selftest",
-  "snapshot_state",
-  "test_audit_full",
-  "test_audit_quick",
-  "test_check_deps",
-  "test_clean_routine",
-  "test_cli",
-  "test_common",
-  "test_golden_errors",
-  "test_inicio_plan",
-  "test_nuevos_scripts",
-  "test_p0_containment",
-  "test_postura",
-  "test_probe_system",
-  "test_proton_bridge",
-  "test_report_render",
-  "test_risk_gate",
-  "test_scan_repo",
-  "test_session_logger",
-  "test_snapshot_state",
-  "tools.contracts.loader",
-  "tools.contracts.tests.test_loader",
-  "tools.contracts.validate_contracts",
-  "tools.execution.evidence",
-  "tools.execution.ops",
-  "tools.execution.tests.test_ops_approval",
-  "tools.execution.tests.test_product_closure_catalog",
-  "tools.execution.tests.test_product_closure_evidence",
-  "tools.execution.tests.test_product_closure_state_release",
-  "tools.execution.tests.test_verifiable_closure",
-  "tools.validate.freeze_quality_debt",
-  "tools.validate.hygiene",
-  "tools.validate.release_coherence",
-  "tools.validate.skill_spec",
-  "tools.validate.tests.test_release_coherence",
-  "tools.validate.tests.test_skill_spec",
-  "tools.version.cut_tag",
-  "tools.version.tests.test_bump",
-  "vulns_check",
-]
-ignore_errors = true
-# END GENERATED: quality-debt
+module = ["yaml", "jsonschema", "status_bump"]
+ignore_missing_imports = true

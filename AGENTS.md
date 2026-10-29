@@ -48,6 +48,8 @@ Skill bodies and technical contracts are written in English. Frontmatter `descri
 
 This repository **complies with the fleet contract** in `templates/repo/AGENTS.md` §1–8 (ci-gate, squash auto-merge, Renovate-only, plan/* flow when adopted).
 
+Canonical vocabulary (plan branch, task branch, `ci-gate`, `pipeline-<stack>`, publication, ADR states, language rule): [`docs/GLOSARIO.md`](docs/GLOSARIO.md).
+
 ## Progressive Disclosure
 
 SKILL.md body should stay focused (repo gate: ≤500 lines / token budget in `tools/validate/skill_spec.py`). Prefer <200 lines when practical. Heavy docs live in `references/`. Read them only when SKILL.md says so.

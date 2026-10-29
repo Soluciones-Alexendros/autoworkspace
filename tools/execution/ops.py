@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import time
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -16,7 +17,7 @@ from execution.approval import (
     plan_digest,
     provider_from_env,
 )
-from execution.registry import get_handler, get_operation, resolve_argv
+from execution.registry import OpSpec, get_handler, get_operation, resolve_argv
 
 RESERVED_PARAM_KEYS = frozenset({"effect", "require_approval", "argv", "executable_id", "handler", "cwd_override"})
 
@@ -34,6 +35,8 @@ class OpResult:
 
 
 SHELL_ESCAPES = {"bash", "sh", "dash", "zsh"}
+SHELL_FLAG_ARGC = 2
+APPROVAL_EFFECTS = frozenset({"mutate-host", "communicate-external", "access-secret"})
 
 # Outcomes that may never complete a pipeline phase.
 NON_TERMINAL = frozenset({"simulated", "awaiting_agent", "awaiting_approval", "blocked"})
@@ -43,13 +46,142 @@ def _reject_shell_escape(argv: list[str]) -> str | None:
     if not argv:
         return None  # handler-only ops have empty argv
     base = os.path.basename(argv[0])
-    if base in SHELL_ESCAPES and len(argv) >= 2 and argv[1] in {"-c", "-lc"}:
+    if base in SHELL_ESCAPES and len(argv) >= SHELL_FLAG_ARGC and argv[1] in {"-c", "-lc"}:
         return "shell -c escape rejected"
     return None
 
 
 def _make_run_id() -> str:
     return str(uuid.uuid4())
+
+
+def _blocked_early(operation_id: str, message: str) -> OpResult:
+    return OpResult(operation_id, "blocked", None, 0, message, "unknown")
+
+
+def _blocked(
+    operation_id: str,
+    message: str,
+    effect: str,
+    *,
+    digest: str,
+    code: int | None = None,
+) -> OpResult:
+    return OpResult(operation_id, "blocked", code, 0, message, effect, plan_digest=digest)
+
+
+def _handler_identity(handler: object) -> str:
+    """Identity must not rely on __name__ alone (wrappers can collide) - H06/C06."""
+    if handler is None:
+        return ""
+    return (
+        f"{getattr(handler, '__module__', '?')}."
+        f"{getattr(handler, '__qualname__', getattr(handler, '__name__', 'handler'))}"
+        f"#{id(handler)}"
+    )
+
+
+@dataclass(frozen=True)
+class _ExecContext:
+    """Everything the gates and the executor need, resolved once."""
+
+    operation_id: str
+    target: str
+    params: dict[str, Any]
+    spec: OpSpec
+    digest: str
+    handler_id: str
+
+
+def _approval_gate(ctx: _ExecContext) -> OpResult | None:
+    spec = ctx.spec
+    if not (spec.require_approval or spec.effect in APPROVAL_EFFECTS):
+        return None
+    provider = provider_from_env()
+    decision = provider.decide(
+        ApprovalRequest(
+            ctx.operation_id,
+            ctx.target,
+            ctx.params,
+            (spec.effect,),
+            ctx.digest,
+            effects_detail=f"skill={spec.skill}; handler={ctx.handler_id or 'argv'}",
+        )
+    )
+    if not decision.allowed or decision.covers_digest != ctx.digest:
+        return _blocked(ctx.operation_id, decision.reason, spec.effect, digest=ctx.digest)
+    return None
+
+
+def _gate_checks(ctx: _ExecContext, argv: list[str]) -> OpResult | None:
+    """Approval, snapshot and shell-escape gates. None means the operation may run."""
+    blocked = _approval_gate(ctx)
+    if blocked is not None:
+        return blocked
+    if ctx.spec.require_snapshot and not ctx.params.get("snapshot_id"):
+        return _blocked(ctx.operation_id, "snapshot_id required", ctx.spec.effect, digest=ctx.digest)
+    bad = _reject_shell_escape(argv)
+    if bad:
+        return _blocked(ctx.operation_id, bad, ctx.spec.effect, digest=ctx.digest, code=2)
+    return None
+
+
+def _invoke_handler(ctx: _ExecContext, handler: Any, *, start: float, run_id: str) -> OpResult:
+    op, effect, digest = ctx.operation_id, ctx.spec.effect, ctx.digest
+    try:
+        rc = handler(ctx.params)
+        if isinstance(rc, OpResult):
+            rc.run_id = rc.run_id or run_id
+            rc.plan_digest = rc.plan_digest or digest
+            return rc
+        if rc is None:
+            return OpResult(
+                op,
+                "blocked",
+                None,
+                int((time.monotonic() - start) * 1000),
+                "handler returned None; not treated as success",
+                effect,
+                run_id=run_id,
+                plan_digest=digest,
+            )
+        code = int(rc)
+        outcome = "succeeded" if code == 0 else "failed"
+        return OpResult(
+            op,
+            outcome,
+            code,
+            int((time.monotonic() - start) * 1000),
+            "",
+            effect,
+            run_id=run_id,
+            plan_digest=digest,
+        )
+    except Exception as exc:
+        return OpResult(
+            op,
+            "failed",
+            1,
+            int((time.monotonic() - start) * 1000),
+            str(exc)[:500],
+            effect,
+            run_id=run_id,
+            plan_digest=digest,
+        )
+
+
+def _execute_argv(ctx: _ExecContext, *, argv: list[str], cwd: str | None, run_id: str) -> OpResult:
+    if not argv:
+        return _blocked(ctx.operation_id, "no handler and no argv_template", ctx.spec.effect, digest=ctx.digest)
+    return _run_subprocess(
+        ctx.operation_id,
+        argv,
+        ctx.spec.effect,
+        timeout=ctx.spec.timeout,
+        cwd=cwd,
+        run_id=run_id,
+        digest=ctx.digest,
+    )
 
 
 def run_registered(
@@ -65,34 +197,17 @@ def run_registered(
     # Reject reserved keys instead of silently stripping when they indicate policy tampering
     unknown_reserved = RESERVED_PARAM_KEYS & set(raw)
     if unknown_reserved:
-        return OpResult(
-            operation_id,
-            "blocked",
-            None,
-            0,
-            f"reserved parameters rejected: {sorted(unknown_reserved)}",
-            "unknown",
-        )
+        return _blocked_early(operation_id, f"reserved parameters rejected: {sorted(unknown_reserved)}")
     params = dict(raw)
     if is_insufficient_token(str(params.get("approved", ""))):
         params.pop("approved", None)
-
     try:
         spec = get_operation(operation_id)
     except KeyError:
-        return OpResult(operation_id, "blocked", None, 0, "unknown operation", "unknown")
+        return _blocked_early(operation_id, "unknown operation")
 
     argv = resolve_argv(spec, params)
-    handler = get_handler(operation_id)
-    # Identity must not rely on __name__ alone (wrappers can collide) — H06/C06.
-    if handler is None:
-        handler_id = ""
-    else:
-        handler_id = (
-            f"{getattr(handler, '__module__', '?')}."
-            f"{getattr(handler, '__qualname__', getattr(handler, '__name__', 'handler'))}"
-            f"#{id(handler)}"
-        )
+    handler_id = _handler_identity(get_handler(operation_id))
     digest = plan_digest(
         operation_id,
         target,
@@ -107,139 +222,37 @@ def run_registered(
         timeout=spec.timeout,
     )
 
-    if spec.require_approval or spec.effect in {
-        "mutate-host",
-        "communicate-external",
-        "access-secret",
-    }:
-        provider = provider_from_env()
-        decision = provider.decide(
-            ApprovalRequest(
-                operation_id,
-                target,
-                params,
-                (spec.effect,),
-                digest,
-                effects_detail=f"skill={spec.skill}; handler={handler_id or 'argv'}",
-            )
-        )
-        if not decision.allowed or decision.covers_digest != digest:
-            return OpResult(
-                operation_id,
-                "blocked",
-                None,
-                0,
-                decision.reason,
-                spec.effect,
-                plan_digest=digest,
-            )
+    ctx = _ExecContext(
+        operation_id=operation_id,
+        target=target,
+        params=params,
+        spec=spec,
+        digest=digest,
+        handler_id=handler_id,
+    )
 
-    if spec.require_snapshot and not params.get("snapshot_id"):
-        return OpResult(
-            operation_id,
-            "blocked",
-            None,
-            0,
-            "snapshot_id required",
-            spec.effect,
-            plan_digest=digest,
-        )
-
-    bad = _reject_shell_escape(argv)
-    if bad:
-        return OpResult(operation_id, "blocked", 2, 0, bad, spec.effect, plan_digest=digest)
+    gated = _gate_checks(ctx, argv)
+    if gated is not None:
+        return gated
 
     # Re-resolve handler after approval; reject if identity changed
     handler_after = get_handler(operation_id)
-    if handler_after is None:
-        handler_id_after = ""
-    else:
-        handler_id_after = (
-            f"{getattr(handler_after, '__module__', '?')}."
-            f"{getattr(handler_after, '__qualname__', getattr(handler_after, '__name__', 'handler'))}"
-            f"#{id(handler_after)}"
-        )
-    if handler_id_after != handler_id:
-        return OpResult(
+    if _handler_identity(handler_after) != handler_id:
+        return _blocked(
             operation_id,
-            "blocked",
-            None,
-            0,
             "handler identity changed between approval and execution",
             spec.effect,
-            plan_digest=digest,
+            digest=digest,
         )
-
-    import time
 
     start = time.monotonic()
     run_id = _make_run_id()
-
     if handler_after is not None:
-        try:
-            rc = handler_after(params)
-            if isinstance(rc, OpResult):
-                rc.run_id = rc.run_id or run_id
-                rc.plan_digest = rc.plan_digest or digest
-                return rc
-            if rc is None:
-                return OpResult(
-                    operation_id,
-                    "blocked",
-                    None,
-                    int((time.monotonic() - start) * 1000),
-                    "handler returned None; not treated as success",
-                    spec.effect,
-                    run_id=run_id,
-                    plan_digest=digest,
-                )
-            code = int(rc)
-            outcome = "succeeded" if code == 0 else "failed"
-            return OpResult(
-                operation_id,
-                outcome,
-                code,
-                int((time.monotonic() - start) * 1000),
-                "",
-                spec.effect,
-                run_id=run_id,
-                plan_digest=digest,
-            )
-        except Exception as exc:
-            return OpResult(
-                operation_id,
-                "failed",
-                1,
-                int((time.monotonic() - start) * 1000),
-                str(exc)[:500],
-                spec.effect,
-                run_id=run_id,
-                plan_digest=digest,
-            )
-
-    if not argv:
-        return OpResult(
-            operation_id,
-            "blocked",
-            None,
-            0,
-            "no handler and no argv_template",
-            spec.effect,
-            plan_digest=digest,
-        )
-
-    return _run_subprocess(
-        operation_id,
-        argv,
-        spec.effect,
-        timeout=spec.timeout,
-        cwd=cwd,
-        run_id=run_id,
-        digest=digest,
-    )
+        return _invoke_handler(ctx, handler_after, start=start, run_id=run_id)
+    return _execute_argv(ctx, argv=argv, cwd=cwd, run_id=run_id)
 
 
-def _run_subprocess(
+def _run_subprocess(  # noqa: PLR0913  # ejecutor: keyword-only, espejo de la operación
     operation_id: str,
     argv: list[str],
     effect: str,
@@ -249,8 +262,6 @@ def _run_subprocess(
     run_id: str,
     digest: str,
 ) -> OpResult:
-    import time
-
     start = time.monotonic()
     try:
         proc = subprocess.Popen(
@@ -303,7 +314,7 @@ def _run_subprocess(
         )
 
 
-def run_operation(
+def run_operation(  # noqa: PLR0913  # API pública: keyword-only, espejo del schema
     *,
     operation_id: str,
     argv: list[str] | None = None,

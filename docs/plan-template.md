@@ -1,4 +1,4 @@
-<!-- docs/plan-template.md · cabecera OBLIGATORIA de todo plan-prompt (canon repo-standard, alojado en autoworkspace tras P11). No editar por plan: solo rellenar los campos <...>. -->
+<!-- docs/plan-template.md · cabecera OBLIGATORIA de todo plan-prompt (canon de flota, autoworkspace). No editar por plan: solo rellenar los campos <...>. -->
 
 NORMA DE FLOTA (autoworkspace docs/plan-template.md @ <SHA>). Plan <ID> «<título>» · repo(s): <owner/repo>.
 
@@ -9,6 +9,12 @@ NORMA DE FLOTA (autoworkspace docs/plan-template.md @ <SHA>). Plan <ID> «<títu
 5. Al terminar: marca el PR del plan como listo (se fusiona solo) y actualiza su apartado en Notion con PRs, versión publicada y URL del despliegue.
 
 ---
+
+## Criterios verificables: reglas
+
+- Un path por llamada en `git check-ignore -q` (p. ej. `for f in .env .env.local; do git check-ignore -q "$f" || exit 1; done`).
+- Todo criterio debe ejecutarse tal cual en bash con `set -euo pipefail` antes de pegarse en un plan.
+- Los recuentos con grep usan `| wc -l` y dicen el valor esperado.
 
 ## Esqueleto obligatorio de plan-prompt
 

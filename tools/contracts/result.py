@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 RESULT_OUTCOMES = frozenset(
@@ -29,7 +29,7 @@ EXIT_CANCELLED = 4
 
 
 def utcnow_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def new_run_id() -> str:
@@ -68,7 +68,7 @@ def exit_code_for(outcome: str) -> int:
     return EXIT_INVALID
 
 
-def build_result(
+def build_result(  # noqa: PLR0913  # API pública de resultado: keyword-only, espejo del schema
     *,
     skill: str,
     skill_version: str,

@@ -22,6 +22,7 @@ import subprocess
 import sys
 import unicodedata
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "skills"
@@ -30,6 +31,7 @@ CHANGELOG = ROOT / "CHANGELOG.md"
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 VERSION_LINE_RE = re.compile(r'^(\s*version:\s*)["\']?(\d+\.\d+\.\d+)["\']?(\s*)$')
 
+SKILLS_PATH_PARTS = 2
 KINDS = ("major", "minor", "patch")
 RANK = {"patch": 0, "minor": 1, "major": 2}
 
@@ -100,7 +102,7 @@ def skills_from_paths(paths: list[str]) -> list[str]:
     out: list[str] = []
     for p in paths:
         parts = Path(p).parts
-        if len(parts) >= 2 and parts[0] == "skills":
+        if len(parts) >= SKILLS_PATH_PARTS and parts[0] == "skills":
             name = parts[1]
             if name not in out:
                 out.append(name)
@@ -239,64 +241,84 @@ def cmd_check(targets: list[str], base: str, root: Path) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    root = Path(args.root).resolve()
-    try:
-        targets = resolve_targets(args, root)
-    except ValueError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        return 1
-    if args.check:
-        try:
-            base = resolve_base(args.base, root)
-        except RuntimeError as e:
-            print(f"ERROR: {e}", file=sys.stderr)
-            return 1
-        return cmd_check(targets, base, root)
-    if not args.kind:
-        print("ERROR: --type es obligatorio (salvo --check)", file=sys.stderr)
-        return 1
-    try:
-        kind = normalize_kind(args.kind)
-    except ValueError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        return 1
-    if not targets:
-        print("BUMP: sin skills afectadas, nada que hacer")
-        return 0
+def _fail(message: str) -> int:
+    print(f"ERROR: {message}", file=sys.stderr)
+    return 1
+
+
+def _apply_bumps(args: Any, targets: list[str], root: Path, kind: str) -> list[tuple[str, str, str, str]]:
     entries: list[tuple[str, str, str, str]] = []
     for skill in targets:
         sdir = root / "skills" / skill
-        try:
-            cur = read_skill_version(sdir)
-            new = bump_version(cur, kind)
-        except ValueError as e:
-            print(f"ERROR: {e}", file=sys.stderr)
-            return 1
+        cur = read_skill_version(sdir)
+        new = bump_version(cur, kind)
         if args.dry_run:
             print(f"DRY: {skill} {cur} -> {new} ({kind})")
         else:
             write_skill_version(sdir, new)
             print(f"BUMP: {skill} {cur} -> {new} ({kind})")
         entries.append((skill, cur, new, kind))
-    top = max((k for _, _, _, k in entries), key=lambda k: RANK[k])
+    return entries
+
+
+def _report_repo(top: str, root: Path) -> str | None:
     repo_current = latest_repo_tag(root)
-    repo_next = None
-    if repo_current and SEMVER_RE.match(repo_current):
-        repo_next = bump_version(repo_current, top)
-        print(f"REPO: v{repo_current} -> v{repo_next} (sugerido, magnitud {top})")
-    else:
+    if not repo_current or not SEMVER_RE.match(repo_current):
         print(f"REPO: sin tag previo resoluble; magnitud agregada: {top}")
+        return None
+    repo_next = bump_version(repo_current, top)
+    print(f"REPO: v{repo_current} -> v{repo_next} (sugerido, magnitud {top})")
+    return repo_next
+
+
+def _emit_tag(args: Any, entries: list[tuple[str, str, str, str]], repo_next: str | None, top: str, root: Path) -> None:
+    if not (args.tag and not args.dry_run and repo_next):
+        return
+    names = ", ".join(s for s, _, _, _ in entries)
+    git(["tag", "-a", f"v{repo_next}", "-m", f"v{repo_next} ({top}): {names}"], root)
+    print(f"TAG: v{repo_next} creado (recordar: git push origin v{repo_next})")
+
+
+def _run_check(args: Any, targets: list[str], root: Path) -> int:
+    try:
+        base = resolve_base(args.base, root)
+    except RuntimeError as e:
+        return _fail(str(e))
+    return cmd_check(targets, base, root)
+
+
+def _resolve_kind(raw: str | None) -> str:
+    if not raw:
+        raise ValueError("--type es obligatorio (salvo --check)")
+    return normalize_kind(raw)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    root = Path(args.root).resolve()
+    try:
+        targets = resolve_targets(args, root)
+    except ValueError as e:
+        return _fail(str(e))
+    if args.check:
+        return _run_check(args, targets, root)
+    try:
+        kind = _resolve_kind(args.kind)
+    except ValueError as e:
+        return _fail(str(e))
+    if not targets:
+        print("BUMP: sin skills afectadas, nada que hacer")
+        return 0
+    try:
+        entries = _apply_bumps(args, targets, root, kind)
+    except ValueError as e:
+        return _fail(str(e))
+    top = max((k for _, _, _, k in entries), key=lambda k: RANK[k])
+    repo_next = _report_repo(top, root)
     if not args.dry_run and not args.no_changelog and entries:
         update_changelog(entries, args.message)
         print("CHANGELOG: entrada [Unreleased] actualizada")
-    if args.tag and not args.dry_run and repo_next:
-        git(
-            ["tag", "-a", f"v{repo_next}", "-m", f"v{repo_next} ({top}): {', '.join(s for s, _, _, _ in entries)}"],
-            root,
-        )
-        print(f"TAG: v{repo_next} creado (recordar: git push origin v{repo_next})")
+    _emit_tag(args, entries, repo_next, top, root)
     return 0
 
 

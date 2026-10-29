@@ -6,19 +6,12 @@
 - **Estructura:** Esta meta-sección → diagrama → Límites (dentro/fuera) → Flujos → Relación con gold (canon) o cajas (producto) → Stacks.
 - **Contenido a integrar según contexto:** Reescribe límites y flujos del producto. No copies la tabla de gold ni el diagrama del meta-estándar. Enlaza ADRs propios.
 
-```
-                 repo-standard (este repo)
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-    contratos docs    nombres CI     metadata GitHub
-    (P0/P1/P2)     fases + ci-gate   CODEOWNERS,
-                     (15368)         Renovate, templates
-                          │
-                          ▼
-              stacks/ (TS · Rust · Python · infra)
-                    callers + reusable workflows
-```
+Diagramas de arquitectura (fuentes JSON validadas en `ci-gate`, HTML solo como artefacto de CI):
+
+- **D01 `architecture`** — capas del canon: `skills/`, `tools/`, `.github/workflows/reusable-*`, `stacks/`, `templates/repo/` y `docs/architecture/decisions/`.
+- **D02 `workflow`** — flujo en dos fases: rama de tarea → PR de tarea → `plan/<id>` → PR del plan → `main` → release → tag `v*` → publicación.
+- **D03 `sequence`** — agregación de `ci-gate` con los jobs reales de `ci.yml`.
+- **D04 `lifecycle`** — ciclo de vida de un ADR.
 
 ## Límites del sistema
 

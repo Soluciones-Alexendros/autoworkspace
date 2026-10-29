@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """probe_system.py - Fingerprint del sistema (solo lectura).
 
 Port Python de probe_system.sh. Genera system-profile.json con información
@@ -12,6 +13,7 @@ import json
 import logging
 import os
 import sys
+from typing import Any
 
 from common import (
     SKILL_VERSION,
@@ -25,8 +27,11 @@ from common import (
     which,
 )
 
+DF_FIELDS = 7
+SS_FIELDS = 5
 
-def get_kernel_info() -> dict:
+
+def get_kernel_info() -> dict[str, Any]:
     release = run("uname -r", timeout=5).strip()
     version = run("uname -v", timeout=5).strip()
     arch = run("uname -m", timeout=5).strip()
@@ -44,7 +49,7 @@ def get_kernel_info() -> dict:
     }
 
 
-def get_hardware_info() -> dict:
+def get_hardware_info() -> dict[str, Any]:
     cpu_model = run("lscpu | grep 'Model name' | cut -d: -f2 | xargs", timeout=10).strip()
     cpu_cores = to_int(run("nproc", timeout=5).strip())
     cpu_threads = to_int(run("lscpu | grep '^CPU(s):' | awk '{print $2}'", timeout=10).strip())
@@ -55,7 +60,7 @@ def get_hardware_info() -> dict:
     if not cpu_model:
         cpu_model = "unknown"
 
-    disks: list = []
+    disks: list[dict[str, Any]] = []
     lsblk_out = run(
         "lsblk -J -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE,MODEL 2>/dev/null",
         timeout=10,
@@ -81,7 +86,7 @@ def get_hardware_info() -> dict:
     }
 
 
-def get_disk_usage() -> dict:
+def get_disk_usage() -> dict[str, Any]:
     df_out = run(
         "df -h -x tmpfs -x devtmpfs -x squashfs "
         "--output=source,fstype,size,used,avail,pcent,target 2>/dev/null | tail -n +2",
@@ -90,7 +95,7 @@ def get_disk_usage() -> dict:
     mounts = []
     for line in df_out.splitlines():
         parts = line.split(None, 6)
-        if len(parts) < 7:
+        if len(parts) < DF_FIELDS:
             continue
         source, fstype, size, used, avail, pcent, target = parts
         mounts.append(
@@ -107,8 +112,8 @@ def get_disk_usage() -> dict:
     return {"mounts": mounts}
 
 
-def get_systemd_info() -> dict:
-    def unit_names(cmd: str) -> list:
+def get_systemd_info() -> dict[str, Any]:
+    def unit_names(cmd: str) -> list[str]:
         out = run(cmd, timeout=10)
         names = [line.split()[0] for line in out.splitlines() if line.split()]
         return names
@@ -137,12 +142,12 @@ def get_systemd_info() -> dict:
     }
 
 
-def get_network_info() -> dict:
+def get_network_info() -> dict[str, Any]:
     ss_out = run("ss -tuln 2>/dev/null | tail -n +2", timeout=10)
     ports = set()
     for line in ss_out.splitlines():
         parts = line.split()
-        if len(parts) < 5:
+        if len(parts) < SS_FIELDS:
             continue
         local = parts[4]
         if ":" in local:
@@ -151,7 +156,7 @@ def get_network_info() -> dict:
                 ports.add(int(port))
     listening_ports = sorted(ports)
 
-    interfaces: list = []
+    interfaces: list[dict[str, Any]] = []
     ip_out = run("ip -j addr show 2>/dev/null", timeout=10)
     if ip_out.strip():
         try:
@@ -178,7 +183,7 @@ def get_network_info() -> dict:
     }
 
 
-def get_package_info(pkg_mgr: str) -> dict:
+def get_package_info(pkg_mgr: str) -> dict[str, Any]:
     pkg_count = orphan_count = foreign_count = pacnew_count = cache_size_mb = 0
 
     if pkg_mgr == "pacman":
@@ -215,7 +220,7 @@ def get_package_info(pkg_mgr: str) -> dict:
     }
 
 
-def get_journal_info() -> dict:
+def get_journal_info() -> dict[str, Any]:
     disk_usage = run(
         "journalctl --disk-usage 2>/dev/null | grep -oE '[0-9.]+[GMK]' | head -1",
         timeout=15,
@@ -232,7 +237,7 @@ def get_journal_info() -> dict:
     return {"disk_usage": disk_usage, "errors_24h": errors_24h, "coredumps": coredumps}
 
 
-def get_firmware_info() -> dict:
+def get_firmware_info() -> dict[str, Any]:
     fwupd_available = which("fwupdmgr") is not None
     updates_available = 0
     devices = 0
@@ -242,7 +247,7 @@ def get_firmware_info() -> dict:
     return {"fwupd_available": fwupd_available, "updates_available": updates_available, "devices": devices}
 
 
-def get_modern_stack() -> dict:
+def get_modern_stack() -> dict[str, Any]:
     """Stack moderno: homed, btrfs/snapshots, energia, oomd/zram, helpers (ES)."""
     homed_active = service_active("systemd-homed")
     homectl_users = []

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 from pathlib import Path
@@ -18,6 +19,8 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit("jsonschema required: uv sync --frozen") from exc
 
 DIALECT = "autoworkspace.execution"
+MAX_SCHEMA_BYTES = 200_000
+SHA256_HEX_LEN = 64
 SCHEMA_VERSION = 1
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 EFFECTS = {
@@ -39,22 +42,20 @@ CRITICAL_KEYS = {
 }
 
 _SCHEMA_PATH = Path(__file__).resolve().parent / "schemas" / "execution.schema.json"
-_SCHEMA: dict[str, Any] | None = None
 
 
 class ContractError(ValueError):
     pass
 
 
+@functools.lru_cache(maxsize=1)
 def _schema() -> dict[str, Any]:
-    global _SCHEMA
-    if _SCHEMA is None:
-        _SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
-    return _SCHEMA
+    data: dict[str, Any] = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    return data
 
 
-def _reject_duplicate_keys(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode):
-    mapping = {}
+def _reject_duplicate_keys(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode) -> dict[str, object]:
+    mapping: dict[str, object] = {}
     for key_node, value_node in node.value:
         key = loader.construct_object(key_node, deep=False)
         if key in mapping:
@@ -63,7 +64,7 @@ def _reject_duplicate_keys(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode
     return mapping
 
 
-class StrictLoader(yaml.SafeLoader):
+class StrictLoader(yaml.SafeLoader):  # type: ignore[misc]  # PyYAML no publica stubs
     pass
 
 
@@ -75,7 +76,7 @@ StrictLoader.add_constructor(
 
 def load_yaml(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
-    if len(text) > 200_000:
+    if len(text) > MAX_SCHEMA_BYTES:
         raise ContractError(f"{path}: contract too large")
     data = yaml.load(text, Loader=StrictLoader)
     if not isinstance(data, dict):
@@ -83,19 +84,39 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+KNOWN_FIELDS = {
+    "schema_version",
+    "dialect",
+    "skill",
+    "skill_version",
+    "execution_kind",
+    "distribution",
+    "shared_dependencies",
+    "system_requirements",
+    "operations",
+    "handoffs",
+    "normative_sources",
+    "automation_limits",
+}
+
+
+def _frontmatter_text(text: str) -> str | None:
+    if not text.startswith("---"):
+        return None
+    end = text.find("\n---", 4)
+    return None if end == -1 else text[4:end]
+
+
 def _skill_md_version(skill_path: Path) -> str | None:
     skill_md = skill_path / "SKILL.md"
     if not skill_md.is_file():
         return None
-    text = skill_md.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return None
-    end = text.find("\n---", 4)
-    if end == -1:
+    front = _frontmatter_text(skill_md.read_text(encoding="utf-8"))
+    if front is None:
         return None
     try:
-        fm = yaml.safe_load(text[4:end])
-    except Exception:
+        fm = yaml.safe_load(front)
+    except yaml.YAMLError:
         return None
     if not isinstance(fm, dict):
         return None
@@ -106,48 +127,27 @@ def _skill_md_version(skill_path: Path) -> str | None:
     return None
 
 
-def validate_contract(
-    data: dict[str, Any],
-    *,
-    skill_dir: str,
-    skill_path: Path | None = None,
-    catalog_skills: set[str] | None = None,
-) -> list[str]:
-    errors: list[str] = []
-    # JSON Schema (draft 2020-12)
+def _check_schema(data: dict[str, Any], errors: list[str]) -> None:
     try:
         jsonschema.validate(instance=data, schema=_schema())
     except jsonschema.ValidationError as exc:
         errors.append(f"schema: {exc.message}")
 
+
+def _check_critical_fields(data: dict[str, Any], errors: list[str]) -> None:
     for key in CRITICAL_KEYS:
         if key not in data:
             errors.append(f"missing critical key: {key}")
-    unknown_critical = [
-        k
-        for k in data
-        if k
-        not in {
-            "schema_version",
-            "dialect",
-            "skill",
-            "skill_version",
-            "execution_kind",
-            "distribution",
-            "shared_dependencies",
-            "system_requirements",
-            "operations",
-            "handoffs",
-            "normative_sources",
-            "automation_limits",
-        }
-    ]
+    unknown_critical = [k for k in data if k not in KNOWN_FIELDS]
     if unknown_critical:
         errors.append(f"unknown fields (reject critical unknown): {unknown_critical}")
     if data.get("schema_version") != SCHEMA_VERSION:
         errors.append(f"unsupported schema_version: {data.get('schema_version')}")
     if data.get("dialect", DIALECT) != DIALECT:
         errors.append(f"unsupported dialect: {data.get('dialect')}")
+
+
+def _check_identity(data: dict[str, Any], skill_dir: str, errors: list[str]) -> None:
     skill = data.get("skill")
     if not isinstance(skill, str) or not NAME_RE.match(skill):
         errors.append("skill id invalid")
@@ -158,35 +158,42 @@ def validate_contract(
     if data.get("distribution") not in DISTRIBUTIONS:
         errors.append("distribution invalid")
 
-    # skill_version vs SKILL.md — hard error
-    if skill_path is not None and data.get("skill_version"):
-        md_ver = _skill_md_version(skill_path)
-        if md_ver and md_ver != str(data["skill_version"]):
-            errors.append(f"skill_version {data['skill_version']!r} != SKILL.md metadata.version {md_ver!r}")
 
+def _check_skill_version(data: dict[str, Any], skill_path: Path | None, errors: list[str]) -> None:
+    if skill_path is None or not data.get("skill_version"):
+        return
+    md_ver = _skill_md_version(skill_path)
+    if md_ver and md_ver != str(data["skill_version"]):
+        errors.append(f"skill_version {data['skill_version']!r} != SKILL.md metadata.version {md_ver!r}")
+
+
+def _check_operations(data: dict[str, Any], errors: list[str]) -> None:
     ops = data.get("operations")
-    op_ids: set[str] = set()
     if not isinstance(ops, list) or not ops:
         errors.append("operations must be a non-empty list")
-    else:
-        seen = set()
-        for op in ops:
-            if not isinstance(op, dict):
-                errors.append("operation must be mapping")
-                continue
-            oid = op.get("id")
-            if oid in seen:
-                errors.append(f"duplicate operation id: {oid}")
-            seen.add(oid)
-            if isinstance(oid, str):
-                op_ids.add(oid)
-            if op.get("effect") not in EFFECTS:
-                errors.append(f"operation {oid}: bad effect")
-            if op.get("dry_run") not in TRI:
-                errors.append(f"operation {oid}: dry_run must be yes|no|unknown")
-            if op.get("idempotency") not in TRI:
-                errors.append(f"operation {oid}: idempotency must be yes|no|unknown")
+        return
+    seen: set[object] = set()
+    for op in ops:
+        if not isinstance(op, dict):
+            errors.append("operation must be mapping")
+            continue
+        oid = op.get("id")
+        if oid in seen:
+            errors.append(f"duplicate operation id: {oid}")
+        seen.add(oid)
+        if op.get("effect") not in EFFECTS:
+            errors.append(f"operation {oid}: bad effect")
+        if op.get("dry_run") not in TRI:
+            errors.append(f"operation {oid}: dry_run must be yes|no|unknown")
+        if op.get("idempotency") not in TRI:
+            errors.append(f"operation {oid}: idempotency must be yes|no|unknown")
 
+
+def _check_handoffs(
+    data: dict[str, Any],
+    catalog_skills: set[str] | None,
+    errors: list[str],
+) -> None:
     for h in data.get("handoffs") or []:
         if not isinstance(h, dict) or "skill" not in h:
             errors.append("handoff missing skill")
@@ -197,6 +204,21 @@ def validate_contract(
         elif catalog_skills is not None and hs not in catalog_skills:
             errors.append(f"handoff skill does not exist: {hs}")
 
+
+def validate_contract(
+    data: dict[str, Any],
+    *,
+    skill_dir: str,
+    skill_path: Path | None = None,
+    catalog_skills: set[str] | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    _check_schema(data, errors)
+    _check_critical_fields(data, errors)
+    _check_identity(data, skill_dir, errors)
+    _check_skill_version(data, skill_path, errors)
+    _check_operations(data, errors)
+    _check_handoffs(data, catalog_skills, errors)
     return errors
 
 

@@ -8,6 +8,8 @@ priority: "P1"
 
 # ADR-0011: Bootstrap al usar la plantilla
 
+> **Histórico (Superseded by ADR-0016).** No aplicar; la decisión vigente está en [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md).
+
 **Fecha:** 2026-09-24
 **Estado:** Superseded — sustituido por `templates/repo/` y [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md) (sin script `bootstrap-from-template.sh` en P11)
 **Prioridad:** P1

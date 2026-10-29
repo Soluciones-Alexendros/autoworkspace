@@ -1,5 +1,7 @@
 # Skill Spec v3.0 — Estándar OpenCode
 
+> **Archivado (P12):** sustituido por [docs/STANDARD.md](../STANDARD.md) y [docs/TAXONOMY.md](../TAXONOMY.md). Se conserva solo como referencia histórica.
+
 ## Frontmatter (6 keys permitidas)
 
 - name: kebab-case, == dirname, ≤64

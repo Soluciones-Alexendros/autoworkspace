@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """scan_orchestrator.py - Orquesta escaneos con validacion cruzada (solo lectura).
 
 Escalones: ClamAV (firmas), rkhunter (rootkits), AIDE (integridad),
@@ -19,6 +20,7 @@ import logging
 import shutil
 import subprocess
 import sys
+from typing import Any
 
 logger = logging.getLogger("seguridad.scan")
 
@@ -56,9 +58,9 @@ def run_cmd(cmd: str, timeout: int = 300) -> tuple[int, str]:
         return 1, ""
 
 
-def check_availability() -> dict[str, dict]:
+def check_availability() -> dict[str, dict[str, Any]]:
     """Disponibilidad de cada escaner sin ejecutar nada."""
-    avail: dict[str, dict] = {}
+    avail: dict[str, dict[str, Any]] = {}
     avail["clamav"] = {
         "daemon": which("clamdscan") is not None or which("clamscan") is not None,
         "freshclam": which("freshclam") is not None,
@@ -70,7 +72,7 @@ def check_availability() -> dict[str, dict]:
     return avail
 
 
-def scan_clamav() -> dict:
+def scan_clamav() -> dict[str, Any]:
     if which("clamscan") is None and which("clamdscan") is None:
         return {"status": "skip", "reason": "clamscan no instalado"}
     _, sig = run_cmd("freshclam --stdout 2>/dev/null | tail -1", timeout=60)
@@ -81,11 +83,11 @@ def scan_clamav() -> dict:
     }
 
 
-def scan_rkhunter() -> dict:
+def scan_rkhunter() -> dict[str, Any]:
     if which("rkhunter") is None:
         return {"status": "skip", "reason": "rkhunter no instalado"}
     rc, out = run_cmd("rkhunter --check --sk --rwo 2>/dev/null", timeout=600)
-    warnings = [l for l in out.splitlines() if l.strip()]
+    warnings = [ln for ln in out.splitlines() if ln.strip()]
     return {
         "status": "ok" if rc == 0 else "warnings",
         "warnings": len(warnings),
@@ -94,11 +96,11 @@ def scan_rkhunter() -> dict:
     }
 
 
-def scan_aide() -> dict:
+def scan_aide() -> dict[str, Any]:
     if which("aide") is None:
         return {"status": "skip", "reason": "aide no instalado"}
     _, timers = run_cmd("systemctl list-timers --all --no-pager 2>/dev/null | grep -i aide", timeout=15)
-    rc, out = run_cmd("aide --check --config=/etc/aide/aide.conf 2>/dev/null | tail -30", timeout=600)
+    _rc, out = run_cmd("aide --check --config=/etc/aide/aide.conf 2>/dev/null | tail -30", timeout=600)
     changed = "Changed entries" in out
     return {
         "status": "ok",
@@ -108,15 +110,15 @@ def scan_aide() -> dict:
     }
 
 
-def scan_debsums() -> dict:
+def scan_debsums() -> dict[str, Any]:
     if which("debsums") is None:
         return {"status": "skip", "reason": "debsums no instalado (Debian/Ubuntu)"}
     _, out = run_cmd("debsums -s 2>/dev/null", timeout=600)
-    mismatches = [l for l in out.splitlines() if l.strip()]
+    mismatches = [ln for ln in out.splitlines() if ln.strip()]
     return {"status": "ok", "mismatches": len(mismatches), "sample": mismatches[:10]}
 
 
-def scan_lynis() -> dict:
+def scan_lynis() -> dict[str, Any]:
     if which("lynis") is None:
         return {"status": "skip", "reason": "lynis no instalado"}
     _, out = run_cmd("lynis audit system --quick --no-log 2>/dev/null | tail -20", timeout=600)
@@ -127,7 +129,7 @@ def scan_lynis() -> dict:
     }
 
 
-def cross_validate(results: dict) -> dict:
+def cross_validate(results: dict[str, Any]) -> dict[str, Any]:
     """Validacion cruzada: candidatos que confirma una segunda via.
 
     Regla: un warning de rkhunter sobre un binario + mismatch de debsums en
@@ -161,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     _setup_logging(args.verbose)
 
     avail = check_availability()
-    results: dict = {"availability": avail, "scans": {}, "cross_validation": {}}
+    results: dict[str, Any] = {"availability": avail, "scans": {}, "cross_validation": {}}
     if args.run:
         results["scans"]["clamav"] = scan_clamav()
         results["scans"]["rkhunter"] = scan_rkhunter()

@@ -6,12 +6,16 @@
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
   "dependencyDashboard": true,
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
   "platformAutomerge": true,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 7am on monday"]
   },
-  "github-actions": { "pinDigests": true },
+  "github-actions": {
+    "pinDigests": true
+  },
   "packageRules": [
     {
       "description": "Automerge patch, pin y digest",
@@ -27,8 +31,9 @@
       "automergeType": "pr"
     },
     {
-      "description": "Majors: revisión humana, sin automerge",
+      "description": "Majors: revisión humana, cuarentena ampliada, sin automerge",
       "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "14 days",
       "automerge": false
     },
     {
@@ -44,6 +49,38 @@
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "python deps (minor + patch)",
       "automerge": true
+    },
+    {
+      "description": "Archify (renderer de diagramas): subir el pin cambia los cuatro HTML, sin automerge",
+      "matchDatasources": ["git-refs"],
+      "matchPackageNames": ["tt-a1i/archify"],
+      "groupName": "archify",
+      "automerge": false,
+      "minimumReleaseAge": "3 days",
+      "labels": ["hold", "policy-exception"]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Pin de Archify en el catálogo de diagramas (P12 T5)",
+      "managerFilePatterns": [
+        "/^docs\\/architecture\\/diagrams\\/catalog\\.json$/"
+      ],
+      "matchStrings": [
+        "\"repo\":\\s*\"(?<depName>[^\"]+)\",\\s*\"sha\":\\s*\"(?<currentValue>[0-9a-f]{40})\""
+      ],
+      "datasourceTemplate": "git-refs"
+    },
+    {
+      "customType": "regex",
+      "description": "Pin de Archify en el job diagrams de ci.yml (P12 T5)",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/ci\\.yml$/"],
+      "matchStrings": [
+        "repository:\\s*tt-a1i/archify\\n\\s*ref:\\s*(?<currentValue>[0-9a-f]{40})"
+      ],
+      "depNameTemplate": "tt-a1i/archify",
+      "datasourceTemplate": "git-refs"
     }
   ]
 }

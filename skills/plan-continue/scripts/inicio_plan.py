@@ -17,14 +17,20 @@ import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import scan_repo  # noqa: E402
 
 logger = logging.getLogger("inicio_plan")
+
+COUNT_FIELDS = 2
+MAX_ROADMAP_HEADINGS = 12
+MAX_UNRELEASED_ITEMS = 15
 
 ROADMAP_CANDIDATES = (
     "ROADMAP.md",
@@ -48,7 +54,7 @@ def run_git(repo: str, *args: str) -> tuple[int, str]:
     return proc.returncode, (proc.stdout or "").strip()
 
 
-def git_snapshot(repo: str) -> dict:
+def git_snapshot(repo: str) -> dict[str, Any]:
     inside_rc, inside = run_git(repo, "rev-parse", "--is-inside-work-tree")
     if inside_rc != 0 or inside != "true":
         return {
@@ -70,7 +76,7 @@ def git_snapshot(repo: str) -> dict:
         rc, counts = run_git(repo, "rev-list", "--left-right", "--count", "HEAD...@{upstream}")
         if rc == 0 and counts:
             parts = counts.replace("\t", " ").split()
-            if len(parts) == 2:
+            if len(parts) == COUNT_FIELDS:
                 adelante, atras = int(parts[0]), int(parts[1])
     _, ultimo = run_git(repo, "log", "-1", "--format=%h %s")
     return {
@@ -105,12 +111,12 @@ def gh_json(args: list[str]) -> object | None:
     if not raw:
         return None
     try:
-        return json.loads(raw)
+        return cast("object", json.loads(raw))
     except json.JSONDecodeError:
         return None
 
 
-def github_vista(repo: str) -> dict:
+def github_vista(repo: str) -> dict[str, Any]:
     view = gh_json(
         [
             "repo",
@@ -149,7 +155,7 @@ def github_vista(repo: str) -> dict:
             "number,title,labels",
         ]
     )
-    runs = []
+    runs: object = []
     if default:
         runs = (
             gh_json(
@@ -179,58 +185,72 @@ def github_vista(repo: str) -> dict:
     }
 
 
-def leer_roadmap_local(repo: str) -> dict:
-    root = Path(repo)
-    fichero = None
-    titulos: list[str] = []
+def _roadmap_headings(root: Path) -> tuple[str | None, list[str]]:
     for rel in ROADMAP_CANDIDATES:
         path = root / rel
-        if path.is_file():
-            fichero = rel
-            try:
-                text = path.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                text = ""
-            for line in text.splitlines():
-                if line.startswith("#"):
-                    titulos.append(line.lstrip("#").strip())
-                    if len(titulos) >= 12:
-                        break
-            break
-    unreleased: list[str] = []
-    changelog = root / "CHANGELOG.md"
-    if changelog.is_file():
+        if not path.is_file():
+            continue
         try:
-            text = changelog.read_text(encoding="utf-8", errors="replace")
+            text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             text = ""
-        in_unreleased = False
+        titulos: list[str] = []
         for line in text.splitlines():
-            if re.match(r"^## \[Unreleased\]", line, re.I):
-                in_unreleased = True
-                continue
-            if in_unreleased and line.startswith("## "):
-                break
-            if in_unreleased and line.strip().startswith("- "):
-                unreleased.append(line.strip()[2:].strip())
-            if len(unreleased) >= 15:
-                break
-    planes: list[str] = []
+            if line.startswith("#"):
+                titulos.append(line.lstrip("#").strip())
+                if len(titulos) >= MAX_ROADMAP_HEADINGS:
+                    break
+        return rel, titulos
+    return None, []
+
+
+def _changelog_unreleased(root: Path) -> list[str]:
+    changelog = root / "CHANGELOG.md"
+    if not changelog.is_file():
+        return []
+    try:
+        text = changelog.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = ""
+    unreleased: list[str] = []
+    in_unreleased = False
+    for line in text.splitlines():
+        if re.match(r"^## \[Unreleased\]", line, re.I):
+            in_unreleased = True
+            continue
+        if in_unreleased and line.startswith("## "):
+            break
+        if in_unreleased and line.strip().startswith("- "):
+            unreleased.append(line.strip()[2:].strip())
+        if len(unreleased) >= MAX_UNRELEASED_ITEMS:
+            break
+    return unreleased
+
+
+def _local_plans(root: Path) -> list[str]:
     planning = root / ".planning"
-    if planning.is_dir():
-        for child in sorted(planning.iterdir()):
-            plan = child / "task_plan.md" if child.is_dir() else None
-            if plan and plan.is_file():
-                planes.append(str(child.relative_to(root)))
+    if not planning.is_dir():
+        return []
+    planes: list[str] = []
+    for child in sorted(planning.iterdir()):
+        plan = child / "task_plan.md" if child.is_dir() else None
+        if plan and plan.is_file():
+            planes.append(str(child.relative_to(root)))
+    return planes
+
+
+def leer_roadmap_local(repo: str) -> dict[str, Any]:
+    root = Path(repo)
+    fichero, titulos = _roadmap_headings(root)
     return {
         "fichero": fichero,
         "titulos": titulos,
-        "unreleased": unreleased,
-        "planes_locales": planes,
+        "unreleased": _changelog_unreleased(root),
+        "planes_locales": _local_plans(root),
     }
 
 
-def estructura(repo: str, profile: str) -> dict:
+def estructura(repo: str, profile: str) -> dict[str, Any]:
     sh = SCRIPT_DIR / "check-product-structure.sh"
     try:
         proc = subprocess.run(
@@ -255,60 +275,61 @@ def estructura(repo: str, profile: str) -> dict:
     }
 
 
-def fallos_desde(scan: dict, git: dict, est: dict, gh: dict) -> list[dict]:
-    fallos: list[dict] = []
+def _fallo(sev: str, fuente: str, detalle: str) -> dict[str, Any]:
+    return {"sev": sev, "fuente": fuente, "detalle": detalle}
+
+
+def _fallos_escaneo(scan: dict[str, Any]) -> list[dict[str, Any]]:
+    fallos: list[dict[str, Any]] = []
     # Leer hallazgos_patrones (sin substring "secret") para no alimentar sinks CodeQL.
     for s in scan.get("hallazgos_patrones") or []:
         if s.get("confianza") == "alta":
             # Solo path:línea:tipo:fingerprint — nunca valor del match
             fp = s.get("fingerprint") or "n/d"
-            fallos.append(
-                {
-                    "sev": "P0",
-                    "fuente": "escaneo",
-                    "detalle": (f"posible hallazgo en {s.get('fichero')}:{s.get('linea')} ({s.get('tipo')}; fp={fp})"),
-                }
-            )
+            hallazgo = f"posible hallazgo en {s.get('fichero')}:{s.get('linea')} ({s.get('tipo')}; fp={fp})"
+            fallos.append(_fallo("P0", "escaneo", hallazgo))
     for env in scan.get("env_versionados") or []:
-        fallos.append({"sev": "P0", "fuente": "escaneo", "detalle": f".env versionado: {env}"})
-    if git.get("es_git") and git.get("sucio"):
-        fallos.append(
-            {
-                "sev": "P2",
-                "fuente": "git",
-                "detalle": f"árbol sucio ({git.get('cambios_sin_commit', 0)} cambios sin commit)",
-            }
-        )
-    if git.get("atras"):
-        fallos.append(
-            {
-                "sev": "P1",
-                "fuente": "git",
-                "detalle": f"el clon va {git['atras']} commit(s) por detrás del remoto",
-            }
-        )
-    if git.get("adelante") and git.get("atras"):
-        fallos.append({"sev": "P1", "fuente": "git", "detalle": "rama divergente del remoto"})
-    for ln in est.get("faltantes") or []:
-        fallos.append({"sev": "P2", "fuente": "estructura", "detalle": ln})
-    if gh.get("archivado"):
-        fallos.append({"sev": "P0", "fuente": "github", "detalle": "repositorio archivado"})
-    for run in gh.get("runs_recientes") or []:
-        if run.get("conclusion") == "failure":
-            fallos.append(
-                {
-                    "sev": "P1",
-                    "fuente": "ci",
-                    "detalle": f"último job en rojo: {run.get('name')}",
-                }
-            )
-            break
-    for dep in (scan.get("salud_dependencias") or [])[:8]:
-        fallos.append({"sev": "P3", "fuente": "dependencias", "detalle": dep})
+        fallos.append(_fallo("P0", "escaneo", f".env versionado: {env}"))
     return fallos
 
 
-def semaforo(fallos: list[dict], git: dict) -> str:
+def _fallos_git(git: dict[str, Any]) -> list[dict[str, Any]]:
+    fallos: list[dict[str, Any]] = []
+    if git.get("es_git") and git.get("sucio"):
+        cambios = git.get("cambios_sin_commit", 0)
+        fallos.append(_fallo("P2", "git", f"árbol sucio ({cambios} cambios sin commit)"))
+    if git.get("atras"):
+        fallos.append(_fallo("P1", "git", f"el clon va {git['atras']} commit(s) por detrás del remoto"))
+    if git.get("adelante") and git.get("atras"):
+        fallos.append(_fallo("P1", "git", "rama divergente del remoto"))
+    return fallos
+
+
+def _fallos_github(gh: dict[str, Any]) -> list[dict[str, Any]]:
+    fallos: list[dict[str, Any]] = []
+    if gh.get("archivado"):
+        fallos.append(_fallo("P0", "github", "repositorio archivado"))
+    for run in gh.get("runs_recientes") or []:
+        if run.get("conclusion") == "failure":
+            fallos.append(_fallo("P1", "ci", f"último job en rojo: {run.get('name')}"))
+            break
+    return fallos
+
+
+def fallos_desde(
+    scan: dict[str, Any], git: dict[str, Any], est: dict[str, Any], gh: dict[str, Any]
+) -> list[dict[str, Any]]:
+    fallos = _fallos_escaneo(scan)
+    fallos.extend(_fallos_git(git))
+    for ln in est.get("faltantes") or []:
+        fallos.append(_fallo("P2", "estructura", ln))
+    fallos.extend(_fallos_github(gh))
+    for dep in (scan.get("salud_dependencias") or [])[:8]:
+        fallos.append(_fallo("P3", "dependencias", dep))
+    return fallos
+
+
+def semaforo(fallos: list[dict[str, Any]], git: dict[str, Any]) -> str:
     sevs = {f["sev"] for f in fallos}
     if "P0" in sevs:
         return "rojo"
@@ -323,16 +344,8 @@ def esc(text: object) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def to_markdown(rep: dict) -> str:
-    sem = rep["semaforo"]
-    git = rep["git"]
-    gh = rep["github"]
-    road = rep["roadmap"]
-    lines = [
-        f"# Estado de partida — {rep.get('nombre') or Path(rep['repo']).name}",
-        "",
-        f"**Fecha**: {rep['generated_at']} | **Perfil**: {rep['profile']} | **Semáforo**: {sem}",
-        "",
+def _md_git(git: dict[str, Any]) -> list[str]:
+    return [
         "## Estado del repo",
         "",
         f"- Git: {'sí' if git.get('es_git') else 'no'}",
@@ -341,64 +354,89 @@ def to_markdown(rep: dict) -> str:
         f"- Árbol sucio: {'sí' if git.get('sucio') else 'no'}",
         f"- Último commit: {git.get('ultimo_commit') or 'n/d'}",
     ]
-    if gh.get("disponible"):
-        lines += [
-            f"- GitHub: {gh.get('nombre')} ({'archivado' if gh.get('archivado') else 'activo'})",
-            f"- Rama por defecto: `{gh.get('rama_por_defecto') or 'n/d'}`",
-            f"- PRs abiertos: {len(gh.get('prs_abiertos') or [])}",
-            f"- Issues abiertos: {len(gh.get('issues_abiertos') or [])}",
-        ]
-    res = rep["scan"].get("resumen") or {}
-    lines += [
-        f"- Ficheros: {res.get('total_ficheros', 0)} | lenguaje: {res.get('lenguaje_principal') or 'n/d'}",
-        f"- Estructura {rep['profile']}: {'OK' if rep['estructura']['ok'] else 'FALLO'}",
+
+
+def _md_github(gh: dict[str, Any]) -> list[str]:
+    if not gh.get("disponible"):
+        return []
+    return [
+        f"- GitHub: {gh.get('nombre')} ({'archivado' if gh.get('archivado') else 'activo'})",
+        f"- Rama por defecto: `{gh.get('rama_por_defecto') or 'n/d'}`",
+        f"- PRs abiertos: {len(gh.get('prs_abiertos') or [])}",
+        f"- Issues abiertos: {len(gh.get('issues_abiertos') or [])}",
+    ]
+
+
+def _md_counts(rep: dict[str, Any], res: dict[str, Any]) -> list[str]:
+    ficheros = res.get("total_ficheros", 0)
+    lenguaje = res.get("lenguaje_principal") or "n/d"
+    estructura = "OK" if rep["estructura"]["ok"] else "FALLO"
+    return [
+        f"- Ficheros: {ficheros} | lenguaje: {lenguaje}",
+        f"- Estructura {rep['profile']}: {estructura}",
         "",
         "## Camino del producto",
         "",
     ]
-    if road.get("fichero"):
-        lines.append(f"Fichero: `{road['fichero']}`")
-        for t in road.get("titulos") or []:
-            lines.append(f"- {t}")
-    if road.get("unreleased"):
-        lines.append("Sin publicar (changelog):")
-        for u in road["unreleased"]:
-            lines.append(f"- {u}")
-    if gh.get("disponible"):
-        for issue in (gh.get("issues_abiertos") or [])[:10]:
-            names: list[str] = []
-            for lb in issue.get("labels") or []:
-                if isinstance(lb, dict):
-                    names.append(str(lb.get("name") or ""))
-                else:
-                    names.append(str(lb))
-            labels = ", ".join(n for n in names if n)
-            suffix = f" [{labels}]" if labels else ""
-            lines.append(f"- #{issue.get('number')} {issue.get('title')}{suffix}")
-        for pr in (gh.get("prs_abiertos") or [])[:10]:
-            draft = " (borrador)" if pr.get("isDraft") else ""
-            lines.append(f"- PR #{pr.get('number')} {pr.get('title')}{draft} ← `{pr.get('headRefName')}`")
-    if road.get("planes_locales"):
-        lines.append("Planes locales:")
-        for p in road["planes_locales"]:
-            lines.append(f"- `{p}`")
-    if (
+
+
+def _md_issue(issue: dict[str, Any]) -> str:
+    names: list[str] = []
+    for lb in issue.get("labels") or []:
+        names.append(str(lb.get("name") or "") if isinstance(lb, dict) else str(lb))
+    labels = ", ".join(n for n in names if n)
+    suffix = f" [{labels}]" if labels else ""
+    return f"- #{issue.get('number')} {issue.get('title')}{suffix}"
+
+
+def _md_pull(pr: dict[str, Any]) -> str:
+    draft = " (borrador)" if pr.get("isDraft") else ""
+    return f"- PR #{pr.get('number')} {pr.get('title')}{draft} ← `{pr.get('headRefName')}`"
+
+
+def _sin_camino(road: dict[str, Any], gh: dict[str, Any]) -> bool:
+    return (
         not road.get("fichero")
         and not road.get("unreleased")
         and not (gh.get("issues_abiertos") or gh.get("prs_abiertos"))
         and not road.get("planes_locales")
-    ):
+    )
+
+
+def _md_roadmap(road: dict[str, Any], gh: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    if road.get("fichero"):
+        lines.append(f"Fichero: `{road['fichero']}`")
+        lines.extend(f"- {t}" for t in road.get("titulos") or [])
+    if road.get("unreleased"):
+        lines.append("Sin publicar (changelog):")
+        lines.extend(f"- {u}" for u in road["unreleased"])
+    if gh.get("disponible"):
+        lines.extend(_md_issue(i) for i in (gh.get("issues_abiertos") or [])[:10])
+        lines.extend(_md_pull(p) for p in (gh.get("prs_abiertos") or [])[:10])
+    if road.get("planes_locales"):
+        lines.append("Planes locales:")
+        lines.extend(f"- `{p}`" for p in road["planes_locales"])
+    if _sin_camino(road, gh):
         lines.append("Sin camino documentado todavía.")
-    lines += ["", "## Errores y fallos", ""]
-    if not rep["fallos"]:
+    return lines
+
+
+def _md_fallos(fallos: list[dict[str, Any]]) -> list[str]:
+    lines = ["", "## Errores y fallos", ""]
+    if not fallos:
         lines.append("Sin hallazgos.")
-    else:
-        lines.append("| Sev | Fuente | Detalle |")
-        lines.append("|---|---|---|")
-        for f in rep["fallos"]:
-            detalle = str(f["detalle"]).replace("|", "\\|")
-            lines.append(f"| {f['sev']} | {f['fuente']} | {detalle} |")
-    lines += [
+        return lines
+    lines.append("| Sev | Fuente | Detalle |")
+    lines.append("|---|---|---|")
+    for f in fallos:
+        detalle = str(f["detalle"]).replace("|", "\\|")
+        lines.append(f"| {f['sev']} | {f['fuente']} | {detalle} |")
+    return lines
+
+
+def _md_next(rep: dict[str, Any]) -> list[str]:
+    return [
         "",
         "## Cómo seguir",
         "",
@@ -410,10 +448,28 @@ def to_markdown(rep: dict) -> str:
         f"JSON: `{rep.get('json_path') or 'inicio.json'}`",
         f"Tablero HTML: `{rep.get('html_path') or 'ESTADO.html'}`",
     ]
+
+
+def to_markdown(rep: dict[str, Any]) -> str:
+    git = rep["git"]
+    gh = rep["github"]
+    sem = rep["semaforo"]
+    lines = [
+        f"# Estado de partida — {rep.get('nombre') or Path(rep['repo']).name}",
+        "",
+        f"**Fecha**: {rep['generated_at']} | **Perfil**: {rep['profile']} | **Semáforo**: {sem}",
+        "",
+    ]
+    lines.extend(_md_git(git))
+    lines.extend(_md_github(gh))
+    lines.extend(_md_counts(rep, rep["scan"].get("resumen") or {}))
+    lines.extend(_md_roadmap(rep["roadmap"], gh))
+    lines.extend(_md_fallos(rep["fallos"]))
+    lines.extend(_md_next(rep))
     return "\n".join(lines) + "\n"
 
 
-def to_html(rep: dict) -> str:
+def to_html(rep: dict[str, Any]) -> str:
     sem = rep["semaforo"]
     color = {"verde": "#0f7b4c", "amarillo": "#9a6b00", "rojo": "#b42318"}[sem]
     git = rep["git"]
@@ -444,9 +500,11 @@ def to_html(rep: dict) -> str:
   <title>Estado de partida — {nombre}</title>
   <style>
     :root {{ color-scheme: light dark; }}
-    body {{ font-family: ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 1.5rem; line-height: 1.45; max-width: 52rem; }}
+    body {{ font-family: ui-sans-serif, system-ui, sans-serif; margin: 0;
+      padding: 1.5rem; line-height: 1.45; max-width: 52rem; }}
     h1 {{ font-size: 1.4rem; margin: 0 0 .4rem; }}
-    .pill {{ display: inline-block; padding: .15rem .7rem; border-radius: 999px; color: #fff; background: {color}; font-weight: 600; }}
+    .pill {{ display: inline-block; padding: .15rem .7rem; border-radius: 999px;
+      color: #fff; background: {color}; font-weight: 600; }}
     section {{ margin: 1.4rem 0; }}
     table {{ border-collapse: collapse; width: 100%; }}
     th, td {{ border-bottom: 1px solid #ccc4; text-align: left; padding: .4rem .5rem; vertical-align: top; }}
@@ -461,8 +519,10 @@ def to_html(rep: dict) -> str:
   <section>
     <h2>Estado del repo</h2>
     <table>
-      <tr><th>Rama</th><td><code>{esc(git.get("rama") or "n/d")}</code> @ <code>{esc(git.get("sha") or "n/d")}</code></td></tr>
-      <tr><th>Remoto</th><td>{esc(git.get("upstream") or "n/d")} (adelante {esc(git.get("adelante", 0))}, detrás {esc(git.get("atras", 0))})</td></tr>
+      <tr><th>Rama</th><td><code>{esc(git.get("rama") or "n/d")}</code> @
+        <code>{esc(git.get("sha") or "n/d")}</code></td></tr>
+      <tr><th>Remoto</th><td>{esc(git.get("upstream") or "n/d")}
+        (adelante {esc(git.get("adelante", 0))}, detrás {esc(git.get("atras", 0))})</td></tr>
       <tr><th>Árbol sucio</th><td>{"sí" if git.get("sucio") else "no"}</td></tr>
       <tr><th>Estructura {esc(rep["profile"])}</th><td>{"OK" if rep["estructura"]["ok"] else "FALLO"}</td></tr>
       <tr><th>GitHub</th><td>{esc(gh.get("nombre") or "n/d")}</td></tr>
@@ -484,7 +544,7 @@ def to_html(rep: dict) -> str:
 """
 
 
-def build_report(repo: str, profile: str) -> dict:
+def build_report(repo: str, profile: str) -> dict[str, Any]:
     repo = os.path.abspath(repo)
     git = git_snapshot(repo)
     scan = scan_repo.scan(repo)
@@ -501,7 +561,7 @@ def build_report(repo: str, profile: str) -> dict:
     return {
         "repo": repo,
         "nombre": nombre,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "profile": profile,
         "git": git,
         "scan": {"resumen": scan.get("resumen") or {}, "raiz": scan.get("raiz")},
@@ -521,7 +581,7 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(levelname)s: %(message)s")
     args = build_parser().parse_args(argv)
     if not os.path.isdir(args.repo):
@@ -529,8 +589,6 @@ def main(argv=None) -> int:
         return 2
     out = args.out
     if not out:
-        import tempfile
-
         out = tempfile.mkdtemp(prefix="inicio-plan-")
         print(f"inicio_plan.py: salida en {out}")
     os.makedirs(out, exist_ok=True)

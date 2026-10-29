@@ -1,6 +1,6 @@
 # Repo skill standard
 
-Based on the [Autoworkspace specification](https://agentskills.io/specification). The `tools/validate/skill_spec.py` validator enforces these rules.
+Based on the [Agent Skills specification](https://agentskills.io/specification). The `tools/validate/skill_spec.py` validator enforces these rules.
 
 ## `SKILL.md` frontmatter (required)
 

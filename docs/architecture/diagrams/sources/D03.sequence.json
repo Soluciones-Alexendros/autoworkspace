@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Agregación de ci-gate",
+    "subtitle": "Los siete jobs de ci.yml en paralelo y un único check obligatorio",
+    "output": "docs/architecture/diagrams/rendered/D03.html",
+    "locale": "es",
+    "viewBox": [1800, 620],
+    "animation": "trace",
+    "visual_preset": "blueprint"
+  },
+  "participants": [
+    {
+      "id": "ppython",
+      "type": "backend",
+      "label": "pipeline-python",
+      "sublabel": "reusable-python.yml"
+    },
+    {
+      "id": "pnode",
+      "type": "backend",
+      "label": "pipeline-node",
+      "sublabel": "reusable-node.yml"
+    },
+    {
+      "id": "canon",
+      "type": "cloud",
+      "label": "canon",
+      "sublabel": "reusable-static.yml"
+    },
+    {
+      "id": "caller",
+      "type": "backend",
+      "label": "caller-reusable-path",
+      "sublabel": "pin del reusable"
+    },
+    {
+      "id": "hygiene",
+      "type": "security",
+      "label": "hygiene",
+      "sublabel": "patrones privados"
+    },
+    {
+      "id": "validate",
+      "type": "security",
+      "label": "validate",
+      "sublabel": "skill_links · spec"
+    },
+    {
+      "id": "bump",
+      "type": "security",
+      "label": "check-bump",
+      "sublabel": "versión > tag"
+    },
+    {
+      "id": "gate",
+      "type": "cloud",
+      "label": "ci-gate",
+      "sublabel": "needs + hold"
+    },
+    {
+      "id": "github",
+      "type": "external",
+      "label": "GitHub",
+      "sublabel": "required status check"
+    }
+  ],
+  "segments": [
+    {
+      "from": 170,
+      "to": 370,
+      "label": "Jobs en paralelo"
+    },
+    {
+      "from": 380,
+      "to": 500,
+      "label": "Evaluación del gate"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m-ppython",
+      "from": "ppython",
+      "to": "gate",
+      "y": 180,
+      "label": "quality + test",
+      "variant": "default"
+    },
+    {
+      "id": "m-pnode",
+      "from": "pnode",
+      "to": "gate",
+      "y": 208,
+      "label": "quality + test",
+      "variant": "default"
+    },
+    {
+      "id": "m-canon",
+      "from": "canon",
+      "to": "gate",
+      "y": 236,
+      "label": "quality + test + smoke",
+      "variant": "default"
+    },
+    {
+      "id": "m-caller",
+      "from": "caller",
+      "to": "gate",
+      "y": 264,
+      "label": "resolución del pin",
+      "variant": "default"
+    },
+    {
+      "id": "m-hygiene",
+      "from": "hygiene",
+      "to": "gate",
+      "y": 292,
+      "label": "hygiene + bash -n",
+      "variant": "default"
+    },
+    {
+      "id": "m-validate",
+      "from": "validate",
+      "to": "gate",
+      "y": 320,
+      "label": "validadores del canon",
+      "variant": "default"
+    },
+    {
+      "id": "m-bump",
+      "from": "bump",
+      "to": "gate",
+      "y": 348,
+      "label": "bump de versión",
+      "variant": "default"
+    },
+    {
+      "id": "m-verdict",
+      "from": "gate",
+      "to": "github",
+      "y": 410,
+      "label": "conclusion: success",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m-fail",
+      "from": "gate",
+      "to": "github",
+      "y": 470,
+      "label": "conclusion: failure",
+      "variant": "security"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "ppython",
+      "from": 170,
+      "to": 360,
+      "type": "backend"
+    },
+    {
+      "participant": "pnode",
+      "from": 170,
+      "to": 360,
+      "type": "backend"
+    },
+    {
+      "participant": "canon",
+      "from": 170,
+      "to": 360,
+      "type": "cloud"
+    },
+    {
+      "participant": "caller",
+      "from": 170,
+      "to": 360,
+      "type": "backend"
+    },
+    {
+      "participant": "hygiene",
+      "from": 170,
+      "to": 360,
+      "type": "security"
+    },
+    {
+      "participant": "validate",
+      "from": 170,
+      "to": 360,
+      "type": "security"
+    },
+    {
+      "participant": "bump",
+      "from": 170,
+      "to": 360,
+      "type": "security"
+    },
+    {
+      "participant": "gate",
+      "from": 375,
+      "to": 490,
+      "type": "cloud"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Un solo check obligatorio",
+      "items": [
+        "Los siete jobs entran en ci-gate.needs y corren en paralelo",
+        "ci-gate es el único required status check atado a GitHub Actions",
+        "Un job saltado no equivale a verde: ci-gate exige success explícito"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Qué vigila cada job",
+      "items": [
+        "pipeline-<stack> ejecuta los reusables del canon por stack",
+        "validate corre los validadores del canon: enlaces, glosario, spec y coherencia de release",
+        "check-bump exige que la versión vaya por delante del último tag"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Cómo falla",
+      "items": [
+        "Un job en rojo deja ci-gate en failure y el PR bloqueado",
+        "La etiqueta hold fuerza el fallo a propósito en ci-gate",
+        "Ningún token, ni siquiera el del dueño, puede saltarse el ruleset"
+      ]
+    }
+  ]
+}

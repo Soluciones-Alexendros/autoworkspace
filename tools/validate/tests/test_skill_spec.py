@@ -2,11 +2,12 @@
 
 import importlib.util
 from pathlib import Path
+from typing import Any
 
 SPEC = Path(__file__).resolve().parents[1] / "skill_spec.py"
 
 
-def load():
+def load() -> Any:
     spec = importlib.util.spec_from_file_location("skill_spec", SPEC)
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -66,7 +67,7 @@ def run_root(root: Path) -> list[str]:
     return list(mod.ERRORS)
 
 
-def test_description_without_boundary(tmp_path):
+def test_description_without_boundary(tmp_path: Path) -> None:
     write_skill(
         tmp_path,
         "plan-demo",
@@ -78,7 +79,7 @@ def test_description_without_boundary(tmp_path):
     assert any("exclusion" in e for e in errors)
 
 
-def test_arrow_to_missing_skill(tmp_path):
+def test_arrow_to_missing_skill(tmp_path: Path) -> None:
     write_skill(
         tmp_path,
         "plan-demo",
@@ -90,7 +91,7 @@ def test_arrow_to_missing_skill(tmp_path):
     assert any("inexistente" in e for e in errors)
 
 
-def test_host_profile_heading(tmp_path):
+def test_host_profile_heading(tmp_path: Path) -> None:
     write_skill(
         tmp_path,
         "local-demo",
@@ -101,7 +102,7 @@ def test_host_profile_heading(tmp_path):
     assert any("H2 prohibido" in e for e in errors)
 
 
-def test_catalog_mismatch(tmp_path):
+def test_catalog_mismatch(tmp_path: Path) -> None:
     write_skill(
         tmp_path,
         "plan-demo",
@@ -112,7 +113,7 @@ def test_catalog_mismatch(tmp_path):
     assert any("README vs carpetas" in e or "TAXONOMY vs carpetas" in e for e in errors)
 
 
-def test_smoke_required_when_scripts(tmp_path):
+def test_smoke_required_when_scripts(tmp_path: Path) -> None:
     write_skill(
         tmp_path,
         "local-demo",
@@ -126,7 +127,7 @@ def test_smoke_required_when_scripts(tmp_path):
     assert any("smoke_sh.sh" in e for e in errors)
 
 
-def test_local_domain_is_accepted(tmp_path):
+def test_local_domain_is_accepted(tmp_path: Path) -> None:
     write_skill(
         tmp_path,
         "local-demo",
@@ -137,7 +138,7 @@ def test_local_domain_is_accepted(tmp_path):
     assert not any("unknown domain" in e for e in errors)
 
 
-def test_legacy_system_domain_is_rejected(tmp_path):
+def test_legacy_system_domain_is_rejected(tmp_path: Path) -> None:
     write_skill(
         tmp_path,
         "system-demo",

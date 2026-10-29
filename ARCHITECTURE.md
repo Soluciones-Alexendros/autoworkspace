@@ -12,16 +12,17 @@
 
 ## Tree
 
-| Path                           | Role                                                       |
-| ------------------------------ | ---------------------------------------------------------- |
-| `skills/<name>/`               | One skill per folder; `SKILL.md` is the contract           |
-| `tools/`                       | Routers, validators, versioning, execution layer           |
-| `docs/`                        | Product docs + fleet ADRs, guides, runbooks, REUTILIZACION |
-| `docs/architecture/decisions/` | ADR-0001… (fleet) + ADR-0016 (host)                        |
-| `stacks/`                      | CI callers per runtime (pin reusable by SHA)               |
-| `.github/workflows/`           | `ci.yml` + reusables + quality/validate/version/release    |
-| `templates/repo/`              | Product P0/P1 skeleton (copy into a new repo)              |
-| `templates/autoworkspace/`     | Scaffolding for `.autoworkspace/`                          |
+| Path                           | Role                                                         |
+| ------------------------------ | ------------------------------------------------------------ |
+| `skills/<name>/`               | One skill per folder; `SKILL.md` is the contract             |
+| `tools/`                       | Routers, validators, versioning, execution layer             |
+| `docs/`                        | Product docs + fleet ADRs, guides, runbooks, REUTILIZACION   |
+| `docs/architecture/decisions/` | ADR-0001… (fleet) + ADR-0016 (host)                          |
+| `docs/architecture/diagrams/`  | D01–D04: fuentes JSON (Archify); `make diagrams` → artefacto |
+| `stacks/`                      | CI callers per runtime (pin reusable by SHA)                 |
+| `.github/workflows/`           | `ci.yml` + reusables + quality/validate/version/release      |
+| `templates/repo/`              | Product P0/P1 skeleton (copy into a new repo)                |
+| `templates/autoworkspace/`     | Scaffolding for `.autoworkspace/`                            |
 
 Sixteen skills in five domains: `plan`, `local`, `project`, `web`, `role`.
 
@@ -49,14 +50,15 @@ Per-task role selection (backend / front / design / clean-code) is mandatory whe
 
 ## Continuous integration
 
-| Workflow       | Job(s)                                           | Role                                            |
-| -------------- | ------------------------------------------------ | ----------------------------------------------- |
-| `ci.yml`       | `pipeline`, `hygiene`, `validate`, **`ci-gate`** | Canon caller + gate agregado                    |
-| `quality.yml`  | `hygiene`                                        | Required clásico hasta P9                       |
-| `validate.yml` | `validate`                                       | Required clásico hasta P9                       |
-| `version.yml`  | `check-bump`                                     | Skill `metadata.version` bump on PRs (hasta P2) |
-| `release.yml`  | `publish` (+ provenance)                         | Tag cut and GitHub Release on `main`            |
-| `security.yml` | `actionlint`                                     | Workflow lint                                   |
+| Workflow         | Job(s)                                                                                                                              | Role                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `ci.yml`         | `pipeline-python`, `pipeline-node`, `canon`, `caller-reusable-path`, `hygiene`, `validate`, `check-bump`, `diagrams`, **`ci-gate`** | Caller local + gate agregado (`ci-gate.needs` con los ocho anteriores) |
+| `quality.yml`    | `hygiene`                                                                                                                           | Required clásico hasta P9                                              |
+| `validate.yml`   | `validate`                                                                                                                          | Required clásico hasta P9                                              |
+| `version.yml`    | `check-bump`                                                                                                                        | Skill `metadata.version` bump on PRs (hasta P2)                        |
+| `release.yml`    | `publish`, `provenance`                                                                                                             | Tag cut, GitHub Release y atestación on `main`                         |
+| `security.yml`   | `actionlint`                                                                                                                        | Workflow lint                                                          |
+| `reusable-*.yml` | `quality`, `test`, `build`, `smoke`, `e2e`, `link-check`, `security` (según stack)                                                  | Reusables llamados por SHA desde `stacks/<stack>/ci.yml`               |
 
 Local equivalents: `make validate`, `make lint`, `make test`, `make smoke`.
 

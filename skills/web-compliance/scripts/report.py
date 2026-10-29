@@ -7,12 +7,14 @@ Uso:
 """
 
 import argparse
+import contextlib
 import datetime
 import importlib.util
 import json
 import logging
 import os
 import sys
+from typing import Any
 
 # Cargar score desde el mismo directorio para evitar conflictos de imports
 _SCRIPTS_DIR = os.path.dirname(__file__)
@@ -26,7 +28,7 @@ score = _score_module.score
 
 logger = logging.getLogger("auditoria360.report")
 
-ICONO = {"PASS": "✅", "FAIL": "❌", "WARN": "⚠️", "NA": "➖", "PENDING": "🔎"}
+ICONO = {"PASS": "✅", "FAIL": "❌", "WARN": "⚠️", "NA": "\u2796", "PENDING": "🔎"}
 SEMAFORO = {"VERDE": "🟢", "AMBAR": "🟠", "ROJO": "🔴", "SIN DATOS": "⚪"}
 SPRINT = {
     "Crítico": "Sprint 1 (<72h)",
@@ -36,72 +38,111 @@ SPRINT = {
 }
 
 
-def render(sc):
+def render(sc: dict[str, Any]) -> str:
     fecha = datetime.date.today().isoformat()
-    L = []
-    L.append("# INFORME DE CIERRE — AUDITORÍA 360°")
-    L.append(f"**Objetivo:** {sc.get('target') or '(sin especificar)'}  ")
-    L.append(f"**Fecha:** {fecha}  ")
-    L.append("**Estándares:** WCAG 2.2 AA · EN 301 549 · Google Search Essentials · Consent Mode v2 · RGPD\n")
+    lines: list[str] = []
+    lines.append("# INFORME DE CIERRE — AUDITORÍA 360°")
+    lines.append(f"**Objetivo:** {sc.get('target') or '(sin especificar)'}  ")
+    lines.append(f"**Fecha:** {fecha}  ")
+    lines.append("**Estándares:** WCAG 2.2 AA · EN 301 549 · Google Search Essentials · Consent Mode v2 · RGPD\n")
 
-    L.append("## 1. Resumen ejecutivo\n")
+    lines.append("## 1. Resumen ejecutivo\n")
     pct = sc["pct_global"]
-    L.append(f"- **Dictamen: {sc['dictamen']}** — {sc['motivo_dictamen']}")
-    L.append(f"- Cumplimiento global: **{pct}%**" if pct is not None else "- Cumplimiento global: SIN DATOS")
-    L.append(
+    lines.append(f"- **Dictamen: {sc['dictamen']}** — {sc['motivo_dictamen']}")
+    lines.append(f"- Cumplimiento global: **{pct}%**" if pct is not None else "- Cumplimiento global: SIN DATOS")
+    lines.append(
         f"- FAIL críticos: **{sc['fails_criticos']}** · Hallazgos totales: {sc['total_hallazgos']}"
         f" · Pendientes de verificación: {sc['pendientes']}"
     )
-    L.append(f"- Deuda técnica estimada: **~{sc['deuda_horas_estimada']} h**\n")
+    lines.append(f"- Deuda técnica estimada: **~{sc['deuda_horas_estimada']} h**\n")
 
-    L.append("## 2. Semáforo por pilar\n")
-    L.append("| Pilar | PASS | FAIL | N/A | Pend. | % | Semáforo |")
-    L.append("|---|---|---|---|---|---|---|")
+    lines.append("## 2. Semáforo por pilar\n")
+    lines.append("| Pilar | PASS | FAIL | N/A | Pend. | % | Semáforo |")
+    lines.append("|---|---|---|---|---|---|---|")
     for pid, p in sc["pilares"].items():
         pct_txt = f"{p['pct']}%" if p["pct"] is not None else "—"
-        L.append(
+        lines.append(
             f"| {pid} — {p['nombre']} | {p['pass']} | {p['fail']} | {p['na']} "
             f"| {p['pending']} | {pct_txt} | {SEMAFORO[p['semaforo']]} {p['semaforo']} |"
         )
-    L.append("")
+    lines.append("")
 
-    L.append("## 3. Hallazgos y acciones correctivas (priorización por severidad)\n")
+    lines.append("## 3. Hallazgos y acciones correctivas (priorización por severidad)\n")
     if not sc["hallazgos"]:
-        L.append("Sin hallazgos FAIL/WARN. ✅\n")
+        lines.append("Sin hallazgos FAIL/WARN. ✅\n")
     for h in sc["hallazgos"]:
-        L.append(f"### {ICONO[h['resultado']]} {h['id']} — {h['criterio']}")
-        L.append(
-            f"- **Severidad:** {h['severidad']} · **Pilar:** {h['pilar']} · **Sprint:** {SPRINT.get(h['severidad'], 'Backlog')}"
-        )
-        L.append(f"- **Estándar:** {h['estandar']}")
+        lines.append(f"### {ICONO[h['resultado']]} {h['id']} — {h['criterio']}")
+        sev = h["severidad"]
+        pilar = h["pilar"]
+        sprint = SPRINT.get(sev, "Backlog")
+        lines.append(f"- **Severidad:** {sev} · **Pilar:** {pilar} · **Sprint:** {sprint}")
+        lines.append(f"- **Estándar:** {h['estandar']}")
         if h["evidencia"]:
-            L.append(f"- **Evidencia:** {h['evidencia']}")
+            lines.append(f"- **Evidencia:** {h['evidencia']}")
         if h["accion"]:
-            L.append(f"- **Acción correctiva:** {h['accion']}")
-        L.append(f"- **Esfuerzo estimado:** ~{h['esfuerzo_h']} h")
-        L.append("")
+            lines.append(f"- **Acción correctiva:** {h['accion']}")
+        lines.append(f"- **Esfuerzo estimado:** ~{h['esfuerzo_h']} h")
+        lines.append("")
 
-    L.append("## 4. Check de verificación de cumplimiento — cierre\n")
+    lines.append("## 4. Check de verificación de cumplimiento — cierre\n")
     ok = sc["fails_criticos"] == 0 and sc["dictamen"] == "POSITIVO"
-    L.append("| Verificación | Resultado |")
-    L.append("|---|---|")
-    L.append(f"| 0 FAIL críticos en Accesibilidad y Técnico | {'✅' if sc['fails_criticos'] == 0 else '❌'} |")
-    for pid, p in sc["pilares"].items():
+    lines.append("| Verificación | Resultado |")
+    lines.append("|---|---|")
+    lines.append(f"| 0 FAIL críticos en Accesibilidad y Técnico | {'✅' if sc['fails_criticos'] == 0 else '❌'} |")
+    for _pid, p in sc["pilares"].items():
         if p["pct"] is None:
-            L.append(f"| {p['nombre']} evaluado | ➖ sin datos |")
+            lines.append(f"| {p['nombre']} evaluado | \u2796 sin datos |")
         else:
-            L.append(f"| {p['nombre']}: {p['pct']}% PASS | {'✅' if p['semaforo'] == 'VERDE' else '❌'} |")
-    L.append(f"| **Dictamen global** | **{'✅ POSITIVO' if ok else '❌ ' + sc['dictamen']}** |")
-    L.append("")
-    L.append("## 5. Próximos pasos\n")
-    L.append("1. Ejecutar Sprint 1 (FAIL críticos) y re-auditar de forma parcial.")
-    L.append("2. Completar checks 🔎 PENDING con los protocolos manuales de references/.")
-    L.append("3. Aplicar roadmap RICE completo y mejoras proactivas (references/remediation.md).")
-    L.append("4. Fijar re-auditoría trimestral y declaración de accesibilidad (EN 301 549).")
-    return "\n".join(L) + "\n"
+            lines.append(f"| {p['nombre']}: {p['pct']}% PASS | {'✅' if p['semaforo'] == 'VERDE' else '❌'} |")
+    lines.append(f"| **Dictamen global** | **{'✅ POSITIVO' if ok else '❌ ' + sc['dictamen']}** |")
+    lines.append("")
+    lines.append("## 5. Próximos pasos\n")
+    lines.append("1. Ejecutar Sprint 1 (FAIL críticos) y re-auditar de forma parcial.")
+    lines.append("2. Completar checks 🔎 PENDING con los protocolos manuales de references/.")
+    lines.append("3. Aplicar roadmap RICE completo y mejoras proactivas (references/remediation.md).")
+    lines.append("4. Fijar re-auditoría trimestral y declaración de accesibilidad (EN 301 549).")
+    return "\n".join(lines) + "\n"
 
 
-def main(argv=None) -> int:
+def _load_input(path: str) -> tuple[Any, int | None]:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh), None
+    except OSError as e:
+        logger.error("no se pudo leer %s: %s: %s", path, type(e).__name__, e)
+        return None, 2
+    except json.JSONDecodeError as e:
+        logger.error("JSON inválido en %s: %s", path, e)
+        return None, 2
+
+
+def _build_scoring(data: Any, args: argparse.Namespace) -> dict[str, Any]:
+    if args.from_checks:
+        if not isinstance(data, dict):
+            raise ValueError("con --from-checks la entrada debe ser objeto con 'checks'")
+        sc: dict[str, Any] = score(data.get("checks", []), config_dir=args.config)
+        sc["target"] = data.get("target")
+        return sc
+    if not isinstance(data, dict):
+        raise ValueError("el JSON de scoring debe ser un objeto")
+    for clave in ("dictamen", "pilares", "hallazgos"):
+        if clave not in data:
+            raise ValueError(f"el JSON de scoring no trae '{clave}' (¿olvidaste --from-checks?)")
+    return data
+
+
+def _write_report(path: str, md: str) -> int | None:
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(md)
+    except OSError as e:
+        logger.error("no se pudo escribir %s: %s: %s", path, type(e).__name__, e)
+        print(md)
+        return 2
+    return None
+
+
+def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Informe de cierre Auditoría 360°")
     ap.add_argument("entrada", help="JSON de scoring (o de checks con --from-checks)")
@@ -110,29 +151,11 @@ def main(argv=None) -> int:
     ap.add_argument("--md", help="Guardar informe Markdown")
     args = ap.parse_args(argv)
 
+    data, rc = _load_input(args.entrada)
+    if rc is not None:
+        return rc
     try:
-        with open(args.entrada, encoding="utf-8") as fh:
-            data = json.load(fh)
-    except OSError as e:
-        logger.error("no se pudo leer %s: %s: %s", args.entrada, type(e).__name__, e)
-        return 2
-    except json.JSONDecodeError as e:
-        logger.error("JSON inválido en %s: %s", args.entrada, e)
-        return 2
-    try:
-        if args.from_checks:
-            if not isinstance(data, dict):
-                raise ValueError("con --from-checks la entrada debe ser objeto con 'checks'")
-            sc = score(data.get("checks", []), config_dir=args.config)
-            sc["target"] = data.get("target")
-        else:
-            if not isinstance(data, dict):
-                raise ValueError("el JSON de scoring debe ser un objeto")
-            sc = data
-            for clave in ("dictamen", "pilares", "hallazgos"):
-                if clave not in sc:
-                    raise ValueError(f"el JSON de scoring no trae '{clave}' (¿olvidaste --from-checks?)")
-        md = render(sc)
+        md = render(_build_scoring(data, args))
     except (ValueError, KeyError, TypeError, AttributeError) as e:
         logger.error("no se pudo generar el informe: %s: %s", type(e).__name__, e)
         return 1
@@ -140,17 +163,11 @@ def main(argv=None) -> int:
         logger.error("%s", e)
         return 2
     if args.md:
-        try:
-            with open(args.md, "w", encoding="utf-8") as fh:
-                fh.write(md)
-        except OSError as e:
-            logger.error("no se pudo escribir %s: %s: %s", args.md, type(e).__name__, e)
-            print(md)
-            return 2
-    try:
+        write_rc = _write_report(args.md, md)
+        if write_rc is not None:
+            return write_rc
+    with contextlib.suppress(BrokenPipeError):
         print(md)
-    except BrokenPipeError:
-        pass
     return 0
 
 

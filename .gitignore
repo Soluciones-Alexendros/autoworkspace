@@ -41,3 +41,13 @@ proteccion-*.zip
 .env
 .env.*
 !.env.example
+
+# Diagramas: el HTML es artefacto de CI, no se versiona (P12 T5)
+docs/architecture/diagrams/rendered/
+.cache/
+
+# Informes reales de local-maintenance (salida audit-quick). Fixtures aprobadas
+# viven bajo **/fixtures/** o **/testdata/** y no usan este patrón con timestamp.
+skills/**/audit-quick-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9].json
+# Manifiesto operativo del taller (copia local fuera del árbol publicable)
+/repos-taller.tsv

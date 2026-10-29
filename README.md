@@ -8,7 +8,7 @@
 
 Workspace agéntico de Soluciones-Alexendros (MIT): no es una vitrina de skills, sino un pipeline preprogramado con variables por proyecto — especificación → esquemas/tests → código → validación → integración → status declarativo versionado. También es el **host público del canon de flota** (antes `repo-standard`).
 
-Versión **5.1.0**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
+Versión **6.1.0**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
 
 **Deps:** version-updates vía [Renovate](.github/renovate.json) (Dependabot Alerts de seguridad pueden quedar ON). App Renovate en la org es prerrequisito humano.
 
@@ -137,7 +137,7 @@ El cuerpo debe incluir `## Overview` y `## When to Use`. Las skills que empaquet
 
 Las flechas (`→ otra-skill`) de las descripciones deben apuntar a una skill existente en este catálogo.
 
-## Canon de flota (repo-standard)
+## Canon de flota
 
 Este repositorio aloja el contrato P0/P1 de la flota. Índice rápido:
 
@@ -148,6 +148,7 @@ Este repositorio aloja el contrato P0/P1 de la flota. Índice rápido:
 | Callers por stack     | [`stacks/`](stacks/)                                                                        |
 | Reusables CI          | [`.github/workflows/reusable-*.yml`](.github/workflows/)                                    |
 | Plantilla de producto | [`templates/repo/`](templates/repo/) — `gh repo create … && cp -a templates/repo/. <repo>/` |
+| Glosario              | [`docs/GLOSARIO.md`](docs/GLOSARIO.md) — un término canónico por concepto                   |
 
 Norma de planes (plantilla en `docs/` + carpeta `docs/plans/`) llegan en T2. Rulesets como código llegan con P2/P10 (`rulesets/`).
 

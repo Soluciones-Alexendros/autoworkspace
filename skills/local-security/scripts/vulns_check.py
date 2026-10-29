@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """vulns_check.py - Chequeo de vulnerabilidades apt + snap/flatpak (solo lectura).
 
 Fuentes: apt (actualizaciones de seguridad), snap refresh --list,
@@ -15,6 +16,7 @@ import logging
 import shutil
 import subprocess
 import sys
+from typing import Any
 
 logger = logging.getLogger("seguridad.vulns")
 
@@ -54,28 +56,28 @@ def has_network() -> bool:
     return bool(out.strip())
 
 
-def check_apt() -> dict:
+def check_apt() -> dict[str, Any]:
     if which("apt") is None:
         return {"status": "skip", "reason": "apt no disponible"}
     _, out = run_cmd("apt list --upgradable 2>/dev/null | grep -vE '^(Listing|Listando)'", timeout=120)
-    lines = [l for l in out.splitlines() if l.strip()]
-    sec = [l for l in lines if "-security" in l or "security" in l.lower()]
+    lines = [ln for ln in out.splitlines() if ln.strip()]
+    sec = [ln for ln in lines if "-security" in ln or "security" in ln.lower()]
     return {"status": "ok", "upgradable": len(lines), "security": len(sec), "sample": lines[:10]}
 
 
-def check_snap() -> dict:
+def check_snap() -> dict[str, Any]:
     if which("snap") is None:
         return {"status": "skip", "reason": "snap no instalado"}
     _, out = run_cmd("snap refresh --list 2>/dev/null", timeout=120)
-    lines = [l for l in out.splitlines() if l.strip()]
+    lines = [ln for ln in out.splitlines() if ln.strip()]
     return {"status": "ok", "pending": max(0, len(lines) - 1) if lines else 0, "sample": lines[:10]}
 
 
-def check_flatpak() -> dict:
+def check_flatpak() -> dict[str, Any]:
     if which("flatpak") is None:
         return {"status": "skip", "reason": "flatpak no instalado"}
     _, out = run_cmd("flatpak remote-ls --updates 2>/dev/null", timeout=120)
-    lines = [l for l in out.splitlines() if l.strip()]
+    lines = [ln for ln in out.splitlines() if ln.strip()]
     return {"status": "ok", "pending": len(lines), "sample": lines[:10]}
 
 
@@ -87,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     _setup_logging(args.verbose)
 
     online = has_network()
-    result: dict = {"network": online, "sources": {}}
+    result: dict[str, Any] = {"network": online, "sources": {}}
     if not online:
         logger.warning("sin red: modo degradado, solo informe local")
         print("AVISO: sin red — modo degradado (solo informe local, sin datos de seguridad frescos)")

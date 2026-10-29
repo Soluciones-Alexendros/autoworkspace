@@ -6,6 +6,40 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+- `project-publish` 4.3.4 -> 4.3.5 (patch)
+
+- `project-publish` 4.3.3 -> 4.3.4 (patch)
+- `web-compliance` 4.1.2 -> 4.1.3 (patch)
+
+- `plan-continue` 4.3.5 -> 4.3.6 (patch)
+
+- `local-maintenance` 5.1.5 -> 5.1.6 (patch)
+- `local-proton` 5.1.3 -> 5.1.4 (patch)
+- `local-security` 5.1.2 -> 5.1.3 (patch)
+
+## [6.1.0] - 2026-10-26
+
+### Added
+
+- Suministro verificado dentro de `ci-gate`: jobs `secrets` (gitleaks 8.30.1 con checksum), `sca` (OSV-Scanner v2.7.0) y `zizmor` 1.31.1 con `--min-severity=medium` (A2, T1e).
+- Diagramas de arquitectura con Archify fijado por SHA, fuentes JSON versionadas, validación en `ci-gate` y HTML solo como artefacto (T5).
+- `docs/GLOSARIO.md` con la terminología canónica, su regla de idioma y el bloque `forbidden` validado en `ci-gate` (T3, glosario).
+
+### Changed
+
+- Renovate sin automerge y con cuarentena de releases: `minimumReleaseAge` de 3 días (14 para majors), `internalChecksFilter: strict` y `platformAutomerge: false` (A1, T1d).
+- Terminología canónica aplicada a los textos vivos del canon (T3).
+- Retirada de la deuda ruff/mypy congelada, con residuo de `# noqa` acotado (T6).
+
+### Fixed
+
+- Pin del canon a `676be75` (`v6.0.0`) en los cinco usos (T1b).
+- Expresiones de GitHub fuera de `run:` en `ci.yml` y `version.yml` mediante `env: BASE_REF` (A5, T1c).
+- `release.yml` y las herramientas de CI fijadas: gitleaks binario en lugar de la action, `persist-credentials: false`, `enable-cache: false`, `cargo-llvm-cov@0.9.1`, `cargo-deny@0.20.2`, `cargo-audit@0.22.2` y actionlint 1.7.12 con checksum (A3, A4, A6, T1f).
+- Contenidos y referencias obsoletos del canon, con `release_coherence` comprobando la versión del README (T2).
+- Enlaces externos del canon limitados a owners permitidos y verificados (T4).
+- Plantillas de plan, banners de ADR y `check-ignore` (T1).
+
 ## [6.0.0] - 2026-10-25
 
 ### Changed
@@ -209,7 +243,9 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
   Reestructuración a 4 familias por fase SDLC (disenar/construir/verificar/operar); fusión email-proton+protonpass → construir-proton-suite v1.0.0; dominios alignux, datos, integraciones suprimidos
 
-## [1.0.0] - 2026-09-27
+## 1.0.0 - 2026-09-27
+
+> Tag `v1.0.0` no publicado en el remoto (solo existió en local): sin enlace de comparación.
 
 - Consolidación FASE-4 (18 skills, 7 dominios): `docs/TAXONOMY.md`, `README.md` y `tools/validate/skill_spec.py` alineados a los nombres reales; `web-seguridad` con cuerpo íntegramente en ES (tecnicismos en inglés preservados).
 - Tabla de renombros/fusiones:
@@ -244,6 +280,5 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 [3.0.1]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v2.0.0...v2.2.0
-[2.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v0.1.0...v1.0.0
+[2.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v0.1.0...v2.0.0
 [0.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/releases/tag/v0.1.0

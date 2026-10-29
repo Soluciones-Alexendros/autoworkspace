@@ -1,4 +1,4 @@
-# Arquitectura — repo-standard
+# Arquitectura — `<repo>`
 
 ### Propósito de este documento
 

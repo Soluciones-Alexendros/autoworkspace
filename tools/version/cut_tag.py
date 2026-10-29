@@ -33,7 +33,7 @@ RELEASE_PATHS = {
 }
 
 
-def git(args: list[str], root: Path, check: bool = True) -> subprocess.CompletedProcess:
+def git(args: list[str], root: Path, check: bool = True) -> subprocess.CompletedProcess[str]:
     r = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=False)
     if check and r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)}: {r.stderr.strip()}")
@@ -175,6 +175,39 @@ def cmd_readiness(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cut_notes(args: argparse.Namespace, root: Path, pkg: str, tagged: str | None) -> tuple[str | None, int | None]:
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    try:
+        return extract_notes(changelog, pkg), None
+    except ValueError as e:
+        if args.strict_readiness:
+            print(f"CUT: fail ({e}); package={pkg}")
+            write_output(tagged="false", version=pkg, status="not_ready", reason="notes")
+            return None, 1
+        # Ordinary push path: skip ≠ published
+        print(f"CUT: skip ({e}); package={pkg} latest_tag={tagged}")
+        write_output(tagged="false", version=pkg, status="skipped", reason=str(e))
+        return None, 0
+
+
+def _tag_and_push(args: argparse.Namespace, root: Path, tag: str, pkg: str) -> int | None:
+    try:
+        git(["tag", "-a", tag, "-m", tag], root)
+    except RuntimeError as exc:
+        print(f"CUT: fail git_error {exc}")
+        write_output(tagged="false", version=pkg, status="error", reason="git_error")
+        return 1
+    if not args.push:
+        return None
+    try:
+        git(["push", "origin", tag], root)
+    except RuntimeError as exc:
+        print(f"CUT: fail push_error {exc}")
+        write_output(tagged="false", version=pkg, status="error", reason="push_error")
+        return 1
+    return None
+
+
 def cmd_cut(args: argparse.Namespace) -> int:
     root = args.root
     pkg = package_version(root)
@@ -184,42 +217,23 @@ def cmd_cut(args: argparse.Namespace) -> int:
         rc = cmd_readiness(args)
         if rc != 0:
             return rc
-    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
-    try:
-        notes = extract_notes(changelog, pkg)
-    except ValueError as e:
-        if args.strict_readiness:
-            print(f"CUT: fail ({e}); package={pkg}")
-            write_output(tagged="false", version=pkg, status="not_ready", reason="notes")
-            return 1
-        # Ordinary push path: skip ≠ published
-        print(f"CUT: skip ({e}); package={pkg} latest_tag={tagged}")
-        write_output(tagged="false", version=pkg, status="skipped", reason=str(e))
-        return 0
+    notes, skip_rc = _cut_notes(args, root, pkg, tagged)
+    if skip_rc is not None:
+        return skip_rc
     if not should_cut(pkg, tagged):
         print(f"CUT: skip package={pkg} latest_tag={tagged}")
         write_output(tagged="false", version=pkg, status="skipped", reason="already_tagged")
         return 0
     tag = f"v{pkg}"
     print(f"CUT: would tag {tag} (latest={tagged})")
-    if args.notes_file:
+    if notes is not None and args.notes_file:
         Path(args.notes_file).write_text(notes, encoding="utf-8")
     if not args.apply:
         write_output(tagged="false", version=pkg, status="dry_run", reason="ok")
         return 0
-    try:
-        git(["tag", "-a", tag, "-m", tag], root)
-    except RuntimeError as exc:
-        print(f"CUT: fail git_error {exc}")
-        write_output(tagged="false", version=pkg, status="error", reason="git_error")
-        return 1
-    if args.push:
-        try:
-            git(["push", "origin", tag], root)
-        except RuntimeError as exc:
-            print(f"CUT: fail push_error {exc}")
-            write_output(tagged="false", version=pkg, status="error", reason="push_error")
-            return 1
+    failed = _tag_and_push(args, root, tag, pkg)
+    if failed is not None:
+        return failed
     print(f"CUT: created {tag}")
     write_output(tagged="true", version=pkg, status="published", reason="ok")
     return 0

@@ -1,4 +1,4 @@
-.PHONY: quality validate lint test smoke help
+.PHONY: quality validate lint test smoke diagrams help
 
 # Carga .env local si existe (sin commitear; ver .env.example / docs/USAGE.md).
 ifneq (,$(wildcard .env))
@@ -32,3 +32,6 @@ test:
 
 smoke:
 	bash scripts/smoke.sh
+
+diagrams:
+	bash scripts/diagrams.sh
