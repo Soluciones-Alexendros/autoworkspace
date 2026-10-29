@@ -23,8 +23,9 @@ Route a phase with:
 
 ```bash
 python tools/workspace-router/run.py --phase DEFINE --repo . --json
-python tools/workspace-router/run.py --phase STATUS --repo . --bump --note "advance"
 ```
+
+Legacy `--bump` on the workspace router is rejected (`plan-continue`).
 
 - Ambiguous "¿por dónde empiezo?" or "pon al día este proyecto" → plan-continue (loads/creates `.autoworkspace/`)
 - Mix audit+release ("audítalo y publícalo") → plan-continue first, then project-publish
@@ -41,6 +42,16 @@ OpenCode searches in this order:
 - ./skills/<name>/SKILL.md (project fallback)
 
 The agent must load `opencode.json` for `skills.paths` (OpenCode ≥1.18; not the obsolete `skillDirectories` key).
+
+## Cursor
+
+Cursor discovers project skills from `.agents/skills/` and `.cursor/skills/` (symlinks into `skills/`). Invoke by matching `description` or with `/<name>` in Agent chat. Do not ask for an OpenCode-style `skill` tool — Cursor has none.
+
+Product-mutating skill operations go only through `tools/execution` and `run_registered`. Do not invoke skill scripts ad hoc. Frontmatter `allowed-tools` does not authorize anything in Cursor.
+
+Re-evaluate matching `role-*` skills before every task as required under Lifecycle Enforcement above; do not skip that rule when working in Cursor.
+
+Project hooks live under `.cursor/hooks.json` and run from the repository root. `sessionStart` is fire-and-forget and does not run on Cloud Agents — durable contract text belongs in the always-apply project rule, not only in the hook.
 
 ## Language
 

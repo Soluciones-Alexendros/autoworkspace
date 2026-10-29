@@ -5,7 +5,7 @@ Classification of agent harnesses for autoworkspace skills.
 | Harness  | Status                                                                                                    | Evidence                                                                                       |
 | -------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | OpenCode | partial (A pass; B version; C help surface) — full ask/deny skill load still pending deeper harness proof | `opencode.json`, `scripts/install-opencode.sh --target`, `scripts/tests/test_execution_e2e.sh` |
-| Cursor   | documented-not-proven                                                                                     | project `skills/` + optional `.agents/skills` symlinks                                         |
+| Cursor   | documented-not-proven                                                                                     | see Cursor acceptance levels below                                                             |
 | Codex    | documented-not-proven                                                                                     | install target via `scripts/install.sh --target`                                               |
 | Copilot  | documented-not-proven                                                                                     | folder layout only                                                                             |
 
@@ -16,6 +16,24 @@ Classification of agent harnesses for autoworkspace skills.
 - **C (permissions):** skill allow/deny independent of action permission; a denied action must not create a sentinel; no `--auto`. Ask/prompt proof requires a channel that actually surfaces the prompt.
 
 If the binary is unavailable, B and C are `not_run` and the E2E script must **not** print an integral `E2E OK`. Gate A may still pass.
+
+## Cursor acceptance levels
+
+Cursor remains **documented-not-proven**. Do not print an integral Cursor OK.
+
+Evidence added for discovery and gates (not a proven IDE run):
+
+- `.cursor/skills/<name>` → `skills/<name>` (relative symlinks, same style as `.agents/skills/`)
+- `.cursor/rules/autoworkspace.mdc` (`alwaysApply: true`)
+- `.cursor/hooks.json`, `.cursor/hooks/session_start.py`, `.cursor/hooks/shell_gate.py`
+- `.cursor/agents/aw-verifier.md`
+- `tools/validate/tests/test_shell_gate.py`
+
+Levels:
+
+- **A (deterministic gate of this change):** symlinks resolve; `hooks.json` parses; `shell_gate.py` unit tests; `scripts/install.sh --dry-run --target …` creates no target directory; existing skill/link/version validators. Required for the local commit.
+- **B (native discovery/load):** Customize → Skills lists all 16; `/plan-continue` routes. Human IDE only → **`not_run` in CI**.
+- **C (shell gate in IDE):** an agent-proposed host-mutating shell (e.g. `apt-get upgrade`) is `deny` or `ask`. The `beforeShellExecution` matcher covers host mutation and outbound network only; unmatched commands (e.g. `python`, `git`, `npm`, `pytest`) never enter the hook and stay open. Human IDE only → **`not_run` in CI**.
 
 ## Permissions
 

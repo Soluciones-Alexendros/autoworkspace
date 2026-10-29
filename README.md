@@ -14,20 +14,24 @@ Versión **6.1.0**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, 
 
 ## Inicio rápido
 
-```bash
-git clone https://github.com/Soluciones-Alexendros/autoworkspace.git
-cp -r autoworkspace/skills/<nombre-de-la-skill> ~/.agents/skills/
-```
+Abrir este checkout en Cursor ya expone las 16 skills vía `.agents/skills/` (y el espejo `.cursor/skills/`). No hace falta copiar carpetas a mano.
 
-## Configuración en OpenCode (harness principal)
-
-OpenCode es el harness principal (versión objetivo declarada: **1.18.34**). Config nativa: `AGENTS.md` + `opencode.json` con `skills.paths` (no `skillDirectories`). El agente evalúa cada petición y la asigna a una skill según su descripción y palabras clave. Verificación: `opencode debug skill` en el checkout (sin `--auto`).
+Instalación de usuario (destino explícito; `install.sh` exige `--target` y no escribe en `$HOME` implícito). El dry-run no crea el directorio destino. Este script enlaza skills; **no** instala `tools/` ni el pipeline dentro de otro repo:
 
 ```bash
 git clone https://github.com/Soluciones-Alexendros/autoworkspace.git
 cd autoworkspace
-# Explicit target required — does not overwrite global AGENTS.md
+bash scripts/install.sh --dry-run --target "$HOME/.cursor/skills"
 bash scripts/install.sh --target "$HOME/.cursor/skills"
+```
+
+## Configuración en OpenCode (harness principal)
+
+OpenCode es el harness principal (versión objetivo declarada: **1.18.34**) y sigue soportado. Config nativa: `AGENTS.md` + `opencode.json` con `skills.paths` (no `skillDirectories`). El agente evalúa cada petición y la asigna a una skill según su descripción y palabras clave. Verificación: `opencode debug skill` en el checkout (sin `--auto`).
+
+```bash
+git clone https://github.com/Soluciones-Alexendros/autoworkspace.git
+cd autoworkspace
 bash scripts/install-opencode.sh --target .   # enlaces del checkout: .opencode/skills + .agents/skills
 bash run-validation.sh                        # canonical full gate
 ```

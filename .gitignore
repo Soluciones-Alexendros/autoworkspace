@@ -33,9 +33,20 @@ artifacts/
 proteccion-*.json
 proteccion-*.zip
 **/clean-routine-*.json
-.cursor/
-# Permitir hooks de proyecto vacíos (evita ERROR de parseo en Cursor si existe .cursor/)
+# Ignorar contenido de .cursor/ salvo el harness versionado (hooks, rules, agents, skills).
+# Usar .cursor/* (no .cursor/) para que las negaciones puedan reincluir hijos.
+.cursor/*
 !.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/*.py
+!.cursor/rules/
+!.cursor/rules/*.mdc
+!.cursor/agents/
+!.cursor/agents/*.md
+!.cursor/skills/
+!.cursor/skills/*/
+# Estado local de hooks (continual-learning, etc.)
+.cursor/hooks/state/
 
 # Env local (P11 T4)
 .env
