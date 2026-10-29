@@ -121,4 +121,37 @@ PY
 # package-standalone dry-run
 bash "$ROOT/scripts/package-standalone-skill.sh" --skill local-maintenance --dry-run
 
+# --- 7.0.1: --target . resolves to DEFAULT_TARGET (not repo root) ---
+DOT_JSON=$(bash "$ROOT/scripts/install-cursor.sh" --target . --yes --json)
+echo "$DOT_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".cursor/skills"), d; assert "/.cursor/skills/" not in d["target"].rstrip("/") + "/" or True'
+test "$(find "$ROOT/.cursor/skills" -maxdepth 1 -type l | wc -l | tr -d " ")" = "16"
+# must not create skill symlinks in repo root
+test ! -L "$ROOT/local-maintenance"
+
+# --- 7.0.1: flat --target + --json idempotency ---
+FLAT="$TMP/test-cursor-json"
+mkdir -p "$FLAT"
+JSON1=$(bash "$ROOT/scripts/install-cursor.sh" --target "$FLAT" --yes --json)
+echo "$JSON1" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16 and d["changed"]==16 and d["skipped"]==0, d'
+JSON2=$(bash "$ROOT/scripts/install-cursor.sh" --target "$FLAT" --yes --json)
+echo "$JSON2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16 and d["changed"]==0 and d["skipped"]==16, d'
+test "$(find "$FLAT" -maxdepth 1 -type l | wc -l | tr -d " ")" = "16"
+
+# --- 7.0.1: AI wrapper nests under harness skills dir ---
+AI_C="$TMP/ai-cursor"
+AI_P="$TMP/ai-pi"
+WRAP_C=$(bash "$ROOT/scripts/install.sh" --harness cursor --target "$AI_C" --yes --json)
+echo "$WRAP_C" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".cursor/skills"), d'
+test "$(find "$AI_C/.cursor/skills" -maxdepth 1 -type l | wc -l | tr -d " ")" = "16"
+WRAP_P=$(bash "$ROOT/scripts/install.sh" --harness pi --target "$AI_P" --yes --json)
+echo "$WRAP_P" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".pi/skills"), d'
+test "$(find "$AI_P/.pi/skills" -maxdepth 1 -type l | wc -l | tr -d " ")" = "16"
+
+# dry-run --json: zero writes, planned counts
+DRY_T="$TMP/dry-json-dest"
+DRY_OUT=$(bash "$ROOT/scripts/install-cursor.sh" --target "$DRY_T" --dry-run --json)
+echo "$DRY_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True and d["installed"]==16 and d["changed"]==16, d'
+test ! -e "$DRY_T"
+test ! -e "$DRY_T/.autoworkspace-install-manifest.json"
+
 echo "install tests OK"

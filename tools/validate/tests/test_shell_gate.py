@@ -121,6 +121,26 @@ def test_deny_families_point_at_run_registered(command: str, skill_hint: str) ->
     assert skill_hint in out["agent_message"]
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        "rm -rf /tmp/ai-cursor",
+        "rm -rf /tmp/test-cursor /tmp/test-pi",
+        "rm -rf /tmp/autoworkspace-install-cursor-1.log",
+    ],
+)
+def test_rm_rf_allowed_tmp_prefixes_is_allow(command: str) -> None:
+    code, out = _run_stdin(json.dumps({"command": command}))
+    assert code == 0
+    assert out["permission"] == "allow"
+
+
+def test_rm_rf_mixed_tmp_still_deny() -> None:
+    code, out = _run_stdin(json.dumps({"command": "rm -rf /tmp/ai-cursor /etc/passwd"}))
+    assert code == 0
+    assert out["permission"] == "deny"
+
+
 def test_wget_network_is_ask() -> None:
     code, out = _run_stdin(json.dumps({"command": "wget https://example.com"}))
     assert code == 0

@@ -53,6 +53,8 @@ _DENY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 ]
 
 _HELP_OR_VERSION = re.compile(r"(^|\s)(--help|-h|--version)(\s|$)")
+_RM_RF = re.compile(r"\brm\s+-rf\b", re.I)
+_TMP_ALLOW_PREFIXES = ("/tmp/ai-", "/tmp/test-", "/tmp/autoworkspace-")
 
 
 def _deny(user_message: str, agent_message: str) -> dict[str, str]:
@@ -79,6 +81,16 @@ def _is_help_or_version(command: str) -> bool:
     return bool(_HELP_OR_VERSION.search(command))
 
 
+def _rm_rf_only_allowed_tmp(command: str) -> bool:
+    """Allow rm -rf only when every absolute path is under approved /tmp prefixes."""
+    if not _RM_RF.search(command):
+        return False
+    paths = re.findall(r"(?:^|\s)(/[^\s;|&]+)", command)
+    if not paths:
+        return False
+    return all(p.startswith(_TMP_ALLOW_PREFIXES) for p in paths)
+
+
 def decide(payload: dict[str, Any]) -> dict[str, str]:
     if "command" not in payload:
         return _deny(
@@ -92,27 +104,32 @@ def decide(payload: dict[str, Any]) -> dict[str, str]:
             "beforeShellExecution command was not a string; denied.",
         )
 
-    for pattern, agent_message in _DENY_PATTERNS:
-        if pattern.search(command):
-            return _deny(
-                f"Blocked host-mutating or privileged shell: {command[:120]}",
-                agent_message,
+    if _rm_rf_only_allowed_tmp(command):
+        result = _allow()
+    else:
+        result = None
+        for pattern, agent_message in _DENY_PATTERNS:
+            if pattern.search(command):
+                result = _deny(
+                    f"Blocked host-mutating or privileged shell: {command[:120]}",
+                    agent_message,
+                )
+                break
+        if result is None and re.search(r"\b(curl|wget|nc)\b", command, re.I):
+            # Outbound network: allow only local help/version; else ask.
+            if _is_help_or_version(command):
+                result = _allow()
+            else:
+                result = _ask(
+                    f"Network shell requires confirmation: {command[:120]}",
+                    "Outbound network matched the shell gate. Prefer run_registered; ask the operator.",
+                )
+        if result is None:
+            result = _ask(
+                f"Shell gate matched; confirm: {command[:120]}",
+                "Command matched the host/network matcher. Prefer run_registered; ask the operator.",
             )
-
-    # Outbound network tools that matched the hook matcher (curl|wget|nc).
-    # Allow only evident local help/version; real network stays ask (doubt → ask).
-    if re.search(r"\b(curl|wget|nc)\b", command, re.I):
-        if _is_help_or_version(command):
-            return _allow()
-        return _ask(
-            f"Network shell requires confirmation: {command[:120]}",
-            "Outbound network matched the shell gate. Prefer run_registered; ask the operator.",
-        )
-
-    return _ask(
-        f"Shell gate matched; confirm: {command[:120]}",
-        "Command matched the host/network matcher. Prefer run_registered; ask the operator.",
-    )
+    return result
 
 
 def main() -> int:

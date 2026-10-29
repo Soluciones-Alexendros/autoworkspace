@@ -7,4 +7,5 @@ exec bash "$HERE/lib/link-skills.sh" \
   --installer "scripts/install-cursor.sh" \
   --default-target "$ROOT/.cursor/skills" \
   --user-target "${HOME}/.cursor/skills" \
+  --harness cursor \
   "$@"

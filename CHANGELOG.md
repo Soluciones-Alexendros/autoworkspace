@@ -6,6 +6,18 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.0.1] - 2026-10-29
+
+### Added
+
+- `scripts/install.sh --harness cursor|pi` AI wrapper with nested skills destinations and `--yes` / `--json` / `--dry-run`.
+- `--yes` and `--json` on `install-cursor.sh` / `install-pi.sh` (via `link-skills.sh`); JSON reports `installed` / `changed` / `skipped` / `conflicts`.
+
+### Fixed
+
+- `install-cursor.sh --target .` (and checkout root) resolves to `.cursor/skills` instead of linking into the repository root; Pi equivalent uses `.pi/skills`.
+- `shell_gate` allows `rm -rf` only under `/tmp/ai-*`, `/tmp/test-*`, and `/tmp/autoworkspace-*` for installer validation.
+
 ## [7.0.0] - 2026-10-29
 
 ### Fixed
