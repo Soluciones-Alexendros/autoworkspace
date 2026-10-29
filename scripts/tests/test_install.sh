@@ -1,9 +1,35 @@
 #!/bin/bash
 # Install matrix: dry-run no mkdir, conflicts, uninstall retain+warn
 set -euo pipefail
+echo "HARNESS_MATRIX: cursor,pi"
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+# /tmp/.pi/skills and /tmp/.cursor/skills are only removed if this run found them absent.
+PI_LEAK_ABSENT=0
+CURSOR_LEAK_ABSENT=0
+[ ! -e /tmp/.pi/skills ] && PI_LEAK_ABSENT=1
+[ ! -e /tmp/.cursor/skills ] && CURSOR_LEAK_ABSENT=1
+cleanup() {
+  rm -rf "$TMP"
+  if [ "$PI_LEAK_ABSENT" = 1 ]; then rm -rf /tmp/.pi/skills; fi
+  if [ "$CURSOR_LEAK_ABSENT" = 1 ]; then rm -rf /tmp/.cursor/skills; fi
+}
+trap cleanup EXIT
+
+assert_abs_links() {
+  local dir="$1"
+  local n=0 link target
+  for link in "$dir"/*; do
+    [ -L "$link" ] || continue
+    n=$((n + 1))
+    target=$(readlink -- "$link")
+    case "$target" in
+      /*) ;;
+      *) echo "FAIL not absolute $link -> $target"; exit 1 ;;
+    esac
+  done
+  test "$n" = 16
+}
 
 # --- dry-run must not create missing target ---
 MISSING="$TMP/does-not-exist-yet"
@@ -153,5 +179,87 @@ DRY_OUT=$(bash "$ROOT/scripts/install-cursor.sh" --target "$DRY_T" --dry-run --j
 echo "$DRY_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True and d["installed"]==16 and d["changed"]==16, d'
 test ! -e "$DRY_T"
 test ! -e "$DRY_T/.autoworkspace-install-manifest.json"
+
+# --- 7.0.2: wrapper --target . anchors to the checkout, even from /tmp ---
+WRAP_DOT_PI=$(cd /tmp && bash "$ROOT/scripts/install.sh" --harness pi --target . --yes --json)
+echo "$WRAP_DOT_PI" | python3 -c 'import json,sys; d=json.load(sys.stdin); root=sys.argv[1]; assert d["installed"]==16, d; assert d["target"]==root+"/.pi/skills", d' "$ROOT"
+assert_abs_links "$ROOT/.pi/skills"
+if [ "$PI_LEAK_ABSENT" = 1 ]; then test ! -e /tmp/.pi/skills; fi
+test ! -L "$ROOT/local-maintenance"
+
+WRAP_DOT_C=$(cd /tmp && bash "$ROOT/scripts/install.sh" --harness cursor --target . --yes --json)
+echo "$WRAP_DOT_C" | python3 -c 'import json,sys; d=json.load(sys.stdin); root=sys.argv[1]; assert d["installed"]==16, d; assert d["target"]==root+"/.cursor/skills", d' "$ROOT"
+if [ "$CURSOR_LEAK_ABSENT" = 1 ]; then test ! -e /tmp/.cursor/skills; fi
+
+# Relative skills path from /tmp still lands in the checkout.
+REL_PI=$(cd /tmp && bash "$ROOT/scripts/install.sh" --harness pi --target .pi/skills --yes --json)
+echo "$REL_PI" | python3 -c 'import json,sys; d=json.load(sys.stdin); root=sys.argv[1]; assert d["target"]==root+"/.pi/skills", d' "$ROOT"
+
+if (cd /tmp && bash "$ROOT/scripts/install.sh" --harness pi --target '../outside' --yes --json) 2>"$TMP/dotdot.err"; then
+  echo "FAIL: --target with .. should exit non-zero"; exit 1
+fi
+
+# Public installer --target . from /tmp still uses the checkout default.
+PUB_DOT=$(cd /tmp && bash "$ROOT/scripts/install-pi.sh" --target . --yes --json)
+echo "$PUB_DOT" | python3 -c 'import json,sys; d=json.load(sys.stdin); root=sys.argv[1]; assert d["installed"]==16, d; assert d["target"]==root+"/.pi/skills", d' "$ROOT"
+
+# Pi flat idempotency + absolute symlinks
+PI_FLAT="$TMP/test-pi"
+PI_JSON1=$(bash "$ROOT/scripts/install-pi.sh" --target "$PI_FLAT" --yes --json)
+echo "$PI_JSON1" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16 and d["changed"]==16 and d["skipped"]==0, d'
+PI_JSON2=$(bash "$ROOT/scripts/install-pi.sh" --target "$PI_FLAT" --yes --json)
+echo "$PI_JSON2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16 and d["changed"]==0 and d["skipped"]==16, d'
+assert_abs_links "$PI_FLAT"
+
+# Wrapper pi idempotency
+AI_PI2="$TMP/ai-pi-idem"
+WRAP_PI1=$(bash "$ROOT/scripts/install.sh" --harness pi --target "$AI_PI2" --yes --json)
+echo "$WRAP_PI1" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".pi/skills"), d'
+WRAP_PI2=$(bash "$ROOT/scripts/install.sh" --harness pi --target "$AI_PI2" --yes --json)
+echo "$WRAP_PI2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16 and d["changed"]==0 and d["skipped"]==16, d'
+assert_abs_links "$AI_PI2/.pi/skills"
+assert_abs_links "$AI_C/.cursor/skills"
+
+# Pi dry-run creates nothing
+DRY_PI="$TMP/dry-pi"
+DRY_PI_OUT=$(bash "$ROOT/scripts/install-pi.sh" --target "$DRY_PI" --dry-run --json)
+echo "$DRY_PI_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True and d["installed"]==16, d'
+test ! -e "$DRY_PI"
+
+# --user with a fake HOME: dry-run writes nothing; real install is absolute
+HOME_DRY="$TMP/home-dry"
+USER_DRY=$(HOME="$HOME_DRY" bash "$ROOT/scripts/install-pi.sh" --user --dry-run --json)
+echo "$USER_DRY" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True, d; assert d["target"].endswith(".pi/agent/skills"), d'
+test ! -e "$HOME_DRY"
+
+HOME_REAL="$TMP/home-real"
+USER_REAL=$(HOME="$HOME_REAL" bash "$ROOT/scripts/install-pi.sh" --user --yes --json)
+echo "$USER_REAL" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".pi/agent/skills"), d'
+assert_abs_links "$HOME_REAL/.pi/agent/skills"
+
+# --user wins over --target on the public installer and on the wrapper
+IGN_PUB="$TMP/ignored-public"
+BOTH_ERR="$TMP/both-public.err"
+BOTH_OUT=$(HOME="$HOME_REAL" bash "$ROOT/scripts/install-pi.sh" --user --target "$IGN_PUB" --yes --json 2>"$BOTH_ERR")
+echo "$BOTH_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".pi/agent/skills"), d'
+grep -q "WARN: --user overrides --target" "$BOTH_ERR"
+test ! -e "$IGN_PUB"
+
+HOME_WRAP="$TMP/home-wrap"
+IGN_WRAP="$TMP/ignored-wrap"
+WRAP_ERR="$TMP/wrap-user.err"
+WRAP_USER=$(HOME="$HOME_WRAP" bash "$ROOT/scripts/install.sh" --harness pi --target "$IGN_WRAP" --user --yes --json 2>"$WRAP_ERR")
+echo "$WRAP_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".pi/agent/skills"), d'
+grep -q "WARN: --user overrides --target; ignoring --target" "$WRAP_ERR"
+test ! -e "$IGN_WRAP"
+assert_abs_links "$HOME_WRAP/.pi/agent/skills"
+
+IGN_CURSOR="$TMP/ignored-cursor"
+CUR_ERR="$TMP/cursor-user.err"
+HOME_CURSOR="$TMP/home-cursor"
+CUR_USER=$(HOME="$HOME_CURSOR" bash "$ROOT/scripts/install-cursor.sh" --user --target "$IGN_CURSOR" --yes --json 2>"$CUR_ERR")
+echo "$CUR_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==16, d; assert d["target"].endswith(".cursor/skills"), d'
+grep -q "WARN: --user overrides --target" "$CUR_ERR"
+test ! -e "$IGN_CURSOR"
 
 echo "install tests OK"

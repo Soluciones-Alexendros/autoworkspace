@@ -28,11 +28,20 @@
 | `/tmp/ai-pi/.pi/skills`         | `bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json`         |
 | User cursor/pi skills           | `bash scripts/install.sh --harness cursor\|pi --user --yes`                     |
 
-The wrapper nests under `.cursor/skills` or `.pi/skills` unless the path already ends in a skills directory. Public `install-cursor.sh --target /tmp/test-cursor` remains flat.
+The wrapper nests under `.cursor/skills` or `.pi/skills` unless the path already ends in a skills directory. `.` and any other relative `--target` anchor to this checkout, not the current working directory. `--user` overrides `--target` and warns on stderr. Public `install-cursor.sh --target /tmp/test-cursor` remains flat.
 
 ## Pi notes
 
-Pi loads project skills from `.pi/skills/` and user skills from `~/.pi/agent/skills/` ([documentation](https://pi.dev/docs/latest/skills)).
+Pi loads project skills from `.pi/skills/` and user skills from `~/.pi/agent/skills/`. Source: [Pi Configuration](https://pi.dev/docs/latest/configuration). Skill loading behavior: [Skills](https://pi.dev/docs/latest/skills).
+
+Quickstart (`--user` writes `$HOME/.pi/agent/skills`; the fourth line is the idempotent rerun, `changed` 0 and `skipped` 16):
+
+```bash
+bash scripts/install-pi.sh
+bash scripts/install-pi.sh --user
+bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq .installed
+bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq '{installed,changed,skipped}'
+```
 
 ## Execution and privileges
 

@@ -36,7 +36,13 @@ En GitHub: **Use this template**.
 gh repo create Soluciones-Alexendros/<n> --template Soluciones-Alexendros/autoworkspace --private --clone
 ```
 
-Eso clona el canon entero (skills, tools, docs), no solo este esqueleto.
+Eso clona el canon entero (skills, tools, docs), no solo este esqueleto. En ese clon, Pi se instala así (la segunda línea escribe `$HOME/.pi/agent/skills`):
+
+```bash
+bash scripts/install-pi.sh
+bash scripts/install-pi.sh --user
+bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq .installed
+```
 
 ### Esqueleto de producto
 
