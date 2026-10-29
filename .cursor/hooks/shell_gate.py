@@ -53,6 +53,8 @@ _DENY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 ]
 
 _HELP_OR_VERSION = re.compile(r"(^|\s)(--help|-h|--version)(\s|$)")
+_RM_RF = re.compile(r"\brm\s+-rf\b", re.I)
+_TMP_ALLOW_PREFIXES = ("/tmp/ai-", "/tmp/test-", "/tmp/autoworkspace-")
 
 
 def _deny(user_message: str, agent_message: str) -> dict[str, str]:
@@ -79,6 +81,16 @@ def _is_help_or_version(command: str) -> bool:
     return bool(_HELP_OR_VERSION.search(command))
 
 
+def _rm_rf_only_allowed_tmp(command: str) -> bool:
+    """Allow rm -rf only when every absolute path is under approved /tmp prefixes."""
+    if not _RM_RF.search(command):
+        return False
+    paths = re.findall(r"(?:^|\s)(/[^\s;|&]+)", command)
+    if not paths:
+        return False
+    return all(p.startswith(_TMP_ALLOW_PREFIXES) for p in paths)
+
+
 def decide(payload: dict[str, Any]) -> dict[str, str]:
     if "command" not in payload:
         return _deny(
@@ -91,6 +103,9 @@ def decide(payload: dict[str, Any]) -> dict[str, str]:
             "Shell gate: command must be a string.",
             "beforeShellExecution command was not a string; denied.",
         )
+
+    if _rm_rf_only_allowed_tmp(command):
+        return _allow()
 
     for pattern, agent_message in _DENY_PATTERNS:
         if pattern.search(command):

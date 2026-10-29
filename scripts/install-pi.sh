@@ -7,4 +7,5 @@ exec bash "$HERE/lib/link-skills.sh" \
   --installer "scripts/install-pi.sh" \
   --default-target "$ROOT/.pi/skills" \
   --user-target "${HOME}/.pi/agent/skills" \
+  --harness pi \
   "$@"
