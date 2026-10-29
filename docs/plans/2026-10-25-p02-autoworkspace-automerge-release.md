@@ -1,5 +1,7 @@
 # P2 · autoworkspace (canon) · automerge + update-behind + release-please + packaging + Renovate + rulesets como código
 
+> **Nota histórica (B09-B, 2026-10-29):** este borrador no es la política vigente de Renovate en el tip. La decisión operativa es: `platformAutomerge` + automerge de **patch/minor** (y Actions/Python agrupados); **majors sin automerge** con `minimumReleaseAge` 14 días; cuarentena general 3 días; managers Archify sin automerge. El punto «majors con automerge true» de abajo queda como texto histórico del plan P2, no como contrato actual. Release-please y retirar check-bump siguen siendo alcance pendiente de P2/P10, no de este cierre B09.
+
 ```
 Repo: Soluciones-Alexendros/autoworkspace (host del canon tras P11; antes repo-standard). Requiere P11 fusionado. Prerrequisito: la GitHub App de la org existe (vars.CI_APP_CLIENT_ID y secrets.CI_APP_PRIVATE_KEY a nivel org); autoworkspace ya es público. Si falta algo, detente y dilo; no uses PAT ni GITHUB_TOKEN como sustituto.
 Motivo de la App: los eventos creados con GITHUB_TOKEN no disparan workflows. El merge automático no lanzaría el release, y el release PR no ejecutaría CI.
