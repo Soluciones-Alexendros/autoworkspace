@@ -4,13 +4,14 @@ description: Proton Mail (Proton Mail Bridge IMAP/SMTP local, MCP Mail) and Prot
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "5.1.4"
+  version: "5.1.5"
   domain: local
   type: atomic
   language: en
   keywords: local-proton
 compatibility: opencode, codex, cursor, copilot
 allowed-tools: Read, Grep, Glob, Bash, Write
+disable-model-invocation: true
 ---
 
 # Local Proton
@@ -54,5 +55,8 @@ Send email
 ```
 
 ## Tools
+
+MCP Mail/Pass is not wired in this repository; the executable path is
+`scripts/proton_bridge.py`.
 
 - `scripts/proton_bridge.py` — Proton Mail Bridge IMAP/SMTP client.

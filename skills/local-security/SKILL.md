@@ -4,13 +4,14 @@ description: "Defensive Linux host security: posture, light forensic record mana
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "5.1.3"
+  version: "5.1.4"
   domain: local
   type: atomic
   language: en
   keywords: local-security
 compatibility: opencode, codex, cursor, copilot
 allowed-tools: Read, Grep, Glob, Bash, Write
+disable-model-invocation: true
 ---
 
 # Local Security

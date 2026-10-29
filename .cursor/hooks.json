@@ -1,4 +1,18 @@
 {
   "version": 1,
-  "hooks": {}
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "python3 .cursor/hooks/session_start.py"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "python3 .cursor/hooks/shell_gate.py",
+        "failClosed": true,
+        "timeout": 10,
+        "matcher": "apt-get|apt|dnf|pacman|systemctl|rm\\s+-rf|mkfs|dd\\s+if=|shutdown|reboot|iptables|\\bnft\\b|ufw|curl|wget|\\bnc\\b|ssh|scp|sudo"
+      }
+    ]
+  }
 }

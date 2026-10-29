@@ -1,0 +1,16 @@
+{
+  "name": "autoworkspace",
+  "owner": {
+    "name": "Soluciones-Alexendros"
+  },
+  "metadata": {
+    "description": "Autoworkspace Cursor Plugin marketplace entry for this repository root"
+  },
+  "plugins": [
+    {
+      "name": "autoworkspace",
+      "source": ".",
+      "description": "Autoworkspace harness: skills, rules, agents, and hooks"
+    }
+  ]
+}
