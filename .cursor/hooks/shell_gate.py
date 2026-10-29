@@ -129,7 +129,8 @@ def main() -> int:
             )
         else:
             result = decide(payload)
-    except Exception as exc:  # noqa: BLE001 — must never crash open; failClosed covers real crash
+    except Exception as exc:
+        # Broad catch: never crash-open; failClosed covers a real process crash.
         result = _deny(
             "Shell gate: internal error.",
             f"shell_gate.py exception: {type(exc).__name__}. Denied; use run_registered.",
