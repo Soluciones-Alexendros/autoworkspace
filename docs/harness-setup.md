@@ -34,6 +34,8 @@ The wrapper nests under `.cursor/skills` or `.pi/skills` unless the path already
 
 Pi loads project skills from `.pi/skills/` and user skills from `~/.pi/agent/skills/`. Source: [Pi Configuration](https://pi.dev/docs/latest/configuration). Skill loading behavior: [Skills](https://pi.dev/docs/latest/skills).
 
+After install or update of user-level skills, run `/reload` (or start a new Pi session) so `<available_skills>` picks up the catalog.
+
 Quickstart (`--user` writes `$HOME/.pi/agent/skills`; the fourth line is the idempotent rerun, `changed` 0 and `skipped` 16):
 
 ```bash

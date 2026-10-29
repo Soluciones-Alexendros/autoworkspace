@@ -6,6 +6,12 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+### Fixed
+
+- `project-architecture` skill `description` is a single YAML line so Pi loads it into `<available_skills>` (multiline closing quote broke discovery).
+- Frozen catalog snapshot `docs/architecture/skill-index-7.0.0.json` matches the single-line description.
+- Host `.autoworkspace/project.yaml` omits `skills.enabled` so the README router example allows the full catalog; template comments document `[]` = none (blocks) vs omit/null = all.
+
 ## [7.0.2] - 2026-10-29
 
 ### Fixed

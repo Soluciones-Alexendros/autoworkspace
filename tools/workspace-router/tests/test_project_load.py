@@ -37,6 +37,18 @@ class TestProjectLoad(unittest.TestCase):
             filter_skills(catalog, {"skills": {"enabled": ["role-back"]}}),
             ["role-back"],
         )
+        self.assertEqual(
+            filter_skills(catalog, {"skills": {"enabled": []}}),
+            [],
+        )
+        self.assertEqual(
+            filter_skills(catalog, {"skills": {}}),
+            catalog,
+        )
+        self.assertEqual(
+            filter_skills(catalog, {"skills": {"enabled": None}}),
+            catalog,
+        )
 
     def test_handoff(self):
         p = {"handoffs": {"define": "plan-specification"}}

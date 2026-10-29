@@ -11,7 +11,7 @@ paths:
   ci: .github/workflows
   docs: docs
 skills:
-  enabled: [] # vacío = todas las del catálogo
+  enabled: [] # [] = ninguna (bloquea); omitir o null = todas las del catálogo
   disabled: [] # nombres de skills a excluir del router
 handoffs:
   define: plan-specification

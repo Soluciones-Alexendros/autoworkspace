@@ -10,7 +10,7 @@ paths:
   ci: .github/workflows
   docs: docs
 skills:
-  enabled: []
+  # omit enabled (or null) = all catalog skills; enabled: [] = none (blocks routing)
   disabled: []
 handoffs:
   define: plan-specification
