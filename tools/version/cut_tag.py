@@ -23,9 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z][0-9A-Za-z.-]*))?$")
-CHANGELOG_H2 = re.compile(
-    r"^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\] - (\d{4}-\d{2}-\d{2})(.*)$"
-)
+CHANGELOG_H2 = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\] - (\d{4}-\d{2}-\d{2})(.*)$")
 STABLE_TAG_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 RELEASE_PATHS = {
     "CHANGELOG.md",

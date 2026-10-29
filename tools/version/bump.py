@@ -29,9 +29,7 @@ SKILLS = ROOT / "skills"
 CHANGELOG = ROOT / "CHANGELOG.md"
 
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z][0-9A-Za-z.-]*))?$")
-VERSION_LINE_RE = re.compile(
-    r'^(\s*version:\s*)["\']?(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)["\']?(\s*)$'
-)
+VERSION_LINE_RE = re.compile(r'^(\s*version:\s*)["\']?(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)["\']?(\s*)$')
 
 SKILLS_PATH_PARTS = 2
 KINDS = ("major", "minor", "patch")

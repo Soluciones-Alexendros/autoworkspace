@@ -19,9 +19,7 @@ ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
 PEP440_PRE_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?$")
 README_VERSION_RE = re.compile(r"Versión \*\*(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\*\*")
-CHANGELOG_H2 = re.compile(
-    r"^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\] - (\d{4}-\d{2}-\d{2})(.*)$"
-)
+CHANGELOG_H2 = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\] - (\d{4}-\d{2}-\d{2})(.*)$")
 USES_RE = re.compile(r"^\s+uses:\s+(\S+)", re.M)
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 ERRORS: list[str] = []
