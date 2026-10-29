@@ -1,5 +1,7 @@
 # Generated artifacts — produced by tools/skill-router/build_index.py.
 skill-index.json
+# Frozen catalog bytes must match `generate.py --json` exactly.
+docs/architecture/skill-index-7.0.0.json
 
 # Untracked migration-pack scaffolding (source of the v3.0 migration).
 docs/NuevoPlan/

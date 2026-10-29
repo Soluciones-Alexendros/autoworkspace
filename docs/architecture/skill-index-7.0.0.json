@@ -7,7 +7,9 @@
       "domain": "local",
       "type": "atomic",
       "language": "en",
-      "keywords": ["local-email"],
+      "keywords": [
+        "local-email"
+      ],
       "triggers": [
         "bridge imap",
         "correo",
@@ -25,7 +27,9 @@
       "domain": "local",
       "type": "atomic",
       "language": "en",
-      "keywords": ["local-maintenance"],
+      "keywords": [
+        "local-maintenance"
+      ],
       "triggers": [
         "audit-full",
         "auditar sistema",
@@ -54,7 +58,9 @@
       "domain": "local",
       "type": "atomic",
       "language": "en",
-      "keywords": ["local-security"],
+      "keywords": [
+        "local-security"
+      ],
       "triggers": [
         "apparmor",
         "auditd",
@@ -72,7 +78,9 @@
       "domain": "plan",
       "type": "orchestrator",
       "language": "en",
-      "keywords": ["plan-continue"],
+      "keywords": [
+        "plan-continue"
+      ],
       "triggers": [
         "C4",
         "acoplamiento",
@@ -98,7 +106,9 @@
       "domain": "plan",
       "type": "orchestrator",
       "language": "en",
-      "keywords": ["plan-specification"],
+      "keywords": [
+        "plan-specification"
+      ],
       "triggers": [
         "desglosa tareas",
         "especificación",
@@ -114,7 +124,12 @@
       "domain": "plan",
       "type": "atomic",
       "language": "en",
-      "keywords": ["plan-validators", "tdd", "test coverage", "qa"],
+      "keywords": [
+        "plan-validators",
+        "tdd",
+        "test coverage",
+        "qa"
+      ],
       "triggers": [
         "cobertura de tests",
         "estrategia de tests",
@@ -135,7 +150,9 @@
       "domain": "project",
       "type": "audit",
       "language": "en",
-      "keywords": ["project-architecture"],
+      "keywords": [
+        "project-architecture"
+      ],
       "triggers": [
         "C4",
         "acoplamiento",
@@ -152,8 +169,16 @@
       "domain": "project",
       "type": "audit",
       "language": "en",
-      "keywords": ["project-libraries"],
-      "triggers": ["cve", "dependencias", "sbom", "sca", "typosquatting"],
+      "keywords": [
+        "project-libraries"
+      ],
+      "triggers": [
+        "cve",
+        "dependencias",
+        "sbom",
+        "sca",
+        "typosquatting"
+      ],
       "entry": "skills/project-libraries/SKILL.md",
       "compatibility": "cursor, pi"
     },
@@ -190,7 +215,9 @@
       "domain": "role",
       "type": "atomic",
       "language": "en",
-      "keywords": ["role-back"],
+      "keywords": [
+        "role-back"
+      ],
       "triggers": [
         "backend",
         "background job",
@@ -254,7 +281,9 @@
       "domain": "role",
       "type": "atomic",
       "language": "en",
-      "keywords": ["role-design"],
+      "keywords": [
+        "role-design"
+      ],
       "triggers": [
         "design system",
         "dirección visual",
@@ -271,7 +300,9 @@
       "domain": "role",
       "type": "atomic",
       "language": "en",
-      "keywords": ["role-front"],
+      "keywords": [
+        "role-front"
+      ],
       "triggers": [
         "componente",
         "contrato api cliente",
@@ -293,8 +324,16 @@
       "domain": "web",
       "type": "audit",
       "language": "en",
-      "keywords": ["web-compliance"],
-      "triggers": ["accesibilidad", "compliance", "gdpr", "seo", "wcag"],
+      "keywords": [
+        "web-compliance"
+      ],
+      "triggers": [
+        "accesibilidad",
+        "compliance",
+        "gdpr",
+        "seo",
+        "wcag"
+      ],
       "entry": "skills/web-compliance/SKILL.md",
       "compatibility": "cursor, pi"
     },
@@ -304,7 +343,9 @@
       "domain": "web",
       "type": "audit",
       "language": "en",
-      "keywords": ["web-owasp"],
+      "keywords": [
+        "web-owasp"
+      ],
       "triggers": [
         "inyección",
         "owasp",
@@ -321,8 +362,15 @@
       "domain": "web",
       "type": "audit",
       "language": "en",
-      "keywords": ["web-performance"],
-      "triggers": ["core web vitals", "lighthouse", "performance", "ttfb"],
+      "keywords": [
+        "web-performance"
+      ],
+      "triggers": [
+        "core web vitals",
+        "lighthouse",
+        "performance",
+        "ttfb"
+      ],
       "entry": "skills/web-performance/SKILL.md",
       "compatibility": "cursor, pi"
     }
