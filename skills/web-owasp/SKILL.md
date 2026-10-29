@@ -3,14 +3,14 @@ name: web-owasp
 description: "Code security review (OWASP): injection, XSS, authn/authz, cryptography, SSRF, secrets and misconfiguration. Use when performing security review, OWASP or searching for vulnerabilities in this code. Not for dependency CVEs (→ project-libraries) nor web compliance (→ web-compliance)."
 license: MIT
 metadata:
-  author: Soluciones-Alexendros (adapted)
-  version: "7.0.0-alpha.0"
+  author: "Soluciones-Alexendros (adapted)"
+  version: "7.0.0-alpha.1"
   domain: web
-  type: atomic
+  type: audit
   language: en
   keywords: web-owasp
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob"
 ---
 
 # Web OWASP

@@ -1,16 +1,17 @@
 ---
 name: plan-validators
-description: "Drive implementation and QA with integrated tests: red-green-refactor, bug reproduction, test strategy, quality metrics and behavior coverage for routes, functions and jobs. Use when implementing or changing behavior, writing or reviewing tests, or planning coverage. Not for pure configuration, documentation or static content changes, nor production host debugging (→ local-maintenance)."
+description: "Drive implementation and QA with integrated tests: red-green-refactor, bug reproduction, test strategy, quality metrics and behavior coverage for routes, functions and jobs. Use when implementing or changing behavior, writing or reviewing tests, or planning coverage. Not for pure configuration, documentation or static content changes, nor production host debugging (→ local-maintenance). Uses Write/Bash for red/green project test suites."
 license: MIT
 metadata:
-  author: addyosmani (adapted)
-  version: "7.0.0-alpha.0"
+  author: "addyosmani (adapted)"
+  version: "7.0.0-alpha.1"
   domain: plan
   type: atomic
   language: en
-  keywords: plan-validators, tdd, test coverage, qa
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+  keywords: "plan-validators, tdd, test coverage, qa"
+  execution: plan-validators
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 ---
 
 # Plan Validators

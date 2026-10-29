@@ -1,19 +1,18 @@
 ---
 name: local-maintenance
-description: "Systematic Linux system maintenance by IA agent: hygiene, updates, ordering, optimization and suggestions. Graduated modes (health-check/quick audit, complete audit, routine, optimization, cleanup) with read-only execution by default, deterministic command validation by risk level, reversible snapshots and system health KPIs (health score 0-100, P0-P4 findings, system fingerprint, temporal diff). Defensive security (hardening, records/forensics, vulns, scans, AppArmor) NOT this skill: handled by sister local-security skill. Use when asked: auditing a Linux system, health-check, OS health status, routine review, cleaning packages/caches/logs, orphan pacman/AUR, boot or resource optimization, or periodic maintenance of Arch/EndeavourOS/CachyOS/Debian/RHEL. Includes guided interaction to select objective, mode and depth according to context. Not for defensive security hardening or forensics (→ local-security)."
+description: "Systematic Linux system maintenance by IA agent: hygiene, updates, ordering, optimization and suggestions. Graduated modes (health-check/quick audit, complete audit, routine, optimization, cleanup) with read-only execution by default, deterministic command validation by risk level, reversible snapshots and system health KPIs (health score 0-100, P0-P4 findings, system fingerprint, temporal diff). Defensive security (hardening, records/forensics, vulns, scans, AppArmor) NOT this skill: handled by sister local-security skill. Use when asked: auditing a Linux system, health-check, OS health status, routine review, cleaning packages/caches/logs, orphan pacman/AUR, boot or resource optimization, or periodic maintenance of Arch/EndeavourOS/CachyOS/Debian/RHEL. Includes guided interaction to select objective, mode and depth according to context. Not for defensive security hardening or forensics (→ local-security). Uses Bash/Write for host mutations only via run_registered."
 license: MIT
 metadata:
-  author: Soluciones-Alexendros (adapted)
-
-  version: "7.0.0-alpha.0"
-
+  author: "Soluciones-Alexendros (adapted)"
+  version: "7.0.0-alpha.1"
   domain: local
   type: atomic
   language: en
   keywords: local-maintenance
+  execution: local-maintenance
   health: integrated
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 disable-model-invocation: true
 ---
 

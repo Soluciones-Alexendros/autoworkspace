@@ -1,16 +1,17 @@
 ---
 name: role-front
-description: "Specialist role for frontend application work: UI stability, browser compatibility, state coherence across routes, and clear communication contracts between client and server. Use when implementing or fixing frontend features, client state, routing surfaces or interaction flows. Not for visual direction or design tokens (→ role-design), a11y/SEO audits (→ web-compliance), or performance audits (→ web-performance)."
+description: "Specialist role for frontend application work: UI stability, browser compatibility, state coherence across routes, and clear communication contracts between client and server. Use when implementing or fixing frontend features, client state, routing surfaces or interaction flows. Not for visual direction or design tokens (→ role-design), a11y/SEO audits (→ web-compliance), or performance audits (→ web-performance). Uses Bash/Write to implement and mutate frontend code."
 license: MIT
 metadata:
   author: Soluciones-Alexendros
-  version: "7.0.0-alpha.0"
+  version: "7.0.0-alpha.1"
   domain: role
   type: atomic
   language: en
   keywords: role-front
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+  execution: role-front
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 ---
 
 # Role Front

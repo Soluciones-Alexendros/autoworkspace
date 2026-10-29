@@ -21,3 +21,7 @@ Pi loads project skills from `.pi/skills/` and user skills from `~/.pi/agent/ski
 | Any directory             | `bash scripts/install-pi.sh --target /tmp/test-pi` |
 
 `--target` never writes `$HOME`. `--dry-run` performs no filesystem writes. `--uninstall` removes only symlinks recorded in the manifest and still owned by this checkout.
+
+## Execution and privileges
+
+Harnesses only need `SKILL.md` (plus `references/` / `scripts/` as linked). Mutating product operations are declared in `tools/execution/registry.yaml` and invoked via `run_registered` with approval — not via per-skill `execution.yaml` (forbidden under `skills/`). Skills may set `metadata.execution: <tool_id>`. `allowed-tools` is a catalog privilege ceiling by `metadata.type` (see ADR-0017); it does not authorize Cursor tools by itself.

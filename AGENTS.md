@@ -92,4 +92,4 @@ SKILL.md body should stay focused (repo gate: ≤500 lines / token budget in `to
 - Fuente canónica de skills en el checkout: `skills/<nombre>/SKILL.md`; no asumir que `.agents/skills/` existe o apunta al destino correcto sin resolver el enlace.
 - Actualización de dependencias: Renovate (no Dependabot).
 - Copia desechable, venv o HOME temporal no es sandbox de seguridad para scripts `local-*` (pueden tocar rutas absolutas, credenciales del proceso o red); inspeccionar antes de ejecutar y preferir deny-by-default en entrypoints mutadores.
-- La ejecución controlada de operaciones de skill pasa por contratos `execution.yaml` y la capa `tools/execution/` (approval/ops/registry/evidence), no por invocación libre de scripts.
+- La ejecución controlada de operaciones de skill pasa por `tools/execution/registry.yaml` y la capa `tools/execution/` (approval/ops/registry/evidence), no por invocación libre de scripts ni por `skills/*/execution.yaml` (prohibido).

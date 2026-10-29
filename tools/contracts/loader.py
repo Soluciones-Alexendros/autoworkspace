@@ -1,10 +1,11 @@
-"""Load and semantically validate skills/*/execution.yaml (local extension)."""
+"""Load and semantically validate execution contracts from the central registry."""
 
 from __future__ import annotations
 
 import functools
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -227,17 +228,41 @@ def load_execution_contract(
     *,
     catalog_skills: set[str] | None = None,
 ) -> dict[str, Any]:
-    """Load contract from an explicit skill root (standalone-safe)."""
-    path = skill_path / "execution.yaml"
-    if not path.is_file():
-        raise ContractError(f"missing {path}")
-    data = load_yaml(path)
+    """Load contract for a skill from tools/execution/registry.yaml."""
+    tools_dir = Path(__file__).resolve().parent.parent
+    if str(tools_dir) not in sys.path:
+        sys.path.insert(0, str(tools_dir))
+    from execution.registry import get_tool_for_skill  # noqa: PLC0415
+
+    skill = skill_path.name
+    tool = get_tool_for_skill(skill)
+    if tool is None:
+        raise ContractError(f"no registry entry for skill {skill}")
+    shaped: dict[str, Any] = {
+        "schema_version": 1,
+        "dialect": DIALECT,
+        "skill": tool.skill,
+        "execution_kind": tool.execution_kind,
+        "distribution": tool.distribution,
+        "shared_dependencies": list(tool.raw.get("shared_dependencies") or []),
+        "system_requirements": dict(tool.raw.get("system_requirements") or {}),
+        "operations": [dict(op) for op in tool.operations],
+    }
+    md_ver = _skill_md_version(skill_path)
+    if md_ver:
+        shaped["skill_version"] = md_ver
+    if tool.raw.get("handoffs"):
+        shaped["handoffs"] = tool.raw["handoffs"]
+    if tool.raw.get("automation_limits"):
+        shaped["automation_limits"] = tool.raw["automation_limits"]
+    if tool.raw.get("normative_sources"):
+        shaped["normative_sources"] = tool.raw["normative_sources"]
     errs = validate_contract(
-        data,
-        skill_dir=skill_path.name,
+        shaped,
+        skill_dir=skill,
         skill_path=skill_path,
         catalog_skills=catalog_skills,
     )
     if errs:
         raise ContractError("; ".join(errs))
-    return data
+    return shaped

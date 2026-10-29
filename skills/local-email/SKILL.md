@@ -1,16 +1,17 @@
 ---
 name: local-email
-description: Email local con drivers (proton, gmail via bridge). Use when operator requests email. Not for other providers without driver.
+description: "Email local con drivers (proton, gmail via bridge). Use when operator requests email. Not for other providers without driver. Uses Bash/Write for Proton Bridge driver operations via run_registered."
 license: MIT
 metadata:
-  author: Soluciones-Alexendros (adapted)
-  version: "7.0.0-alpha.0"
+  author: "Soluciones-Alexendros (adapted)"
+  version: "7.0.0-alpha.1"
   domain: local
   type: atomic
   language: en
   keywords: local-email
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+  execution: local-email
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 disable-model-invocation: true
 ---
 

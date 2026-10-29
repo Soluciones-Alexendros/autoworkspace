@@ -12,17 +12,18 @@
 
 ## Tree
 
-| Path                           | Role                                                         |
-| ------------------------------ | ------------------------------------------------------------ |
-| `skills/<name>/`               | One skill per folder; `SKILL.md` is the contract             |
-| `tools/`                       | Routers, validators, versioning, execution layer             |
-| `docs/`                        | Product docs + fleet ADRs, guides, runbooks, REUTILIZACION   |
-| `docs/architecture/decisions/` | ADR-0001… (fleet) + ADR-0016 (host)                          |
-| `docs/architecture/diagrams/`  | D01–D04: fuentes JSON (Archify); `make diagrams` → artefacto |
-| `stacks/`                      | CI callers per runtime (pin reusable by SHA)                 |
-| `.github/workflows/`           | `ci.yml` + reusables + quality/validate/version/release      |
-| `templates/product/`           | Product P0/P1 skeleton (copy into a new repo)                |
-| `templates/harness/`           | Scaffolding for `.autoworkspace/`                            |
+| Path                            | Role                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| `skills/<name>/`                | One skill per folder; `SKILL.md` is the contract (no `execution.yaml`) |
+| `tools/`                        | Routers, validators, versioning, execution layer                       |
+| `tools/execution/registry.yaml` | Central execution SSOT (`run_registered` + approval)                   |
+| `docs/`                         | Product docs + fleet ADRs, guides, runbooks, REUTILIZACION             |
+| `docs/architecture/decisions/`  | ADR-0001… (fleet) + ADR-0016 (host) + ADR-0017 (execution)             |
+| `docs/architecture/diagrams/`   | D01–D04: fuentes JSON (Archify); `make diagrams` → artefacto           |
+| `stacks/`                       | CI callers per runtime (pin reusable by SHA)                           |
+| `.github/workflows/`            | `ci.yml` + reusables + quality/validate/version/release                |
+| `templates/product/`            | Product P0/P1 skeleton (copy into a new repo)                          |
+| `templates/harness/`            | Scaffolding for `.autoworkspace/`                                      |
 
 Sixteen skills in five domains: `plan`, `local`, `project`, `web`, `role`.
 

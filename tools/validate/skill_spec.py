@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -44,9 +45,57 @@ FORBIDDEN_H2 = {
 }
 MAX_BODY_LINES = 500
 MAX_BODY_TOKENS = 5000
+# Maximum allowed-tools sets by metadata.type (minimum privilege).
+# atomic/orchestrator may include Bash when the skill mutates via tools or suites.
+ALLOWED_TOOLS_BY_TYPE: dict[str, frozenset[str]] = {
+    "audit": frozenset({"Read", "Grep", "Glob"}),
+    "atomic": frozenset({"Read", "Write", "Grep", "Glob", "Bash"}),
+    "orchestrator": frozenset({"Read", "Grep", "Glob", "Bash", "Write"}),
+    "router": frozenset({"Read", "Glob"}),
+}
+AUDIT_FORBIDDEN_TOOLS = frozenset({"Write", "Bash"})
 ERRORS: list[str] = []
 TEST_DIR_NAMES = {"tests"}
 TEST_FILE_PREFIX = "test_"
+_TOOLS_DIR = Path(__file__).resolve().parents[1]
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+_known_tool_ids_fn: Callable[[], frozenset[str]] | None
+try:
+    from execution.registry import known_tool_ids as _known_tool_ids_fn
+except ImportError:  # pragma: no cover — tools/ always present in repo runs
+    _known_tool_ids_fn = None
+_REGISTRY_CACHE: dict[str, frozenset[str] | None] = {"ids": None}
+
+
+def _registry_tool_ids(root: Path) -> frozenset[str]:
+    cached = _REGISTRY_CACHE["ids"]
+    if cached is not None:
+        return cached
+    tools_path = root / "tools"
+    if str(tools_path) not in sys.path:
+        sys.path.insert(0, str(tools_path))
+    if _known_tool_ids_fn is None:
+        ERRORS.append("[registry] cannot load tool ids: execution.registry unavailable")
+        _REGISTRY_CACHE["ids"] = frozenset()
+        return frozenset()
+    try:
+        ids = _known_tool_ids_fn()
+    except Exception as exc:
+        ERRORS.append(f"[registry] cannot load tool ids: {exc}")
+        ids = frozenset()
+    _REGISTRY_CACHE["ids"] = ids
+    return ids
+
+
+def parse_allowed_tools(raw: object) -> set[str] | None:
+    if raw is None:
+        return None
+    if isinstance(raw, list):
+        return {str(x).strip() for x in raw if str(x).strip()}
+    if not isinstance(raw, str):
+        return None
+    return {part.strip() for part in raw.replace(",", " ").split() if part.strip()}
 
 
 def estimate_tokens(text: str) -> int:
@@ -287,7 +336,22 @@ def _check_frontmatter_name(skill: str, fm: dict[str, Any], names: set[str]) -> 
         err(skill, "license != MIT")
 
 
-def _check_metadata(skill: str, meta: dict[str, Any]) -> None:
+def _check_execution_link(skill: str, meta: dict[str, Any], root: Path) -> None:
+    tipo = meta.get("type", "")
+    execution = meta.get("execution")
+    tool_ids = _registry_tool_ids(root)
+    if execution is not None:
+        if not isinstance(execution, str) or not NAME_RE.match(execution):
+            err(skill, f"metadata.execution inválido: {execution!r}")
+        elif execution not in tool_ids:
+            err(skill, f"metadata.execution={execution!r} no existe en registry")
+        elif tipo == "audit":
+            err(skill, "type audit no puede declarar metadata.execution")
+    elif skill in tool_ids:
+        err(skill, "skill en registry requiere metadata.execution")
+
+
+def _check_metadata(skill: str, meta: dict[str, Any], root: Path) -> None:
     required_meta: dict[str, str | None] = {
         "author": None,
         "version": None,
@@ -312,6 +376,35 @@ def _check_metadata(skill: str, meta: dict[str, Any]) -> None:
     tipo = meta.get("type", "")
     if tipo and tipo not in TIPOS:
         err(skill, f"unknown type: {tipo} (must be one of: {', '.join(sorted(TIPOS))})")
+
+    _check_execution_link(skill, meta, root)
+
+
+def _check_allowed_tools(skill: str, fm: dict[str, Any], meta: dict[str, Any]) -> None:
+    tipo = str(meta.get("type") or "")
+    raw = fm.get("allowed-tools", fm.get("allowed_tools"))
+    tools = parse_allowed_tools(raw)
+    if tools is None:
+        err(skill, "allowed-tools ausente o inválido")
+        return
+    if not tools:
+        err(skill, "allowed-tools vacío")
+        return
+    if tipo == "audit" and tools & AUDIT_FORBIDDEN_TOOLS:
+        err(
+            skill,
+            f"type audit no puede incluir Write/Bash; got {sorted(tools & AUDIT_FORBIDDEN_TOOLS)}",
+        )
+    allowed_max = ALLOWED_TOOLS_BY_TYPE.get(tipo)
+    if allowed_max is not None:
+        extra = tools - allowed_max
+        if extra:
+            err(skill, f"allowed-tools excede máximo para type={tipo}: {sorted(extra)}")
+
+
+def _check_no_skill_execution_yaml(skill: str, sdir: Path) -> None:
+    if (sdir / "execution.yaml").is_file():
+        err(skill, "execution.yaml bajo skills/ está prohibido; usar tools/execution/registry.yaml")
 
 
 def _check_body_size(skill: str, text: str) -> str:
@@ -338,12 +431,14 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
 
     _check_frontmatter_name(skill, fm, names)
     check_compatibility(skill, fm)
+    _check_no_skill_execution_yaml(skill, sdir)
 
     meta = fm.get("metadata", {})
     if not isinstance(meta, dict):
         err(skill, "metadata debe ser un dict")
         return
-    _check_metadata(skill, meta)
+    _check_metadata(skill, meta, root)
+    _check_allowed_tools(skill, fm, meta)
 
     body = _check_body_size(skill, text)
     check_headings(skill, body, has_exec_scripts(sdir))

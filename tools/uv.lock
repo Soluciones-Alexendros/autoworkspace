@@ -81,7 +81,7 @@ wheels = [
 
 [[package]]
 name = "autoworkspace"
-version = "7.0.0a0"
+version = "7.0.0a1"
 source = { virtual = "." }
 
 [package.dev-dependencies]

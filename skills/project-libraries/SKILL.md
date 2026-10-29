@@ -3,14 +3,14 @@ name: project-libraries
 description: "Dependency audit (SCA/CVE): multi-language pipeline (npm/pip/cargo/go/maven/gradle/composer/gem) to detect vulnerabilities, malware, typosquatting, unused dependencies and outdated. Use when performing dependency audit, SCA, CVE scanning, supply chain security or SBOM generation. Not for code security review (→ web-owasp) nor web compliance audits (→ web-compliance)."
 license: MIT
 metadata:
-  author: Soluciones-Alexendros (adapted)
-  version: "7.0.0-alpha.0"
+  author: "Soluciones-Alexendros (adapted)"
+  version: "7.0.0-alpha.1"
   domain: project
-  type: atomic
+  type: audit
   language: en
   keywords: project-libraries
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob"
 ---
 
 # Project Libraries
