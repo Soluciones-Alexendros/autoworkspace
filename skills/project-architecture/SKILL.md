@@ -7,12 +7,12 @@ description:
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.1.0"
+  version: "7.0.0-alpha.0"
   domain: project
   type: atomic
   language: en
   keywords: project-architecture
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

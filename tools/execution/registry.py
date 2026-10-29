@@ -109,7 +109,7 @@ OPERATIONS: dict[str, OpSpec] = {
     "proton_send": OpSpec(
         "proton_send",
         "communicate-external",
-        "local-proton",
+        "local-email",
         require_approval=True,
         timeout=120,
         description="Send mail via Proton Bridge",

@@ -2,7 +2,7 @@
 name: linux-security
 description: "Verifica endurecimiento del host Linux: MAC activo (SELinux/AppArmor), hardening sysctl, SSH endurecido (sin root login ni password auth), auditd, fail2ban. Read-only, nunca aplica cambios. Dispara con: auditar seguridad, hardening del host, bastionado, revisar postura de seguridad, CIS benchmark."
 license: MIT
-compatibility: opencode
+compatibility: cursor, pi
 metadata:
   author: alexendros
   version: "1.0.0"

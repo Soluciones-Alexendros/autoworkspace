@@ -15,7 +15,10 @@
     "schema_version": { "type": "integer", "const": 1 },
     "dialect": { "type": "string", "const": "autoworkspace.execution" },
     "skill": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-    "skill_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "skill_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$"
+    },
     "execution_kind": {
       "type": "string",
       "enum": ["agent", "script", "orchestrator"]

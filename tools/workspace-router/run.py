@@ -8,6 +8,7 @@ Use --init explicitly to create .autoworkspace from templates.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -29,6 +30,13 @@ from status_bump import advance_status, load_status  # noqa: E402
 def load_catalog() -> list[str]:
     index = ROOT / "skill-index.json"
     if not index.is_file():
+        gen_path = ROOT / "tools" / "skill-index" / "generate.py"
+        spec = importlib.util.spec_from_file_location("skill_index_generate", gen_path)
+        if spec is not None and spec.loader is not None:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            mod.ensure_index(ROOT)
+    if not index.is_file():
         skills_dir = ROOT / "skills"
         return sorted(p.name for p in skills_dir.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
     data = json.loads(index.read_text(encoding="utf-8"))
@@ -40,7 +48,7 @@ def ensure_scaffold(repo: Path) -> None:
     aw = repo / ".autoworkspace"
     aw.mkdir(parents=True, exist_ok=True)
     (aw / "schemas").mkdir(exist_ok=True)
-    tmpl = ROOT / "templates" / "autoworkspace"
+    tmpl = ROOT / "templates" / "harness"
     for name in ("project.yaml", "status.yaml"):
         dest = aw / name
         if not dest.is_file():

@@ -9,8 +9,8 @@ trap 'rm -rf "$TMP"' EXIT
 RB="$TMP/rb"
 mkdir -p "$RB"
 
-INSTALL="$TMP/install.sh"
-sed "s|^ROOT=.*|ROOT=\"$ROOT\"|" "$ROOT/scripts/install.sh" > "$INSTALL"
+INSTALL="$TMP/link-skills.sh"
+sed "s|^ROOT=.*|ROOT=\"$ROOT\"|" "$ROOT/scripts/lib/link-skills.sh" > "$INSTALL"
 python3 - "$INSTALL" <<'PY'
 from pathlib import Path
 import sys
@@ -40,9 +40,9 @@ if [ "$rc" -eq 0 ]; then
 fi
 grep -q "injected apply failure\|ROLLBACK" "$TMP/err.txt" || true
 # First skill link must not remain (rollback undoes created)
-# local-maintenance is first alphabetically among resources
-if [ -e "$RB/local-maintenance" ] || [ -L "$RB/local-maintenance" ]; then
-  echo "FAIL: local-maintenance still present after rollback"; ls -la "$RB"; exit 1
+FIRST=$(find "$ROOT/skills" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | head -1)
+if [ -e "$RB/$FIRST" ] || [ -L "$RB/$FIRST" ]; then
+  echo "FAIL: $FIRST still present after rollback"; ls -la "$RB"; exit 1
 fi
 # Journal should be cleaned by rollback
 test ! -f "$RB/.autoworkspace-install-journal.json"
@@ -52,14 +52,14 @@ echo "V31 OK: created link rolled back after injected failure (rc=$rc)"
 OK="$TMP/ok"
 mkdir -p "$OK/foreign"
 echo keep > "$OK/foreign/x"
-bash "$ROOT/scripts/install.sh" --target "$OK"
+bash "$ROOT/scripts/install-cursor.sh" --target "$OK"
 test -L "$OK/local-maintenance"
 test "$(cat "$OK/foreign/x")" = "keep"
 echo "V32 OK: foreign preserved"
 
 # --- dry-run ---
 MISS="$TMP/miss"
-bash "$ROOT/scripts/install.sh" --target "$MISS" --dry-run
+bash "$ROOT/scripts/install-cursor.sh" --target "$MISS" --dry-run
 test ! -e "$MISS"
 echo "V33 dry-run OK"
 

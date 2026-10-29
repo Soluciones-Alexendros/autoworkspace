@@ -3,7 +3,7 @@
 /stacks/ @Alexendros
 /rulesets/ @Alexendros
 /docs/architecture/decisions/ @Alexendros
-/templates/repo/ @Alexendros
+/templates/product/ @Alexendros
 
 # Existing validation / release tooling ownership.
 /tools/validate/ @Alexendros

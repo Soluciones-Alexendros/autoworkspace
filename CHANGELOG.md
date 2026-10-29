@@ -6,21 +6,19 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
-- `local-maintenance` 5.1.6 -> 5.1.7 (patch)
-- `local-proton` 5.1.4 -> 5.1.5 (patch)
-- `local-security` 5.1.3 -> 5.1.4 (patch)
-- `project-publish` 4.3.5 -> 4.3.6 (patch)
+## [7.0.0-alpha.0] - 2026-10-29
 
-- `project-publish` 4.3.4 -> 4.3.5 (patch)
+### Breaking
 
-- `project-publish` 4.3.3 -> 4.3.4 (patch)
-- `web-compliance` 4.1.2 -> 4.1.3 (patch)
+- Harness support is Cursor and Pi. OpenCode, Codex and Copilot compatibility is removed, including `opencode.json`, `scripts/install-opencode.sh`, `scripts/install.sh`, and the committed `.opencode/` and `.agents/` trees. `.cursor/skills/` is not committed; installers create those symlinks.
+- `skills/` is the only versioned skill catalog. `skill-index.json` is generated and gitignored. README and `docs/TAXONOMY.md` take the skill table from `<!-- SKILL-INDEX:START -->` / `<!-- SKILL-INDEX:END -->`.
+- `templates/autoworkspace/` is `templates/harness/`. `templates/repo/` is `templates/product/`.
+- The Python project lives in `tools/pyproject.toml`. Ruff and Mypy stay configured at the repository root.
+- `local-proton` is `local-email`. The Proton client lives in `tools/email/drivers/proton/`. There is no skill alias.
 
-- `plan-continue` 4.3.5 -> 4.3.6 (patch)
+### Added
 
-- `local-maintenance` 5.1.5 -> 5.1.6 (patch)
-- `local-proton` 5.1.3 -> 5.1.4 (patch)
-- `local-security` 5.1.2 -> 5.1.3 (patch)
+- Cursor contract surfaces: `.cursor/hooks.json`, `session_start` / `shell_gate` hooks, `autoworkspace.mdc` always-apply rule, `aw-verifier` agent, and `.cursor-plugin/` metadata. `disable-model-invocation: true` on host-mutating local/project skills.
 
 ## [6.1.0] - 2026-10-26
 
@@ -29,12 +27,14 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 - Suministro verificado dentro de `ci-gate`: jobs `secrets` (gitleaks 8.30.1 con checksum), `sca` (OSV-Scanner v2.7.0) y `zizmor` 1.31.1 con `--min-severity=medium` (A2, T1e).
 - Diagramas de arquitectura con Archify fijado por SHA, fuentes JSON versionadas, validación en `ci-gate` y HTML solo como artefacto (T5).
 - `docs/GLOSARIO.md` con la terminología canónica, su regla de idioma y el bloque `forbidden` validado en `ci-gate` (T3, glosario).
+- CI-BACKLOG-01: higiene fail-closed, CLI `private_denylist`, detector G1, agregador `ci_gate`, formularios de issue YAML y control privado obligatorio en `main`/release (sin secreto en PR).
 
 ### Changed
 
 - Renovate sin automerge y con cuarentena de releases: `minimumReleaseAge` de 3 días (14 para majors), `internalChecksFilter: strict` y `platformAutomerge: false` (A1, T1d).
 - Terminología canónica aplicada a los textos vivos del canon (T3).
 - Retirada de la deuda ruff/mypy congelada, con residuo de `# noqa` acotado (T6).
+- Identidad de producto alineada a 6.1.0 en `package.json`, `pyproject.toml`, `package-lock.json` y `uv.lock`; `npm run typecheck` ejecuta `mypy --strict` (CI-BACKLOG-01).
 
 ### Fixed
 
@@ -44,6 +44,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 - Contenidos y referencias obsoletos del canon, con `release_coherence` comprobando la versión del README (T2).
 - Enlaces externos del canon limitados a owners permitidos y verificados (T4).
 - Plantillas de plan, banners de ADR y `check-ignore` (T1).
+- Denylist privada: ausencia/vacío/regex inválida/error dejan de salir como éxito; sin imprimir patrón ni coincidencia (CI-BACKLOG-01).
 
 ## [6.0.0] - 2026-10-25
 

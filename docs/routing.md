@@ -9,7 +9,7 @@ Fluidez en invocación automatizada por agentes de código sin depender solo del
 1. `skill-index.json` — índice machine-readable con keywords, triggers, routes
 2. `tools/skill-router/intent-map.yaml` — patrones ES/EN
 3. `tools/skill-router/route.py` — scoring TF + trigger boost (0 dependencias)
-4. `.opencode/agents/skill-router.md` — agente OpenCode que invoca route.py antes de decidir
+4. `scripts/install-cursor.sh` y `scripts/install-pi.sh` — publican el catálogo; el agente lee `SKILL.md` desde el symlink
 
 ## Flujo
 
@@ -35,14 +35,14 @@ Prompt: "audita y publica este repo"
 - route.py:
   9.5 plan-continue -> skills/plan-continue/SKILL.md
   8.8 project-publish -> skills/project-publish/SKILL.md
-- Agente OpenCode ejecuta plan-continue (análisis / roadmap), luego handoff a project-publish
+- El agente (Cursor o Pi) ejecuta plan-continue (análisis / roadmap), luego handoff a project-publish
 
 ## Añadir triggers
 
 Edita `intent-map.yaml` y `metadata.keywords` en SKILL.md, luego rebuild:
 
 ```bash
-python tools/skill-router/build_index.py
+python tools/skill-index/generate.py --sync-docs
 ```
 
 ## Validación

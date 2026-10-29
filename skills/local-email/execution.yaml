@@ -1,0 +1,43 @@
+schema_version: 1
+dialect: autoworkspace.execution
+skill: local-email
+skill_version: 7.0.0-alpha.0
+execution_kind: script
+distribution: standalone
+shared_dependencies: []
+system_requirements:
+  binaries: []
+  network: true
+operations:
+  - id: read_mail
+    effect: communicate-external
+    dry_run: "yes"
+    idempotency: "yes"
+    approval_required: false
+    recovery_required: false
+    description: local-email:read_mail
+  - id: search_mail
+    effect: communicate-external
+    dry_run: "yes"
+    idempotency: "yes"
+    approval_required: false
+    recovery_required: false
+    description: local-email:search_mail
+  - id: send_mail
+    effect: communicate-external
+    dry_run: "no"
+    idempotency: "no"
+    approval_required: true
+    recovery_required: false
+    description: local-email:send_mail
+  - id: access_secret
+    effect: access-secret
+    dry_run: "no"
+    idempotency: "no"
+    approval_required: true
+    recovery_required: false
+    description: local-email:access_secret
+handoffs: []
+automation_limits:
+  Agent judgment remains for non-script operations; blocked mutators
+  stay blocked without approval.

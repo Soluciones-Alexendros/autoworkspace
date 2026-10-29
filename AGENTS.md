@@ -4,7 +4,7 @@
 
 All skills live in `skills/<skill-name>/SKILL.md`. Flat layout, one folder per skill. Name == directory name.
 
-## Mandatory Rule — OpenCode & Code Harness
+## Mandatory Rule — Cursor, Pi and Code Harness
 
 Before ANY action, you MUST evaluate if a skill in `skills/` applies.
 
@@ -32,20 +32,30 @@ Legacy `--bump` on the workspace router is rejected (`plan-continue`).
 - WEB AUDITS → web-* · LOCAL (local OS) → local-*
 - At plan start and before EVERY task or independent implementation action, re-evaluate the scope and invoke all matching roles: backend/API/jobs → role-back; frontend/client routes → role-front; visual direction/tokens → role-design; clean-code/refactoring → role-clean-code. Previous role invocations do not cover later actions. Mixed work requires explicit contracts and handoffs. The phase router's single skill is only a fallback, never a substitute for per-task role selection.
 
-## OpenCode Specific
+## Harness discovery
 
-OpenCode searches in this order:
+`skills/` is the only versioned catalog. Cursor and Pi load symlinks created by the installers; those directories are not committed.
 
-- .opencode/skills/<name>/SKILL.md
-- ~/.config/opencode/skills/<name>/SKILL.md
-- .agents/skills/<name>/SKILL.md
-- ./skills/<name>/SKILL.md (project fallback)
+Cursor:
 
-The agent must load `opencode.json` for `skills.paths` (OpenCode ≥1.18; not the obsolete `skillDirectories` key).
+- `.cursor/skills/<name>/SKILL.md`
+- `~/.cursor/skills/<name>/SKILL.md`
+
+Pi ([skills](https://pi.dev/docs/latest/skills)):
+
+- `.pi/skills/<name>/SKILL.md`
+- `~/.pi/agent/skills/<name>/SKILL.md`
+
+Install:
+
+```bash
+bash scripts/install-cursor.sh --target .cursor/skills
+bash scripts/install-pi.sh --target .pi/skills
+```
 
 ## Cursor
 
-Cursor discovers project skills from `.agents/skills/` and `.cursor/skills/` (symlinks into `skills/`). Invoke by matching `description` or with `/<name>` in Agent chat. Do not ask for an OpenCode-style `skill` tool — Cursor has none.
+Cursor discovers project skills from `.cursor/skills/` after `install-cursor.sh` (symlinks into `skills/`). Invoke by matching `description` or with `/<name>` in Agent chat. Do not ask for an OpenCode-style `skill` tool — Cursor has none.
 
 Product-mutating skill operations go only through `tools/execution` and `run_registered`. Do not invoke skill scripts ad hoc. Frontmatter `allowed-tools` does not authorize anything in Cursor.
 
@@ -55,9 +65,9 @@ Project hooks live under `.cursor/hooks.json` and run from the repository root. 
 
 ## Language
 
-Skill bodies and technical contracts are written in English. Frontmatter `description` is bilingual (EN + ES triggers) for discovery. Operator-facing plans and reports in this repo may be Spanish. Canonical detail: `docs/STANDARD.md` and the fleet canon under `docs/architecture/`, `docs/REUTILIZACION.md`, `stacks/`, and `templates/repo/`.
+Skill bodies and technical contracts are written in English. Frontmatter `description` is bilingual (EN + ES triggers) for discovery. Operator-facing plans and reports in this repo may be Spanish. Canonical detail: `docs/STANDARD.md` and the fleet canon under `docs/architecture/`, `docs/REUTILIZACION.md`, `stacks/`, and `templates/product/`.
 
-This repository **complies with the fleet contract** in `templates/repo/AGENTS.md` §1–8 (ci-gate, squash auto-merge, Renovate-only, plan/* flow when adopted).
+This repository **complies with the fleet contract** in `templates/product/AGENTS.md` §1–8 (ci-gate, squash auto-merge, Renovate-only, plan/* flow when adopted).
 
 Canonical vocabulary (plan branch, task branch, `ci-gate`, `pipeline-<stack>`, publication, ADR states, language rule): [`docs/GLOSARIO.md`](docs/GLOSARIO.md).
 

@@ -22,8 +22,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
-CHANGELOG_H2 = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\] - (\d{4}-\d{2}-\d{2})(.*)$")
+SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z][0-9A-Za-z.-]*))?$")
+CHANGELOG_H2 = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\] - (\d{4}-\d{2}-\d{2})(.*)$")
+STABLE_TAG_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 RELEASE_PATHS = {
     "CHANGELOG.md",
     "package.json",
@@ -47,6 +48,11 @@ def parse_semver(ver: str) -> tuple[int, int, int]:
     return int(m.group(1)), int(m.group(2)), int(m.group(3))
 
 
+def is_prerelease(ver: str) -> bool:
+    m = SEMVER_RE.match(ver)
+    return bool(m and m.group(4))
+
+
 def package_version(root: Path) -> str:
     data = json.loads((root / "package.json").read_text(encoding="utf-8"))
     ver = str(data["version"])
@@ -60,7 +66,7 @@ def latest_tag(root: Path) -> str | None:
         return None
     for line in r.stdout.splitlines():
         tag = line.strip()
-        if tag.startswith("v") and SEMVER_RE.match(tag[1:]):
+        if tag.startswith("v") and STABLE_TAG_RE.match(tag[1:]):
             return tag[1:]
     return None
 
@@ -121,6 +127,12 @@ def write_output(**kwargs: str) -> None:
             handle.write(f"{key}={value}\n")
 
 
+def _refuse_prerelease(pkg: str, label: str) -> int:
+    print(f"{label}: refuse prerelease package={pkg}; no stable tag")
+    write_output(tagged="false", version=pkg, status="refused", reason="prerelease")
+    return 1
+
+
 def cmd_check_repo(args: argparse.Namespace) -> int:
     root = args.root
     pkg = package_version(root)
@@ -145,6 +157,8 @@ def cmd_readiness(args: argparse.Namespace) -> int:
     """Strict release readiness (C20): missing/empty/YANKED notes → fail, never published."""
     root = args.root
     pkg = package_version(root)
+    if is_prerelease(pkg):
+        return _refuse_prerelease(pkg, "READINESS")
     tagged = latest_tag(root)
     changelog_path = root / "CHANGELOG.md"
     if not changelog_path.is_file():
@@ -208,9 +222,8 @@ def _tag_and_push(args: argparse.Namespace, root: Path, tag: str, pkg: str) -> i
     return None
 
 
-def cmd_cut(args: argparse.Namespace) -> int:
+def _cmd_cut_release(args: argparse.Namespace, pkg: str) -> int:
     root = args.root
-    pkg = package_version(root)
     tagged = latest_tag(root)
     if args.strict_readiness:
         # Explicit release path: readiness failure is an error, never skip-success.
@@ -237,6 +250,13 @@ def cmd_cut(args: argparse.Namespace) -> int:
     print(f"CUT: created {tag}")
     write_output(tagged="true", version=pkg, status="published", reason="ok")
     return 0
+
+
+def cmd_cut(args: argparse.Namespace) -> int:
+    pkg = package_version(args.root)
+    if is_prerelease(pkg):
+        return _refuse_prerelease(pkg, "CUT")
+    return _cmd_cut_release(args, pkg)
 
 
 def build_parser() -> argparse.ArgumentParser:

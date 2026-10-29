@@ -25,6 +25,7 @@ name: {name}
 description: >-
   {description}
 license: MIT
+compatibility: cursor, pi
 metadata:
   author: Soluciones-Alexendros
   version: "1.0.0"
@@ -42,16 +43,16 @@ metadata:
 
 
 def seed_catalog(root: Path, names: list[str]) -> None:
-    rows = "\n".join(f"| `build` | {n} | x |" for n in names)
-    (root / "README.md").write_text(
-        f"| Familia | Skill | Qué hace |\n| --- | --- | --- |\n{rows}\n",
-        encoding="utf-8",
-    )
+    del names
+    gen_path = Path(__file__).resolve().parents[2] / "skill-index" / "generate.py"
+    spec = importlib.util.spec_from_file_location("skill_index_generate", gen_path)
+    assert spec is not None and spec.loader is not None
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    wrapped = f"{gen.START}\n{gen.catalog_markdown(root)}{gen.END}\n"
+    (root / "README.md").write_text(wrapped, encoding="utf-8")
     (root / "docs").mkdir(parents=True)
-    (root / "docs" / "TAXONOMY.md").write_text(
-        " · ".join(names) + "\n",
-        encoding="utf-8",
-    )
+    (root / "docs" / "TAXONOMY.md").write_text(wrapped, encoding="utf-8")
 
 
 def run_root(root: Path) -> list[str]:
@@ -109,8 +110,12 @@ def test_catalog_mismatch(tmp_path: Path) -> None:
         "## Overview\n\nX.\n\n## When to Use\n\nY.\n\n## References\n\nZ.\n",
     )
     seed_catalog(tmp_path, ["plan-demo", "web-ghost"])
+    for rel in ("README.md", "docs/TAXONOMY.md"):
+        path = tmp_path / rel
+        text = path.read_text(encoding="utf-8").replace("`plan-demo`", "`plan-demo` `web-ghost`")
+        path.write_text(text, encoding="utf-8")
     errors = run_root(tmp_path)
-    assert any("README vs carpetas" in e or "TAXONOMY vs carpetas" in e for e in errors)
+    assert any("token inexistente" in e or "bloque distinto" in e for e in errors)
 
 
 def test_smoke_required_when_scripts(tmp_path: Path) -> None:

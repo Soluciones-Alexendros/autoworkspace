@@ -8,8 +8,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 D="$(mktemp -d -t smoke-release-XXXXXX 2>/dev/null)" || D="$(mktemp -d 2>/dev/null)"
 if ! (printf '#!/bin/sh\nexit 0\n' > "$D/.probe.sh" && chmod +x "$D/.probe.sh" && "$D/.probe.sh" 2>/dev/null); then
   rm -rf "$D"
-  mkdir -p "$HOME/.cache/opencode-tmp"
-  D="$(mktemp -d -p "$HOME/.cache/opencode-tmp" smoke-release-XXXXXX)"
+  mkdir -p "$HOME/.cache/harness-tmp"
+  D="$(mktemp -d -p "$HOME/.cache/harness-tmp" smoke-release-XXXXXX)"
 fi
 rm -f "$D/.probe.sh"
 TMP="$D"

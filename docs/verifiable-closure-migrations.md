@@ -18,8 +18,8 @@ Increment: `autoworkspace-verifiable-closure-v2` (see `tasks/plan-verifiable-clo
 
 ## Installers
 
-- `scripts/install.sh` journals per-resource prior symlink targets and restores them on rollback (does not blindly `rm` pre-existing links).
-- `scripts/install-opencode.sh` only treats planned skill names as conflicts; foreign non-colliding entries coexist.
+- `scripts/lib/link-skills.sh` (via `install-cursor.sh` and `install-pi.sh`) journals per-resource prior symlink targets and restores them on rollback.
+- Only planned skill names are conflicts; foreign non-colliding entries coexist.
 
 ## Standalone / preflight
 

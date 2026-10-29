@@ -14,7 +14,7 @@ No uses `--bump` en el workspace router (legado rechazado). Ruta de solo lectura
 
 `python tools/workspace-router/run.py --phase DEFINE --repo . --json`
 
-No dispares `local-maintenance`, `local-security`, `local-proton` ni
+No dispares `local-maintenance`, `local-security`, `local-email` ni
 `project-publish` sin petición explícita del operador; si hace falta, `/nombre`.
 
 `role-front` y `role-design` solo con superficie UI/visual real.

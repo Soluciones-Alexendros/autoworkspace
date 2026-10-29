@@ -1,5 +1,5 @@
-# Intent map for deterministic routing — OpenCode harness
-# Used by route.py and .opencode/agents/skill-router.md
+# Intent map for deterministic routing — Cursor and Pi
+# Used by route.py
 intents:
   mantenimiento:
     skills: [local-maintenance]
@@ -158,8 +158,16 @@ intents:
         "qa",
       ]
   proton:
-    skills: [local-proton]
-    patterns: ["proton mail", "proton pass", "pass-cli", "bridge imap"]
+    skills: [local-email]
+    patterns:
+      [
+        "proton mail",
+        "proton pass",
+        "pass-cli",
+        "bridge imap",
+        "email",
+        "correo",
+      ]
   libraries:
     skills: [project-libraries]
     patterns: ["dependencias", "cve", "sca", "sbom", "typosquatting"]

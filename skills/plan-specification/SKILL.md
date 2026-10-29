@@ -4,12 +4,12 @@ description: "Write a structured specification before writing any code, then dec
 license: MIT
 metadata:
   author: addyosmani (adapted)
-  version: "4.2.0"
+  version: "7.0.0-alpha.0"
   domain: plan
   type: orchestrator
   language: en
   keywords: plan-specification
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

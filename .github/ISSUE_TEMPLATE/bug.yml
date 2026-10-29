@@ -1,0 +1,68 @@
+name: Bug
+description: Comportamiento incorrecto en skills, validators, CI o el canon
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **No pegues secretos, tokens, patrones de denylist, datos de host/red ni informes de auditoría brutos.**
+        Usa SHA/versión y evidencia sanitizada. Vulnerabilidades explotables → Security Advisories.
+  - type: input
+    id: sha_version
+    attributes:
+      label: SHA o versión
+      description: Commit SHA (40 hex) o versión de package.json / metadata.version de skill.
+      placeholder: 681d81a108a9543af67ba5ebf460cde8d8e66c0f o 6.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Esperado
+      description: Comportamiento correcto según contrato o test.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observado
+      description: Qué ocurrió, con códigos de salida si aplica. Sin secretos.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno mínimo
+      description: SO, Python/Node, comando exacto, cwd.
+      placeholder: |
+        - OS: Omarchy / Linux
+        - Python: 3.12
+        - Comando: uv run --frozen pytest …
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproducción
+      description: Pasos numerados hasta el fallo.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Alcance
+      description: Archivos/módulos afectados y qué queda fuera.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Condiciones binarias para cerrar (PASS/FAIL comprobables).
+    validations:
+      required: true

@@ -8,7 +8,7 @@
 
 Diagramas de arquitectura (fuentes JSON validadas en `ci-gate`, HTML solo como artefacto de CI):
 
-- **D01 `architecture`** — capas del canon: `skills/`, `tools/`, `.github/workflows/reusable-*`, `stacks/`, `templates/repo/` y `docs/architecture/decisions/`.
+- **D01 `architecture`** — capas del canon: `skills/`, `tools/`, `.github/workflows/reusable-*`, `stacks/`, `templates/product/` y `docs/architecture/decisions/`.
 - **D02 `workflow`** — flujo en dos fases: rama de tarea → PR de tarea → `plan/<id>` → PR del plan → `main` → release → tag `v*` → publicación.
 - **D03 `sequence`** — agregación de `ci-gate` con los jobs reales de `ci.yml`.
 - **D04 `lifecycle`** — ciclo de vida de un ADR.

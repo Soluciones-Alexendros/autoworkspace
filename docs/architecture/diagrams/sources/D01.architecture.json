@@ -23,7 +23,7 @@
       "type": "external",
       "label": "Agentes de código",
       "sublabel": "sesión con la skill cargada",
-      "tag": "OpenCode · Claude · Codex"
+      "tag": "Cursor · Pi"
     },
     {
       "id": "skills",
@@ -66,7 +66,7 @@
       "row": 1,
       "col": 2,
       "type": "frontend",
-      "label": "templates/repo/",
+      "label": "templates/product/",
       "sublabel": "esqueleto de producto",
       "tag": "bootstrap"
     },
@@ -169,7 +169,7 @@
       "items": [
         ".github/workflows/reusable-<stack>.yml es el canon que llaman los productos",
         "stacks/<stack>/ci.yml fija el pin exacto del reusable por stack",
-        "templates/repo/ arranca un producto nuevo con el mismo contrato"
+        "templates/product/ arranca un producto nuevo con el mismo contrato"
       ]
     },
     {

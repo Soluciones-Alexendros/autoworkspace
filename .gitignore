@@ -33,8 +33,8 @@ artifacts/
 proteccion-*.json
 proteccion-*.zip
 **/clean-routine-*.json
-# Ignorar contenido de .cursor/ salvo el harness versionado (hooks, rules, agents, skills).
-# Usar .cursor/* (no .cursor/) para que las negaciones puedan reincluir hijos.
+# Cursor: version hooks/rules/agents; skills come from install-cursor.sh.
+# Use .cursor/* (not .cursor/) so negations can re-include children.
 .cursor/*
 !.cursor/hooks.json
 !.cursor/hooks/
@@ -43,10 +43,11 @@ proteccion-*.zip
 !.cursor/rules/*.mdc
 !.cursor/agents/
 !.cursor/agents/*.md
-!.cursor/skills/
-!.cursor/skills/*/
-# Estado local de hooks (continual-learning, etc.)
 .cursor/hooks/state/
+.agents/
+.opencode/
+.pi/
+skill-index.json
 
 # Env local (P11 T4)
 .env

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reporte de seguridad
+    url: https://github.com/Soluciones-Alexendros/autoworkspace/security/advisories/new
+    about: No abras un issue público para vulnerabilidades explotables. Usa Security Advisories o SECURITY.md (operaciones@alexendros.dev).
+  - name: Política de seguridad
+    url: https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/SECURITY.md
+    about: Canal, ventanas de respuesta y alcance.

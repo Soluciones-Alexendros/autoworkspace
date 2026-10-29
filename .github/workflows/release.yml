@@ -26,12 +26,17 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: false
-      - run: uv sync --frozen
+      - run: uv sync --frozen --project tools
       - name: Validate
         run: |
-          uv run python3 tools/validate/skill_spec.py
-          uv run python3 tools/validate/skill_links.py
-          uv run python3 tools/validate/release_coherence.py
+          uv run --project tools python3 tools/validate/skill_spec.py
+          uv run --project tools python3 tools/validate/skill_links.py
+          uv run --project tools python3 tools/validate/release_coherence.py
+      - name: Private denylist required before publish
+        env:
+          HYGIENE_DENYLIST: ${{ secrets.HYGIENE_DENYLIST }}
+          AUTOWORKSPACE_PRIVATE_PATTERNS: ${{ secrets.HYGIENE_DENYLIST }}
+        run: uv run --project tools python3 tools/validate/private_denylist.py
       - name: Publish from tag
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -39,8 +44,8 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          uv run python3 tools/validate/release_coherence.py --release-gate
-          uv run python3 tools/version/cut_tag.py --extract-notes "$VERSION" --notes-file notes.md
+          uv run --project tools python3 tools/validate/release_coherence.py --release-gate
+          uv run --project tools python3 tools/version/cut_tag.py --extract-notes "$VERSION" --notes-file notes.md
           gh release create "${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag
       - name: Cut annotated tag on main
         id: cut
@@ -48,7 +53,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          uv run python3 tools/version/cut_tag.py --apply --notes-file notes.md
+          uv run --project tools python3 tools/version/cut_tag.py --apply --notes-file notes.md
       - name: Push tag and create GitHub Release
         if: github.ref == 'refs/heads/main' && steps.cut.outputs.tagged == 'true'
         env:

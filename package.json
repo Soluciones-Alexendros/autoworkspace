@@ -1,23 +1,20 @@
 {
   "name": "autoworkspace",
-  "version": "6.1.1",
+  "version": "7.0.0-alpha.0",
   "description": "Autoworkspace \u2014 agentic pipeline: spec \u2192 schemas/tests \u2192 code \u2192 validate \u2192 integrate \u2192 declarative status",
   "private": true,
   "scripts": {
     "prepare": "husky",
-    "syntax-check": "python3 -m py_compile tools/validate/skill_spec.py tools/validate/skill_links.py tools/validate/release_coherence.py tools/validate/hygiene.py tools/contracts/loader.py tools/contracts/result.py tools/version/bump.py tools/version/cut_tag.py && echo 'syntax-check: OK'",
-    "typecheck": "npm run syntax-check",
-    "test": "bash run-validation.sh --pytest-only --smoke-only",
-    "lint": "prettier --check .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "syntax-check": "python3 -m py_compile tools/validate/skill_spec.py tools/validate/skill_links.py tools/validate/release_coherence.py tools/validate/hygiene.py tools/validate/private_denylist.py tools/validate/g1_run_expressions.py tools/validate/ci_gate.py tools/contracts/loader.py tools/contracts/result.py tools/version/bump.py tools/version/cut_tag.py && echo 'syntax-check: OK'",
+    "typecheck": "uv run --project tools --frozen mypy --config-file mypy.ini --strict .",
+    "test": "uv run --project tools --frozen bash run-validation.sh --pytest-only --smoke-only",
+    "lint": "prettier --config config/prettierrc.json --check .",
+    "format": "prettier --config config/prettierrc.json --write .",
+    "format:check": "prettier --config config/prettierrc.json --check ."
   },
   "devDependencies": {
     "husky": "^9.1.6",
     "lint-staged": "^17.6.0",
     "prettier": "^3.3.3"
-  },
-  "lint-staged": {
-    "*.{md,json,yaml,yml,toml}": "prettier --ignore-unknown --write"
   }
 }

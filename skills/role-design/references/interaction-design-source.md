@@ -2,7 +2,7 @@
 name: interaction-design
 description: Design and implement microinteractions, motion design, transitions, and user feedback patterns. Use when adding polish to UI interactions, implementing loading states, or creating delightful user experiences.
 license: MIT
-compatibility: opencode
+compatibility: cursor, pi
 metadata:
   source: wshobson/agents + custom
   category: design

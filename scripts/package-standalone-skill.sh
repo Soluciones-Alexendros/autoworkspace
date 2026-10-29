@@ -87,7 +87,7 @@ rsync -a --delete \
 # Ensure importable as execution when vendor parent is on PYTHONPATH
 : > "$DEST_SKILL/vendor/__init__.py"
 
-# P11 T3: include canon files the skill cites (relative links into docs/ or templates/repo/)
+# P11 T3: include canon files the skill cites (relative links into docs/ or templates/product/)
 CANON_VENDOR="$DEST_SKILL/vendor/canon"
 mkdir -p "$CANON_VENDOR"
 while IFS= read -r -d '' md; do
@@ -102,7 +102,7 @@ while IFS= read -r -d '' md; do
     resolved=$(python3 -c "from pathlib import Path; print((Path('$SKILL_SRC')/'$dir_md'/'$target').resolve())" 2>/dev/null || true)
     [ -z "$resolved" ] && continue
     case "$resolved" in
-      "$ROOT"/docs/*|"$ROOT"/templates/repo/*) ;;
+      "$ROOT"/docs/*|"$ROOT"/templates/product/*) ;;
       *) continue ;;
     esac
     [ -f "$resolved" ] || continue

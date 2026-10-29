@@ -126,6 +126,15 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$PM" == "pnpm" ]]; then pnpm lint; else npm run lint; fi
+      - name: Setup uv
+        if: hashFiles('tools/pyproject.toml', 'pyproject.toml') != ''
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          enable-cache: false
+      - name: Sync Python tools project
+        if: hashFiles('tools/pyproject.toml') != ''
+        run: uv sync --frozen --project tools
+        working-directory: .
       - name: Typecheck
         env:
           PM: ${{ steps.pm.outputs.name }}

@@ -4,12 +4,12 @@ description: "Dependency audit (SCA/CVE): multi-language pipeline (npm/pip/cargo
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.1.1"
+  version: "7.0.0-alpha.0"
   domain: project
   type: atomic
   language: en
   keywords: project-libraries
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

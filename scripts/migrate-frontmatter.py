@@ -74,7 +74,7 @@ def main() -> int:
             meta["keywords"] = fm.get("name", "")
         fm["metadata"] = meta
         fm["name"] = md.parent.name  # enforce name==dir
-        fm["compatibility"] = "opencode, codex, cursor, copilot"
+        fm["compatibility"] = "cursor, pi"
         if "allowed-tools" not in fm and "allowed_tools" not in fm:
             fm["allowed-tools"] = "Read, Grep, Glob, Bash, Write"
         # legacy single-vendor cleanup already completed; nothing to normalize here

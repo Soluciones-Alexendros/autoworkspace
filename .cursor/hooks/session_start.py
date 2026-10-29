@@ -10,7 +10,7 @@ CONTRACT = (
     "Autoworkspace Cursor contract: Spanish with the operator; technical ids in "
     "English. Product mutation only via tools/execution and run_registered — no "
     "ad-hoc skill scripts. Do not use --bump. allowed-tools is not authorization. "
-    "Do not run local-maintenance, local-security, local-proton, or "
+    "Do not run local-maintenance, local-security, local-email, or "
     "project-publish without an explicit operator request (/name if needed). "
     "role-front and role-design only with a real UI surface. Never call skip, "
     "missing dependency, or not_run a PASS. Re-evaluate role-* before each task "
