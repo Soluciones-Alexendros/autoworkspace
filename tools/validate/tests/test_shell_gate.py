@@ -148,4 +148,3 @@ def test_session_start_emits_additional_context() -> None:
     assert out["additional_context"].strip()
     # Hooks must not use exit 2 (deny-via-exit); permission is in JSON only.
     assert proc.returncode == 0
-
