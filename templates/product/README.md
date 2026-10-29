@@ -24,15 +24,35 @@ Esqueleto P0/P1 de **Soluciones-Alexendros**. El canon vivo (ADRs, reusables, st
 - No es una app ni un starter de Next/Astro/Rust.
 - No sustituye `website-landingpage-template` como plantilla de landing.
 
-## Crear un repo nuevo desde esta plantilla
+## Crear un repo nuevo
+
+Hay dos caminos. No son el mismo árbol.
+
+### Template de GitHub (repo completo)
+
+En GitHub: **Use this template**.
 
 ```bash
-gh repo create Soluciones-Alexendros/<n> --private --clone
-cp -a /ruta/a/autoworkspace/templates/product/. <n>/
+gh repo create Soluciones-Alexendros/<n> --template Soluciones-Alexendros/autoworkspace --private --clone
+```
+
+Eso clona el canon entero (skills, tools, docs), no solo este esqueleto.
+
+### Esqueleto de producto
+
+Desde un checkout de autoworkspace:
+
+```bash
+make new-product DEST=<n>
+make new-harness DEST=<n>
 cd <n>
 # Ajusta README, .env.example, CODEOWNERS; copia stacks/<stack>/ci.yml → .github/workflows/ci.yml pineado al SHA de autoworkspace
-make validate || true   # en producto, sustituye stubs
+bash run-validation.sh
 ```
+
+`make new-product` copia solo `templates/product/`. `.autoworkspace/` de esta copia sale de `templates/harness/` en el corte 7.0.0. `make new-harness` vuelve a volcar `project.yaml` y `status.yaml` desde el canon.
+
+Inicio rápido del harness: [`templates/harness/README.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/templates/harness/README.md).
 
 Para **alinear un repo existente**: checklist en [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md).
 

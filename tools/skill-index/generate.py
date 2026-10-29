@@ -19,7 +19,7 @@ import yaml
 
 START = "<!-- SKILL-INDEX:START -->"
 END = "<!-- SKILL-INDEX:END -->"
-INDEX_VERSION = "7.0.0-alpha.1"
+INDEX_VERSION = "7.0.0"
 DOC_PATHS = ("README.md", "docs/TAXONOMY.md")
 
 
@@ -133,13 +133,20 @@ def region_errors(root: pathlib.Path) -> list[str]:
     return errors
 
 
-def write_index(root: pathlib.Path) -> pathlib.Path:
+def canonical_index(root: pathlib.Path) -> dict:
     index = build_index(root)
-    again = build_index(root)
-    if index != again:
+    if index != build_index(root):
         raise RuntimeError("skill index generator is not deterministic")
+    return index
+
+
+def index_json(root: pathlib.Path) -> str:
+    return json.dumps(canonical_index(root), indent=2, ensure_ascii=False) + "\n"
+
+
+def write_index(root: pathlib.Path) -> pathlib.Path:
     path = root / "skill-index.json"
-    path.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(index_json(root), encoding="utf-8")
     return path
 
 
@@ -163,8 +170,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--root", default=".", help="Repository root")
     ap.add_argument("--check", action="store_true", help="Write the index and fail if doc markers drift")
     ap.add_argument("--sync-docs", action="store_true", help="Rewrite marker regions from skills/")
+    ap.add_argument(
+        "--json",
+        action="store_true",
+        help="Print canonical index JSON to stdout without writing skill-index.json",
+    )
     args = ap.parse_args(argv)
     root = pathlib.Path(args.root)
+    if args.json:
+        sys.stdout.write(index_json(root))
+        return 0
     write_index(root)
     if args.sync_docs:
         sync_docs(root)

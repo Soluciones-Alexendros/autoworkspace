@@ -1,0 +1,31 @@
+# Autoworkspace — variables de proyecto (copiar a <repo>/.autoworkspace/project.yaml)
+schema_version: 1
+name: my-project
+profile: P1 # P0 | P1 | P2
+forge: github.com
+stack:
+  languages: [] # e.g. [typescript, python]
+  package_managers: [] # e.g. [npm, pip]
+paths:
+  tests: "" # e.g. tests/ or src/**/*.test.ts
+  ci: .github/workflows
+  docs: docs
+skills:
+  enabled: [] # vacío = todas las del catálogo
+  disabled: [] # nombres de skills a excluir del router
+handoffs:
+  define: plan-specification
+  continue: plan-continue
+  implement_front: role-front
+  implement_back: role-back
+  implement_design: role-design
+  validate: plan-validators
+  integrate_publish: project-publish
+  libraries: project-libraries
+phases:
+  - DEFINE
+  - SCHEMAS
+  - IMPLEMENT
+  - VALIDATE
+  - INTEGRATE
+  - STATUS

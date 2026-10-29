@@ -27,4 +27,4 @@ smoke:
 	@bash scripts/smoke.sh
 
 validate:
-	@bash scripts/check-structure.sh
+	@bash run-validation.sh

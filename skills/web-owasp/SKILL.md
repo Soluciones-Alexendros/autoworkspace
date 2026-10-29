@@ -4,7 +4,7 @@ description: "Code security review (OWASP): injection, XSS, authn/authz, cryptog
 license: MIT
 metadata:
   author: "Soluciones-Alexendros (adapted)"
-  version: "7.0.0-alpha.1"
+  version: "7.0.0"
   domain: web
   type: audit
   language: en

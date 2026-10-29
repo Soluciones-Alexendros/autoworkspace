@@ -4,7 +4,7 @@ description: "Write a structured specification before writing any code, then dec
 license: MIT
 metadata:
   author: "addyosmani (adapted)"
-  version: "7.0.0-alpha.1"
+  version: "7.0.0"
   domain: plan
   type: orchestrator
   language: en

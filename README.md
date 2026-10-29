@@ -8,7 +8,7 @@
 
 Workspace agéntico de Soluciones-Alexendros (MIT): no es una vitrina de skills, sino un pipeline preprogramado con variables por proyecto — especificación → esquemas/tests → código → validación → integración → status declarativo versionado. También es el **host público del canon de flota** (antes `repo-standard`).
 
-Versión **7.0.0-alpha.1**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
+Versión **7.0.0**. 16 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
 
 **Deps:** version-updates vía [Renovate](.github/renovate.json) (Dependabot Alerts de seguridad pueden quedar ON). App Renovate en la org es prerrequisito humano.
 

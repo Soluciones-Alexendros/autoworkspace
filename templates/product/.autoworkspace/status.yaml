@@ -1,0 +1,10 @@
+# Autoworkspace — estado declarativo versionado (copiar a <repo>/.autoworkspace/status.yaml)
+schema_version: 1
+version: 0.1.0
+phase: DEFINE # DEFINE | SCHEMAS | IMPLEMENT | VALIDATE | INTEGRATE | STATUS
+advance: 0
+last_skill: ""
+checksum_spec: ""
+updated_at: ""
+history: []
+# history item: { advance, version, phase, skill, at, note }
