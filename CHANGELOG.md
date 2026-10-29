@@ -6,6 +6,8 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.0.2] - 2026-10-29
+
 ### Fixed
 
 - `install.sh --target .` and other relative targets resolve against the installer checkout, not the current working directory. A `..` segment is refused. `--user` overrides `--target` and warns on stderr.
