@@ -90,10 +90,71 @@ def test_prerelease_fixture_parses(tmp_path: Path) -> None:
     assert run_coherence(coh, root) == []
 
 
+def test_stable_7_0_0_release_gate_passes(tmp_path: Path) -> None:
+    """7.0.0 estable con sección CHANGELOG pasa el gate de publicación."""
+    coh = load(COH, "release_coherence_700")
+    root = fixture_root(tmp_path, "7.0.0", "7.0.0")
+    assert coh.run_coherence(root, release_gate=True) == 0
+    assert coh.ERRORS == []
+
+
+def test_release_gate_rejects_prerelease(tmp_path: Path) -> None:
+    """El prerelease sigue parseando; --release-gate exige sección estable."""
+    coh = load(COH, "release_coherence_gate_pre")
+    root = fixture_root(
+        tmp_path,
+        "7.0.0-alpha.1",
+        "7.0.0-alpha.1",
+        {"pyproject": "7.0.0a1", "uv": "7.0.0a1"},
+    )
+    assert run_coherence(coh, root) == []
+    assert coh.run_coherence(root, release_gate=True) == 1
+    assert any("versión estable" in e for e in coh.ERRORS), coh.ERRORS
+
+
+def test_release_gate_missing_stable_section(tmp_path: Path) -> None:
+    coh = load(COH, "release_coherence_gate_missing")
+    root = fixture_root(tmp_path, "7.0.0", "7.0.0")
+    (root / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [Unreleased]\n\n- pending\n",
+        encoding="utf-8",
+    )
+    assert coh.run_coherence(root, release_gate=False) == 0
+    assert coh.run_coherence(root, release_gate=True) == 1
+    assert any("no tiene sección [7.0.0]" in e for e in coh.ERRORS), coh.ERRORS
+
+
 def test_stable_6_1_0_still_parses(tmp_path: Path) -> None:
     coh = load(COH, "release_coherence_stable")
     root = fixture_root(tmp_path, "6.1.0", "6.1.0")
     assert run_coherence(coh, root) == []
+
+
+def test_cut_allows_stable_7_0_0_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """v7.0.0 se anuncia en dry-run y no se crea el tag."""
+    cut = load(CUT, "cut_tag_stable")
+    (tmp_path / "package.json").write_text(
+        json.dumps({"name": "t", "version": "7.0.0"}),
+        encoding="utf-8",
+    )
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [7.0.0] - 2026-10-29\n\n- stable\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cut, "latest_tag", lambda root: None)
+    monkeypatch.setattr(cut, "git", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("git")))
+    monkeypatch.setattr(cut, "write_output", lambda **kwargs: None)
+    args = argparse.Namespace(
+        root=tmp_path,
+        apply=False,
+        push=False,
+        notes_file=None,
+        dry_run=True,
+        strict_readiness=False,
+    )
+    assert cut.is_prerelease("7.0.0") is False
+    assert cut.cmd_cut(args) == 0
+    assert cut.cmd_readiness(args) == 0
 
 
 def test_cut_refuses_prerelease_stable_tag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

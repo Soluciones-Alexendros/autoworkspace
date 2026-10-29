@@ -4,7 +4,7 @@ description: "Systematic Linux system maintenance by IA agent: hygiene, updates,
 license: MIT
 metadata:
   author: "Soluciones-Alexendros (adapted)"
-  version: "7.0.0-alpha.1"
+  version: "7.0.0"
   domain: local
   type: atomic
   language: en

@@ -68,6 +68,14 @@ def run_root(root: Path) -> list[str]:
     return list(mod.ERRORS)
 
 
+def test_semver_accepts_stable_and_prerelease() -> None:
+    mod = load()
+    assert mod.SEMVER_RE.fullmatch("7.0.0")
+    assert mod.SEMVER_RE.fullmatch("7.0.0-alpha.1")
+    assert mod.SEMVER_RE.fullmatch("6.1.0")
+    assert not mod.SEMVER_RE.fullmatch("7.0.0a1")
+
+
 def test_description_without_boundary(tmp_path: Path) -> None:
     write_skill(
         tmp_path,

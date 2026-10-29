@@ -1,6 +1,6 @@
 {
   "name": "autoworkspace",
-  "version": "7.0.0-alpha.1",
+  "version": "7.0.0",
   "description": "Autoworkspace \u2014 agentic pipeline: spec \u2192 schemas/tests \u2192 code \u2192 validate \u2192 integrate \u2192 declarative status",
   "private": true,
   "scripts": {

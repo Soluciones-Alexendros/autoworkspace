@@ -17,6 +17,7 @@ from typing import Any
 
 ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else Path(__file__).resolve().parents[2]
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
+STABLE_RE = re.compile(r"^\d+\.\d+\.\d+$")
 PEP440_PRE_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?$")
 README_VERSION_RE = re.compile(r"Versión \*\*(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\*\*")
 CHANGELOG_H2 = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\] - (\d{4}-\d{2}-\d{2})(.*)$")
@@ -191,6 +192,9 @@ def check_changelog(root: Path, version: str | None, release_gate: bool) -> None
         return
     sections = changelog_sections(path.read_text(encoding="utf-8"))
     if version is None:
+        return
+    if release_gate and not STABLE_RE.match(version):
+        err(f"release-gate exige versión estable, no prerelease: {version}")
         return
     if version in sections:
         info = sections[version]

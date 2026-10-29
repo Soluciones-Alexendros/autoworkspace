@@ -5,7 +5,7 @@ description: "Code architecture verification and analysis. Use when analyzing co
 license: MIT
 metadata:
   author: "Soluciones-Alexendros (adapted)"
-  version: "7.0.0-alpha.1"
+  version: "7.0.0"
   domain: project
   type: audit
   language: en

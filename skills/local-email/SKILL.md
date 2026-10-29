@@ -4,7 +4,7 @@ description: "Email local con drivers (proton, gmail via bridge). Use when opera
 license: MIT
 metadata:
   author: "Soluciones-Alexendros (adapted)"
-  version: "7.0.0-alpha.1"
+  version: "7.0.0"
   domain: local
   type: atomic
   language: en

@@ -52,6 +52,9 @@ if [ "$FULL" = 1 ]; then
 
   echo "[5] skill-index.json generate + marker check"
   python3 tools/skill-index/generate.py --check --root "$ROOT"
+
+  echo "[5b] frozen catalog snapshot"
+  python3 tools/skill-index/generate.py --json | diff -q - docs/architecture/skill-index-7.0.0.json
 fi
 
 if [ "$CHECK_INDEX" = 1 ] && [ "$FULL" = 0 ]; then

@@ -47,6 +47,9 @@ proteccion-*.zip
 .agents/
 .opencode/
 .pi/
+!templates/product/.pi/
+!templates/product/.pi/skills/
+!templates/product/.pi/skills/**
 skill-index.json
 
 # Env local (P11 T4)

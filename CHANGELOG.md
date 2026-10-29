@@ -6,6 +6,13 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.0.0] - 2026-10-29
+
+### Fixed
+
+- Promoción a estable de la línea 7.0.0. Conserva el registry central y el mínimo privilegio de 7.0.0-alpha.1.
+- Catálogo de 16 skills congelado en docs/architecture/skill-index-7.0.0.json.
+
 ## [7.0.0-alpha.1] - 2026-10-29
 
 ### Fixed
