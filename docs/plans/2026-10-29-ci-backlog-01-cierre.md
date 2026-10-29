@@ -1,13 +1,13 @@
 ---
 name: CI-BACKLOG-01 denylist not_run
-status: documented-not-started
+status: done
 blocked_by: none
 implements_on_order: "Implementa fix denylist not_run"
 ---
 
 # CI-BACKLOG-01 — Fix denylist `not_run` + estabilización
 
-**Decisión del operador (cierre hilo 7.0.2):** solo documentar esta fase. No implementar aún. No iniciar 7.1.0.
+**Estado:** implementado. Config ausente/vacía → `NOT_RUN` exit 0 + WARN; fail-closed solo con patrones válidos.
 
 ## Estado congelado (v7.0.2)
 
@@ -16,34 +16,19 @@ implements_on_order: "Implementa fix denylist not_run"
 - `is_template=true`. Install desde el tag: cursor + pi → 16 symlinks absolutos, `version==7.0.2`.
 - Tag publicado vía fallback `cut_tag --apply --push` porque `release.yml` falla en el paso denylist.
 
-## Gap actual
+## Comportamiento actual (post-fix)
 
-[`tools/validate/private_denylist.py`](../../tools/validate/private_denylist.py) es fail-closed en configuración:
+[`tools/validate/private_denylist.py`](../../tools/validate/private_denylist.py):
 
-| Condición                                | Código emitido   | Exit hoy |
-| ---------------------------------------- | ---------------- | -------- |
-| Env ausente (`CONFIG_MISSING`)           | `CONFIG_MISSING` | 1        |
-| Vacío / solo whitespace (`CONFIG_EMPTY`) | `CONFIG_EMPTY`   | 1        |
-| Regex inválida                           | `REGEX_INVALID`  | 1        |
-| Match                                    | `DENYLIST_MATCH` | 1        |
-| Sin match                                | `CLEAR`          | 0        |
+| Condición                                | Código emitido                      | Exit |
+| ---------------------------------------- | ----------------------------------- | ---- |
+| Env ausente (`CONFIG_MISSING`)           | `NOT_RUN` + WARN (`CONFIG_MISSING`) | 0    |
+| Vacío / solo whitespace (`CONFIG_EMPTY`) | `NOT_RUN` + WARN (`CONFIG_EMPTY`)   | 0    |
+| Regex inválida                           | `REGEX_INVALID`                     | 1    |
+| Match                                    | `DENYLIST_MATCH`                    | 1    |
+| Sin match                                | `CLEAR`                             | 0    |
 
-Los tests `test_d01`–`test_d03` en [`tools/validate/tests/test_private_denylist.py`](../../tools/validate/tests/test_private_denylist.py) fijan exit ≠ 0 para missing/empty/whitespace.
-
-Workflows que invocan el CLI sin wrapper `not_run`:
-
-- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
-- [`.github/workflows/quality.yml`](../../.github/workflows/quality.yml)
-- [`.github/workflows/release.yml`](../../.github/workflows/release.yml)
-
-Inyectan `secrets.HYGIENE_DENYLIST` (alias `AUTOWORKSPACE_PRIVATE_PATTERNS`). Si el secreto existe pero está vacío, CI/release quedan en rojo aunque el producto 7.0.2 sea válido. Diseño anterior (P11): ausencia → `not_run` con aviso, nunca verde falso.
-
-## Fix requerido (cuando se ordene implementar)
-
-1. **`private_denylist.py`:** missing, empty o whitespace → emitir código estable `NOT_RUN` (o conservar `CONFIG_*` mapeado a not_run), **exit 0**, WARN en stderr. **FAIL (exit 1)** solo con patrones inválidos, errores de escaneo, timeout o `DENYLIST_MATCH`.
-2. **Tests:** `test_d01` / `test_d02` / `test_d03` → `not_run` + exit 0; casos con secreto no vacío válido siguen PASS/FAIL según match.
-3. **Workflows:** el paso no debe fallar el job cuando el CLI reporta not_run (exit 0 basta si el CLI ya no falla; si se mantiene exit 1 para CONFIG_*, el YAML debe mapear a warning/`continue-on-error` solo para esos códigos — preferir exit 0 en el CLI).
-4. **Docs en este archivo:** actualizar status a `done` tras el merge del fix.
+Tests `test_d01`–`test_d03`: `NOT_RUN` + exit 0. Workflows (`ci.yml`, `quality.yml`, `release.yml`) no necesitan wrapper: exit 0 basta.
 
 ### Fail-open vs fail-closed
 
@@ -89,10 +74,6 @@ CI en `main`/`release` verde con secreto vacío o ausente.
 | CHANGELOG → `[7.0.2] - 2026-10-29`  | [#54](https://github.com/Soluciones-Alexendros/autoworkspace/pull/54)                                                             |
 | Tag + Release                       | [v7.0.2](https://github.com/Soluciones-Alexendros/autoworkspace/releases/tag/v7.0.2) via `cut_tag` fallback (notes del CHANGELOG) |
 
-## Próxima orden explícita
+## Cierre
 
-```text
-Implementa fix denylist not_run
-```
-
-Hasta entonces: repo en **v7.0.2** estable; CI rojo conocido por `CONFIG_EMPTY` si el secreto está vacío.
+Orden `Implementa fix denylist not_run` ejecutada en `fix/ci-denylist-not-run`. Sin tag `v7.0.3` salvo orden aparte.
