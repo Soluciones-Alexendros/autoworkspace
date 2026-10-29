@@ -7,6 +7,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -14,7 +15,7 @@ REPO = Path(__file__).resolve().parents[3]
 GATE = REPO / ".cursor" / "hooks" / "shell_gate.py"
 
 
-def _load_gate():
+def _load_gate() -> Any:
     spec = importlib.util.spec_from_file_location("shell_gate", GATE)
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -22,7 +23,7 @@ def _load_gate():
     return mod
 
 
-def _run_stdin(payload: bytes | str) -> tuple[int, dict]:
+def _run_stdin(payload: bytes | str) -> tuple[int, dict[str, Any]]:
     if isinstance(payload, str):
         payload = payload.encode("utf-8")
     proc = subprocess.run(
@@ -32,7 +33,7 @@ def _run_stdin(payload: bytes | str) -> tuple[int, dict]:
         check=False,
     )
     assert proc.returncode == 0, proc.stderr.decode("utf-8", errors="replace")
-    out = json.loads(proc.stdout.decode("utf-8"))
+    out: dict[str, Any] = json.loads(proc.stdout.decode("utf-8"))
     return proc.returncode, out
 
 
