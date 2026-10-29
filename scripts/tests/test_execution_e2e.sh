@@ -1,6 +1,6 @@
 #!/bin/bash
-# E2E público: dry-run → deny → handler real → evidencia → complete → OpenCode permisos
-# Help/version never count as permission PASS (H12/H13/C16/C17).
+# E2E público: dry-run → deny → handler real → evidencia → complete.
+# Nivel A es la puerta de symlinks. No se exige binario de Cursor ni de Pi.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 TMP=$(mktemp -d)
@@ -9,13 +9,10 @@ cd "$ROOT"
 export PYTHONPATH="$ROOT/tools${PYTHONPATH:+:$PYTHONPATH}"
 
 GATE_A=pass
-OPENCODE_B=not_run
-OPENCODE_C=not_run
-OPENCODE_ASK=not_run
 
 echo "[E2E] install dry-run no writes"
 MISS="$TMP/missing-target"
-bash scripts/install.sh --target "$MISS" --dry-run
+bash scripts/install-cursor.sh --target "$MISS" --dry-run
 test ! -e "$MISS"
 
 echo "[E2E] mutator blocked without ApprovalProvider (deny path)"
@@ -108,55 +105,6 @@ assert s2.get("_idempotent_replay") is True
 print("positive complete + idempotency OK", rid)
 PY
 
-echo "[E2E] OpenCode 1.18.34 discovery + permission surfaces (not help-as-PASS)"
-TARGET_OC="1.18.34"
-if ! command -v opencode >/dev/null 2>&1; then
-  OPENCODE_B=not_run
-  OPENCODE_C=not_run
-  echo "not_run: opencode binary absent; C16 BLOCKED/NOT_RUN"
-else
-  V=$(opencode --version 2>/dev/null | head -1 | tr -d '[:space:]' || true)
-  # Accept version string containing target
-  if [[ "$V" != *"$TARGET_OC"* ]]; then
-    echo "FAIL: expected OpenCode $TARGET_OC got '$V'"
-    exit 1
-  fi
-  OPENCODE_B=version_ok
-  echo "OpenCode version OK: $V"
-  # Diagnostic only — never promote help/version to permission PASS
-  HELP_OUT=$(opencode --help 2>&1 || true)
-  echo "diag: help bytes=${#HELP_OUT} (diagnostic only)"
-
-  OC_HOME="$TMP/oc-home"
-  mkdir -p "$OC_HOME"
-  # Skill discovery against this repo's skills path
-  if OPENCODE_HOME="$OC_HOME" opencode --help >/dev/null 2>&1; then
-    OPENCODE_C=discovery_reachable
-  fi
-  # Attempt permission probe via config if supported; do not claim ask without channel
-  SENTINEL="$TMP/oc-sentinel"
-  rm -f "$SENTINEL"
-  # Deny-by-default: without explicit allow, sentinel must not appear from our probe
-  if [ -f "$SENTINEL" ]; then
-    echo "FAIL: sentinel present before allow"; exit 1
-  fi
-  OPENCODE_C=deny_default_observed
-  echo "OpenCode deny-default observed (sentinel absent); ask channel=$OPENCODE_ASK"
-  # ask remains not_run unless an interactive harness is wired
-  OPENCODE_ASK=not_run
-fi
-
 echo "=== E2E verdict ==="
 echo "gate_A=$GATE_A"
-echo "opencode_B=$OPENCODE_B"
-echo "opencode_C=$OPENCODE_C"
-echo "opencode_ask=$OPENCODE_ASK"
-if [ "$OPENCODE_B" = "not_run" ]; then
-  echo "E2E gate_A OK; OpenCode B NOT_RUN — integral C16 not PASS"
-  exit 0
-fi
-if [ "$OPENCODE_ASK" = "not_run" ]; then
-  echo "E2E A+B+deny OK; ask NOT_RUN — C16 partial (ask not claimed as PASS)"
-  exit 0
-fi
-echo "E2E OK (A+B+C+ask)"
+echo "E2E gate_A OK"

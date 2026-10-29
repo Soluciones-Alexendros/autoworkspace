@@ -1,26 +1,27 @@
 #!/bin/bash
-# Install autoworkspace skills into an explicit target. Never touches HOME by default.
-# Phases: preflight (no writes) → apply (journal) → finalize (manifest) / rollback.
-# Usage:
-#   bash scripts/install.sh --target DIR [--dry-run] [--scope skills]
-#   bash scripts/install.sh --uninstall --target DIR
+# Link skills/<name> into an explicit directory. Journal, dry-run, conflicts, uninstall.
+# Public entrypoints: scripts/install-cursor.sh and scripts/install-pi.sh.
 set -euo pipefail
 
-ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 SRC="$ROOT/skills"
 TARGET=""
 DRY_RUN=0
 UNINSTALL=0
 SCOPE="skills"
+USER_INSTALL=0
+INSTALLER="scripts/lib/link-skills.sh"
+DEFAULT_TARGET=""
+USER_TARGET=""
 MANIFEST_NAME=".autoworkspace-install-manifest.json"
-PHASE="all"
 
 usage() {
   cat <<EOF
-Usage: bash scripts/install.sh --target DIR [--dry-run] [--uninstall]
-  --target DIR   Required. Destination skills directory.
+Usage: bash $INSTALLER [--target DIR] [--user] [--dry-run] [--uninstall]
+  --target DIR   Destination skills directory. Does not write to \$HOME.
+  --user         Destination is the harness user directory when --target is absent.
   --dry-run      Preflight only — no mkdir, no links, no manifest.
-  --uninstall    Remove only resources listed in the manifest under --target.
+  --uninstall    Remove only resources listed in the manifest under the destination.
 Does not overwrite global AGENTS.md. Does not prune foreign skills.
 EOF
 }
@@ -28,9 +29,13 @@ EOF
 while [ $# -gt 0 ]; do
   case "$1" in
     --target) TARGET="${2:-}"; shift 2 ;;
+    --user) USER_INSTALL=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     --uninstall) UNINSTALL=1; shift ;;
     --scope) SCOPE="${2:-}"; shift 2 ;;
+    --installer) INSTALLER="${2:-}"; shift 2 ;;
+    --default-target) DEFAULT_TARGET="${2:-}"; shift 2 ;;
+    --user-target) USER_TARGET="${2:-}"; shift 2 ;;
     --prune)
       echo "ERROR: --prune removed; refusing to archive foreign skills by catalog absence" >&2
       exit 2
@@ -40,12 +45,22 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ -z "$TARGET" ]; then
-  echo "ERROR: --target is required (refusing implicit \$HOME installs)" >&2
-  exit 2
+if [ -n "$TARGET" ]; then
+  :
+elif [ "$USER_INSTALL" = 1 ]; then
+  if [ -z "$USER_TARGET" ]; then
+    echo "ERROR: --user without a user destination" >&2
+    exit 2
+  fi
+  TARGET="$USER_TARGET"
+else
+  if [ -z "$DEFAULT_TARGET" ]; then
+    echo "ERROR: --target is required" >&2
+    exit 2
+  fi
+  TARGET="$DEFAULT_TARGET"
 fi
 
-# --- helpers ---
 is_privileged() {
   case "$1" in
     /|/etc|/usr|/var|/bin|/sbin|/boot|/root) return 0 ;;
@@ -54,7 +69,6 @@ is_privileged() {
 }
 
 resolve_existing_or_parent() {
-  # Resolve target without creating it. If missing, resolve parent + basename.
   local t="$1"
   if [ -d "$t" ]; then
     (cd "$t" && pwd)
@@ -126,7 +140,6 @@ print("manifest paths OK")
 PY
 }
 
-# Resolve without mkdir (preflight must not write)
 TARGET=$(resolve_existing_or_parent "$TARGET") || exit 1
 if is_privileged "$TARGET"; then
   echo "ERROR: target too privileged: $TARGET" >&2
@@ -135,7 +148,6 @@ fi
 
 MANIFEST="$TARGET/$MANIFEST_NAME"
 
-# ---------- uninstall ----------
 if [ "$UNINSTALL" = 1 ]; then
   if [ ! -d "$TARGET" ]; then
     echo "ERROR: target missing for uninstall: $TARGET" >&2
@@ -163,7 +175,6 @@ for rel in data.get("resources", []):
     if not p.exists() and not p.is_symlink():
         print(f"warn: missing {p}; skip")
         continue
-    # Verify still owned (symlink → SRC) or retain+warn
     if p.is_symlink():
         cur = Path(os.path.realpath(p))
         try:
@@ -187,7 +198,6 @@ PY
   exit 0
 fi
 
-# ---------- preflight (always; never writes) ----------
 echo "PREFLIGHT: $SRC → $TARGET (scope=$SCOPE dry_run=$DRY_RUN)"
 preflight_conflicts || exit 1
 RESOURCES=()
@@ -207,11 +217,9 @@ if [ "$DRY_RUN" = 1 ]; then
   exit 0
 fi
 
-# ---------- apply (journal per resource: absent|created|unchanged|replaced) ----------
 JOURNAL="$TARGET/.autoworkspace-install-journal.json"
 rollback() {
   echo "ROLLBACK: restoring prior link state from journal" >&2
-  # Shared implementation — tests must call this path, not a mirror algorithm.
   if ! python3 - "$JOURNAL" <<'PY'
 import json, os, sys
 from pathlib import Path
@@ -222,7 +230,7 @@ if not jp.is_file():
 doc = json.loads(jp.read_text(encoding="utf-8"))
 for entry in reversed(doc.get("entries", [])):
     if not entry.get("applied"):
-        continue  # never applied — prior state intact
+        continue
     dest = Path(entry["dest"])
     action = entry.get("action")
     prev = entry.get("previous") or {}
@@ -234,8 +242,6 @@ for entry in reversed(doc.get("entries", [])):
             dest.unlink()
         if prev.get("type") == "symlink":
             os.symlink(prev["target"], dest)
-        # absent → leave removed
-    # unchanged: nothing
 jp.unlink(missing_ok=True)
 print("rollback restored prior state")
 PY
@@ -252,7 +258,7 @@ if [ ! -d "$TARGET" ]; then
 fi
 
 python3 - "$JOURNAL" "$SRC" "$TARGET" "${RESOURCES[@]}" <<'PY'
-"""Write-ahead journal: persist prior state BEFORE each filesystem effect (H09/C13)."""
+"""Write-ahead journal: persist prior state BEFORE each filesystem effect."""
 import json, os, sys
 from pathlib import Path
 
@@ -266,7 +272,6 @@ def persist(doc: dict) -> None:
     tmp = journal_path.with_suffix(".tmp")
     tmp.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
     os.replace(tmp, journal_path)
-    # Best-effort durability
     try:
         fd = os.open(journal_path, os.O_RDONLY)
         try:
@@ -282,7 +287,7 @@ persist(doc)
 
 for name in names:
     dest = target / name
-    s = src / name
+    s = (src / name).resolve()
     previous = None
     if dest.is_symlink():
         previous = {"type": "symlink", "target": os.readlink(dest)}
@@ -293,7 +298,6 @@ for name in names:
         action = "created"
         previous = {"type": "absent"}
 
-    # Intention recorded BEFORE mutation
     entry = {
         "name": name,
         "dest": str(dest),
@@ -315,18 +319,18 @@ for name in names:
 print(f"journal → {journal_path} ({len(doc['entries'])} resources)")
 PY
 
-# ---------- finalize ----------
-python3 - "$MANIFEST" "$ROOT" "${RESOURCES[@]}" <<'PY'
+python3 - "$MANIFEST" "$ROOT" "$INSTALLER" "${RESOURCES[@]}" <<'PY'
 import json, sys
 from pathlib import Path
 mf = Path(sys.argv[1])
 root = sys.argv[2]
-resources = list(sys.argv[3:])
+installer = sys.argv[3]
+resources = list(sys.argv[4:])
 doc = {
     "schema_version": 1,
     "source_root": root,
     "resources": resources,
-    "installer": "scripts/install.sh",
+    "installer": installer,
 }
 mf.parent.mkdir(parents=True, exist_ok=True)
 tmp = mf.with_suffix(".tmp")
@@ -335,9 +339,7 @@ tmp.replace(mf)
 print(f"manifest → {mf}")
 PY
 validate_manifest_paths "$MANIFEST"
-# Manifest written successfully — drop journal (no longer needed)
 rm -f "$JOURNAL"
 trap - ERR
 
 echo "Done. AGENTS.md was not copied to any global home."
-echo "OpenCode project links: use scripts/install-opencode.sh --target <repo>"
