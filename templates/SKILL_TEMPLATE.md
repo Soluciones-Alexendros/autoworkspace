@@ -11,7 +11,8 @@ metadata:
   type: "atomic"
   language: "en"
   keywords: "keyword1, keyword2, español, trigger"
-allowed-tools: "Read, Grep, Glob, Bash, Write"
+  # execution: <tool_id>   # only if tools/execution/registry.yaml has this tool
+allowed-tools: "Read, Grep, Glob"
 ---
 
 ## Overview
@@ -28,7 +29,7 @@ One paragraph: what this skill produces and why.
 
 1. Prerequisite: Check...
 2. Read `references/...` if needed
-3. Execute via scripts/...
+3. Execute via scripts/... (mutating ops only through `run_registered`)
 4. Produce report in ...
 
 ## Tools
@@ -54,3 +55,15 @@ One paragraph: what this skill produces and why.
 - `references/` — deep docs
 - `scripts/` — deterministic helpers
 - `assets/` — templates
+- Do **not** add `execution.yaml` here — use `tools/execution/registry.yaml`
+
+## allowed-tools matrix (minimum privilege)
+
+| `metadata.type` | Maximum `allowed-tools`                          | Notes                       |
+| --------------- | ------------------------------------------------ | --------------------------- |
+| `audit`         | `Read, Grep, Glob`                               | Never `Write` or `Bash`     |
+| `atomic`        | `Read, Write, Grep, Glob` (+ `Bash` if mutating) | Justify Bash in description |
+| `orchestrator`  | `Read, Grep, Glob, Bash, Write`                  | Justify in description      |
+| `router`        | `Read, Glob`                                     | No domain mutation          |
+
+Audit skills have **no** `metadata.execution` and **no** registry entry.

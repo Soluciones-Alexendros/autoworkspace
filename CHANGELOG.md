@@ -6,6 +6,13 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.0.0-alpha.1] - 2026-10-29
+
+### Fixed
+
+- Centralización de ejecución en `tools/execution/registry.yaml` (schema validado) y eliminación de `skills/*/execution.yaml` para cumplir `compatibility: cursor, pi`.
+- Mínimo privilegio de `allowed-tools` por `metadata.type` (audit sin Write/Bash); gate en `skill_spec.py`.
+
 ## [7.0.0-alpha.0] - 2026-10-29
 
 ### Breaking

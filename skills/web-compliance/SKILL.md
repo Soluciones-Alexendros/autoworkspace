@@ -3,14 +3,14 @@ name: web-compliance
 description: "Web compliance audit: accessibility (WCAG 2.2 AA / EN 301 549), legal (GDPR, Consent Mode v2, privacy policy, cookies), SEO on-page/off-page/SEM/analytics. PASS/FAIL/N/A matrix, weighted scoring, web compliance verdict POSITIVE/NEGATIVE/PARTIAL and remediation plan RICE. Use when auditing web compliance, dictating web compliance or remediation plan for SEO/accessibility/legal. Not for performance audits (→ web-performance) nor dependency scanning (→ project-libraries)."
 license: MIT
 metadata:
-  author: Soluciones-Alexendros (adapted)
-  version: "7.0.0-alpha.0"
+  author: "Soluciones-Alexendros (adapted)"
+  version: "7.0.0-alpha.1"
   domain: web
-  type: atomic
+  type: audit
   language: en
   keywords: web-compliance
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob"
 ---
 
 # Web Compliance

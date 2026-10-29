@@ -1,16 +1,17 @@
 ---
 name: plan-specification
-description: "Write a structured specification before writing any code, then decompose it into small verifiable tasks with explicit acceptance criteria. The spec is the shared source of truth — it defines what we build, why, and how we know it is done. Use when starting a project or feature, when requirements are ambiguous, or when the change touches multiple modules. Not for single-line fixes or typo corrections."
+description: "Write a structured specification before writing any code, then decompose it into small verifiable tasks with explicit acceptance criteria. The spec is the shared source of truth — it defines what we build, why, and how we know it is done. Use when starting a project or feature, when requirements are ambiguous, or when the change touches multiple modules. Not for single-line fixes or typo corrections. Uses Write/Bash for SPEC/PLAN/TASKS and local validation."
 license: MIT
 metadata:
-  author: addyosmani (adapted)
-  version: "7.0.0-alpha.0"
+  author: "addyosmani (adapted)"
+  version: "7.0.0-alpha.1"
   domain: plan
   type: orchestrator
   language: en
   keywords: plan-specification
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+  execution: plan-specification
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 ---
 
 # Plan Specification

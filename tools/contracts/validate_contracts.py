@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate execution.yaml for every skill that has one; require pilots."""
+"""Validate the central execution registry (no skills/*/execution.yaml)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from contracts.loader import ContractError, load_execution_contract, load_yaml, validate_contract
+from contracts.loader import ContractError, load_execution_contract  # noqa: E402
+from execution.registry import check_registry, load_tools  # noqa: E402
 
-REQUIRED_PILOTS = ("local-maintenance", "plan-continue", "web-compliance")
+# Skills that must appear in the central registry (mutators / orchestrators).
+REQUIRED_REGISTRY_TOOLS = ("local-maintenance", "plan-continue", "project-publish")
 
 
 def catalog(root: Path) -> set[str]:
@@ -25,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--skill-root",
         default=None,
-        help="Validate a single skill directory (standalone preflight)",
+        help="Validate a single skill via central registry (standalone preflight)",
     )
     args = ap.parse_args(argv)
     if args.skill_root:
@@ -39,35 +41,32 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     root = Path(args.root).resolve() if args.root else Path(__file__).resolve().parents[2]
-    skills = root / "skills"
+    errors = check_registry(root=root)
     cat = catalog(root)
-    errors: list[str] = []
-    found = 0
-    for skill_dir in sorted(p for p in skills.iterdir() if p.is_dir()):
-        path = skill_dir / "execution.yaml"
-        if not path.is_file():
-            if skill_dir.name in REQUIRED_PILOTS:
-                errors.append(f"[{skill_dir.name}] missing required pilot execution.yaml")
-            continue
-        found += 1
-        try:
-            data = load_yaml(path)
-            errs = validate_contract(
-                data,
-                skill_dir=skill_dir.name,
-                skill_path=skill_dir,
-                catalog_skills=cat,
-            )
-            for e in errs:
-                errors.append(f"[{skill_dir.name}] {e}")
-        except ContractError as exc:
-            errors.append(f"[{skill_dir.name}] {exc}")
+    try:
+        tools = load_tools(force=True)
+    except ValueError as exc:
+        errors.append(str(exc))
+        tools = {}
+
+    for tool_id in REQUIRED_REGISTRY_TOOLS:
+        if tool_id not in tools:
+            errors.append(f"missing required registry tool: {tool_id}")
+        elif tools[tool_id].skill not in cat:
+            errors.append(f"registry tool {tool_id}: skill missing from catalog")
+
+    for skill_dir in sorted(p for p in (root / "skills").iterdir() if p.is_dir()):
+        exe = skill_dir / "execution.yaml"
+        if exe.is_file():
+            errors.append(f"[{skill_dir.name}] forbidden execution.yaml under skills/")
+
     if errors:
         for e in errors:
             print(e)
-        print(f"CONTRACTS: FAIL ({len(errors)} errors, {found} files)")
+        print(f"CONTRACTS: FAIL ({len(errors)} errors)")
         return 1
-    print(f"CONTRACTS: OK ({found} execution.yaml)")
+    n_ops = sum(len(t.operations) for t in tools.values())
+    print(f"CONTRACTS: OK (registry {len(tools)} tools, {n_ops} ops)")
     return 0
 
 

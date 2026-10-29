@@ -1,16 +1,17 @@
 ---
 name: role-back
-description: "Specialist role for backend application work: data at rest and in motion, routes, deployments, robustness and application security. Includes general patterns for cache/KV, queues, rate limiting, object storage and search (Upstash and equivalents as providers). Use when implementing APIs, persistence, jobs or server-side integrations. Not for host hardening (→ local-security), OWASP code audit (→ web-owasp), or dependency SCA (→ project-libraries)."
+description: "Specialist role for backend application work: data at rest and in motion, routes, deployments, robustness and application security. Includes general patterns for cache/KV, queues, rate limiting, object storage and search (Upstash and equivalents as providers). Use when implementing APIs, persistence, jobs or server-side integrations. Not for host hardening (→ local-security), OWASP code audit (→ web-owasp), or dependency SCA (→ project-libraries). Uses Bash/Write to implement and mutate backend code."
 license: MIT
 metadata:
   author: Soluciones-Alexendros
-  version: "7.0.0-alpha.0"
+  version: "7.0.0-alpha.1"
   domain: role
   type: atomic
   language: en
   keywords: role-back
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+  execution: role-back
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 ---
 
 # Role Back

@@ -45,7 +45,9 @@ if [ "$FULL" = 1 ]; then
   echo "[4] hygiene.py"
   python3 tools/validate/hygiene.py --root "$ROOT"
 
-  echo "[4b] execution contracts (required)"
+  echo "[4b] execution registry (required)"
+  PYTHONPATH="$ROOT/tools${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -m execution.registry --check --root "$ROOT"
   python3 tools/contracts/validate_contracts.py --root "$ROOT"
 
   echo "[5] skill-index.json generate + marker check"

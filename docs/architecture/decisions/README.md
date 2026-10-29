@@ -30,6 +30,7 @@ Prioridad: **P0** (hacer pronto) · **P1** (después de P0). Un ADR puede estar 
 | [ADR-0014](./ADR-0014-release-please-y-packaging-por-stack.md) | Versionado release-please + packaging por stack | Accepted                       | P1        |
 | ADR-0015                                                       | Flujo plan/* en dos fases                       | pendiente (P10)                | P0        |
 | [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md)         | autoworkspace es el host del canon              | Accepted                       | P0        |
+| [ADR-0017](./ADR-0017-centralizacion-execution-min-priv.md)    | Centralización de execution y mínimo privilegio | Accepted                       | P1        |
 
 ## Cómo añadir una
 

@@ -1,0 +1,336 @@
+schema_version: 1
+dialect: autoworkspace.execution.registry
+tools:
+  - tool_id: local-email
+    skill: local-email
+    entrypoint: tools/email/drivers/proton
+    description: Execution tool for skill local-email
+    execution_kind: script
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: true
+    operations:
+      - id: read_mail
+        effect: communicate-external
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: local-email:read_mail
+      - id: search_mail
+        effect: communicate-external
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: local-email:search_mail
+      - id: send_mail
+        effect: communicate-external
+        dry_run: "no"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: false
+        description: local-email:send_mail
+      - id: access_secret
+        effect: access-secret
+        dry_run: "no"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: false
+        description: local-email:access_secret
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: local-maintenance
+    skill: local-maintenance
+    entrypoint: skills/local-maintenance/scripts
+    description: Execution tool for skill local-maintenance
+    execution_kind: script
+    distribution: standalone
+    shared_dependencies:
+      - tools/execution
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: health_check
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: local-maintenance:health_check
+      - id: clean_routine
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: true
+        description: local-maintenance:clean_routine
+      - id: create_snapshot
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: false
+        description: local-maintenance:create_snapshot
+      - id: restore_snapshot
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: true
+        description: local-maintenance:restore_snapshot
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: local-security
+    skill: local-security
+    entrypoint: skills/local-security/scripts
+    description: Execution tool for skill local-security
+    execution_kind: script
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: posture_audit
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: local-security:posture_audit
+      - id: harden_plan
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: local-security:harden_plan
+      - id: apply_hardening
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: true
+        description: local-security:apply_hardening
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: plan-continue
+    skill: plan-continue
+    entrypoint: tools/workspace-router
+    description: Execution tool for skill plan-continue
+    execution_kind: orchestrator
+    distribution: workspace-required
+    shared_dependencies:
+      - tools/workspace-router
+      - tools/contracts
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: route
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: plan-continue:route
+      - id: init
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: plan-continue:init
+      - id: status
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: plan-continue:status
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: plan-specification
+    skill: plan-specification
+    entrypoint: tools/execution
+    description: Execution tool for skill plan-specification
+    execution_kind: orchestrator
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: specify
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: plan-specification:specify
+      - id: plan
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: plan-specification:plan
+      - id: tasks
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: plan-specification:tasks
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: plan-validators
+    skill: plan-validators
+    entrypoint: tools/execution
+    description: Execution tool for skill plan-validators
+    execution_kind: agent
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: discover_stack
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: plan-validators:discover_stack
+      - id: red_green
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: plan-validators:red_green
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: project-publish
+    skill: project-publish
+    entrypoint: tools/workspace-router
+    description: Execution tool for skill project-publish
+    execution_kind: script
+    distribution: workspace-required
+    shared_dependencies:
+      - tools/workspace-router
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: local_gates
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: project-publish:local_gates (may write via gate-husky.sh)
+      - id: publish
+        effect: communicate-external
+        dry_run: "no"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: false
+        description: project-publish:publish
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: role-back
+    skill: role-back
+    entrypoint: tools/execution
+    description: Execution tool for skill role-back
+    execution_kind: agent
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: implement_api
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: role-back:implement_api
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: role-clean-code
+    skill: role-clean-code
+    entrypoint: tools/execution
+    description: Execution tool for skill role-clean-code
+    execution_kind: agent
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: refactor
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: role-clean-code:refactor
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: role-design
+    skill: role-design
+    entrypoint: tools/execution
+    description: Execution tool for skill role-design
+    execution_kind: agent
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: deliver_visual
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: role-design:deliver_visual
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.
+  - tool_id: role-front
+    skill: role-front
+    entrypoint: tools/execution
+    description: Execution tool for skill role-front
+    execution_kind: agent
+    distribution: standalone
+    shared_dependencies: []
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: implement_ui
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        description: role-front:implement_ui
+    automation_limits:
+      Agent judgment remains for non-script operations; blocked mutators
+      stay blocked without approval.

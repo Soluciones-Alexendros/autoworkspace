@@ -1,16 +1,17 @@
 ---
 name: plan-continue
-description: "Autoworkspace orchestrator: continue from roadmap or .autoworkspace status; when missing, audit the repo, scaffold project.yaml/status.yaml, and route DEFINE→SCHEMAS→IMPLEMENT→VALIDATE→INTEGRATE→STATUS. Use when asking where to start, plan mode, repo starting, or bringing a project up to date. Not for release close or version publication (→ project-publish)."
+description: "Autoworkspace orchestrator: continue from roadmap or .autoworkspace status; when missing, audit the repo, scaffold project.yaml/status.yaml, and route DEFINE→SCHEMAS→IMPLEMENT→VALIDATE→INTEGRATE→STATUS. Use when asking where to start, plan mode, repo starting, or bringing a project up to date. Not for release close or version publication (→ project-publish). Uses Write/Bash to scaffold .autoworkspace and run phase routing."
 license: MIT
 metadata:
-  author: Soluciones-Alexendros (adapted)
-  version: "7.0.0-alpha.0"
+  author: "Soluciones-Alexendros (adapted)"
+  version: "7.0.0-alpha.1"
   domain: plan
   type: orchestrator
   language: en
   keywords: plan-continue
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+  execution: plan-continue
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 ---
 
 # Plan Continue
@@ -51,7 +52,7 @@ python tools/workspace-router/run.py --init --repo .
 ```
 
 3. Invoke the skill returned (`skill` field). Route does not execute the skill.
-   Completing a phase requires verified evidence (see execution.yaml); legacy `--bump` is rejected.
+   Completing a phase requires verified evidence (see tools/execution/registry.yaml); legacy `--bump` is rejected.
 
 | Phase     | Typical skill                                          | Output                                 |
 | --------- | ------------------------------------------------------ | -------------------------------------- |

@@ -1,18 +1,17 @@
 ---
 name: project-publish
-description: "Close a GitHub repository or work increment with local quality gates, version publication, CI/CD audit, Husky, lint-staged, tests, e2e, PR and merge-watch. Use when configuring or running pre-commit/pre-push gates, publishing versions, or closing a plan. Not for implementing product features, test authorship (→ plan-validators), or forges distinct from github.com."
+description: "Close a GitHub repository or work increment with local quality gates, version publication, CI/CD audit, Husky, lint-staged, tests, e2e, PR and merge-watch. Use when configuring or running pre-commit/pre-push gates, publishing versions, or closing a plan. Not for implementing product features, test authorship (→ plan-validators), or forges distinct from github.com. Uses Bash/Write for local gates, git/gh publish via run_registered."
 license: MIT
 metadata:
-  author: Soluciones-Alexendros (adapted)
-
-  version: "7.0.0-alpha.0"
-
+  author: "Soluciones-Alexendros (adapted)"
+  version: "7.0.0-alpha.1"
   domain: project
   type: atomic
   language: en
-  keywords: project-publish, husky, lint-staged, pre-commit, release
-compatibility: cursor, pi
-allowed-tools: Read, Grep, Glob, Bash, Write
+  keywords: "project-publish, husky, lint-staged, pre-commit, release"
+  execution: project-publish
+compatibility: "cursor, pi"
+allowed-tools: "Read, Grep, Glob, Bash, Write"
 disable-model-invocation: true
 ---
 
