@@ -19,11 +19,6 @@ try:
 except ImportError as exc:  # pragma: no cover
     raise SystemExit("jsonschema required: uv sync --frozen") from exc
 
-_TOOLS_DIR = Path(__file__).resolve().parent.parent
-if str(_TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(_TOOLS_DIR))
-from execution.registry import get_tool_for_skill  # noqa: E402
-
 DIALECT = "autoworkspace.execution"
 MAX_SCHEMA_BYTES = 200_000
 SHA256_HEX_LEN = 64
@@ -234,6 +229,11 @@ def load_execution_contract(
     catalog_skills: set[str] | None = None,
 ) -> dict[str, Any]:
     """Load contract for a skill from tools/execution/registry.yaml."""
+    tools_dir = Path(__file__).resolve().parent.parent
+    if str(tools_dir) not in sys.path:
+        sys.path.insert(0, str(tools_dir))
+    from execution.registry import get_tool_for_skill  # noqa: PLC0415
+
     skill = skill_path.name
     tool = get_tool_for_skill(skill)
     if tool is None:
