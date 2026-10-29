@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,8 +51,8 @@ class ToolSpec:
 
 
 _HANDLERS: dict[str, Callable[..., Any]] = {}
-_TOOLS: dict[str, ToolSpec] | None = None
-_CONTRACT_OPS: dict[str, dict[str, Any]] | None = None
+# Mutable cache avoids `global` rebinding (ruff PLW0603).
+_CACHE: dict[str, Any] = {"tools": None, "contract_ops": None}
 
 # Runtime ops that run_registered dispatches. Each skill must exist as tool_id
 # in registry.yaml. Declarative-only ops (agent/orchestrator) need no OpSpec.
@@ -184,9 +183,9 @@ def _validate_schema(data: dict[str, Any]) -> list[str]:
 
 
 def load_tools(*, force: bool = False) -> dict[str, ToolSpec]:
-    global _TOOLS, _CONTRACT_OPS
-    if _TOOLS is not None and not force:
-        return _TOOLS
+    cached = _CACHE["tools"]
+    if cached is not None and not force:
+        return cached  # type: ignore[no-any-return]
     data = _load_yaml_registry()
     errs = _validate_schema(data)
     if errs:
@@ -216,8 +215,8 @@ def load_tools(*, force: bool = False) -> dict[str, ToolSpec]:
             if oid in contract_ops:
                 raise ValueError(f"duplicate operation id across registry: {oid}")
             contract_ops[oid] = {**op, "tool_id": tool_id, "skill": spec.skill}
-    _TOOLS = tools
-    _CONTRACT_OPS = contract_ops
+    _CACHE["tools"] = tools
+    _CACHE["contract_ops"] = contract_ops
     return tools
 
 
@@ -241,8 +240,9 @@ def get_tool_for_skill(skill: str) -> ToolSpec | None:
 
 def contract_operation_ids() -> frozenset[str]:
     load_tools()
-    assert _CONTRACT_OPS is not None
-    return frozenset(_CONTRACT_OPS)
+    ops = _CACHE["contract_ops"]
+    assert ops is not None
+    return frozenset(ops)
 
 
 def load_execution_contract_for_skill(skill: str) -> dict[str, Any]:
@@ -292,6 +292,39 @@ def resolve_argv(spec: OpSpec, params: dict[str, Any]) -> list[str]:
     return out
 
 
+def _check_tools_against_catalog(
+    tools: dict[str, ToolSpec],
+    *,
+    repo: Path,
+    skills_dir: Path,
+    catalog: set[str],
+) -> list[str]:
+    errors: list[str] = []
+    if skills_dir.is_dir():
+        for path in skills_dir.glob("*/execution.yaml"):
+            errors.append(f"forbidden skills execution.yaml: {path.relative_to(repo)}")
+    seen_skills: set[str] = set()
+    for tool_id, tool in tools.items():
+        if tool.skill in seen_skills:
+            errors.append(f"duplicate skill in registry: {tool.skill}")
+        seen_skills.add(tool.skill)
+        if tool.skill not in catalog:
+            errors.append(f"tool {tool_id}: skill {tool.skill!r} not in skills/")
+        skill_path = skills_dir / tool.skill
+        if skill_path.is_dir() and (skill_path / "execution.yaml").is_file():
+            errors.append(f"tool {tool_id}: skill still has execution.yaml")
+    return errors
+
+
+def _check_runtime_ops(tools: dict[str, ToolSpec]) -> list[str]:
+    skill_names = {t.skill for t in tools.values()} | set(tools)
+    errors: list[str] = []
+    for op_id, spec in OPERATIONS.items():
+        if spec.skill not in skill_names or get_tool_for_skill(spec.skill) is None:
+            errors.append(f"runtime op {op_id}: skill {spec.skill!r} missing from registry")
+    return errors
+
+
 def check_registry(*, root: Path | None = None) -> list[str]:
     """Validate registry.yaml and consistency with runtime ops and skills/."""
     repo = root or _ROOT
@@ -310,30 +343,8 @@ def check_registry(*, root: Path | None = None) -> list[str]:
 
     skills_dir = repo / "skills"
     catalog = {p.name for p in skills_dir.iterdir() if p.is_dir()} if skills_dir.is_dir() else set()
-
-    for path in skills_dir.glob("*/execution.yaml") if skills_dir.is_dir() else []:
-        errors.append(f"forbidden skills execution.yaml: {path.relative_to(repo)}")
-
-    seen_skills: set[str] = set()
-    for tool_id, tool in tools.items():
-        if tool.skill in seen_skills:
-            errors.append(f"duplicate skill in registry: {tool.skill}")
-        seen_skills.add(tool.skill)
-        if tool.skill not in catalog:
-            errors.append(f"tool {tool_id}: skill {tool.skill!r} not in skills/")
-        if tool_id != tool.skill:
-            # allowed but must be intentional; still require skill folder
-            pass
-        skill_path = skills_dir / tool.skill
-        if skill_path.is_dir() and (skill_path / "execution.yaml").is_file():
-            errors.append(f"tool {tool_id}: skill still has execution.yaml")
-
-    for op_id, spec in OPERATIONS.items():
-        if spec.skill not in tools and spec.skill not in {t.skill for t in tools.values()}:
-            errors.append(f"runtime op {op_id}: skill {spec.skill!r} missing from registry")
-        elif get_tool_for_skill(spec.skill) is None:
-            errors.append(f"runtime op {op_id}: skill {spec.skill!r} missing from registry")
-
+    errors.extend(_check_tools_against_catalog(tools, repo=repo, skills_dir=skills_dir, catalog=catalog))
+    errors.extend(_check_runtime_ops(tools))
     return errors
 
 

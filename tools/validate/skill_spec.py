@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -56,24 +57,35 @@ AUDIT_FORBIDDEN_TOOLS = frozenset({"Write", "Bash"})
 ERRORS: list[str] = []
 TEST_DIR_NAMES = {"tests"}
 TEST_FILE_PREFIX = "test_"
-_REGISTRY_TOOL_IDS: frozenset[str] | None = None
+_TOOLS_DIR = Path(__file__).resolve().parents[1]
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+_known_tool_ids_fn: Callable[[], frozenset[str]] | None
+try:
+    from execution.registry import known_tool_ids as _known_tool_ids_fn
+except ImportError:  # pragma: no cover — tools/ always present in repo runs
+    _known_tool_ids_fn = None
+_REGISTRY_CACHE: dict[str, frozenset[str] | None] = {"ids": None}
 
 
 def _registry_tool_ids(root: Path) -> frozenset[str]:
-    global _REGISTRY_TOOL_IDS
-    if _REGISTRY_TOOL_IDS is not None:
-        return _REGISTRY_TOOL_IDS
+    cached = _REGISTRY_CACHE["ids"]
+    if cached is not None:
+        return cached
     tools_path = root / "tools"
     if str(tools_path) not in sys.path:
         sys.path.insert(0, str(tools_path))
+    if _known_tool_ids_fn is None:
+        ERRORS.append("[registry] cannot load tool ids: execution.registry unavailable")
+        _REGISTRY_CACHE["ids"] = frozenset()
+        return frozenset()
     try:
-        from execution.registry import known_tool_ids
-
-        _REGISTRY_TOOL_IDS = known_tool_ids()
-    except Exception as exc:  # noqa: BLE001 — surface as catalog error
+        ids = _known_tool_ids_fn()
+    except Exception as exc:
         ERRORS.append(f"[registry] cannot load tool ids: {exc}")
-        _REGISTRY_TOOL_IDS = frozenset()
-    return _REGISTRY_TOOL_IDS
+        ids = frozenset()
+    _REGISTRY_CACHE["ids"] = ids
+    return ids
 
 
 def parse_allowed_tools(raw: object) -> set[str] | None:
@@ -324,6 +336,21 @@ def _check_frontmatter_name(skill: str, fm: dict[str, Any], names: set[str]) -> 
         err(skill, "license != MIT")
 
 
+def _check_execution_link(skill: str, meta: dict[str, Any], root: Path) -> None:
+    tipo = meta.get("type", "")
+    execution = meta.get("execution")
+    tool_ids = _registry_tool_ids(root)
+    if execution is not None:
+        if not isinstance(execution, str) or not NAME_RE.match(execution):
+            err(skill, f"metadata.execution inválido: {execution!r}")
+        elif execution not in tool_ids:
+            err(skill, f"metadata.execution={execution!r} no existe en registry")
+        elif tipo == "audit":
+            err(skill, "type audit no puede declarar metadata.execution")
+    elif skill in tool_ids:
+        err(skill, "skill en registry requiere metadata.execution")
+
+
 def _check_metadata(skill: str, meta: dict[str, Any], root: Path) -> None:
     required_meta: dict[str, str | None] = {
         "author": None,
@@ -350,17 +377,7 @@ def _check_metadata(skill: str, meta: dict[str, Any], root: Path) -> None:
     if tipo and tipo not in TIPOS:
         err(skill, f"unknown type: {tipo} (must be one of: {', '.join(sorted(TIPOS))})")
 
-    execution = meta.get("execution")
-    tool_ids = _registry_tool_ids(root)
-    if execution is not None:
-        if not isinstance(execution, str) or not NAME_RE.match(execution):
-            err(skill, f"metadata.execution inválido: {execution!r}")
-        elif execution not in tool_ids:
-            err(skill, f"metadata.execution={execution!r} no existe en registry")
-        elif tipo == "audit":
-            err(skill, "type audit no puede declarar metadata.execution")
-    elif skill in tool_ids:
-        err(skill, "skill en registry requiere metadata.execution")
+    _check_execution_link(skill, meta, root)
 
 
 def _check_allowed_tools(skill: str, fm: dict[str, Any], meta: dict[str, Any]) -> None:
