@@ -53,23 +53,29 @@ def _add_file(tmp_path: Path, rel: str, content: str) -> None:
 def test_d01_missing_env(tmp_path: Path) -> None:
     _init(tmp_path)
     r = _run(tmp_path, env={})
-    assert r.returncode != 0
-    assert "CONFIG_MISSING" in r.stdout or "CONFIG_MISSING" in r.stderr
-    assert SYNTH_PATTERN not in r.stdout + r.stderr
+    assert r.returncode == 0
+    combined = r.stdout + r.stderr
+    assert "NOT_RUN" in combined
+    assert "CONFIG_MISSING" in combined
+    assert SYNTH_PATTERN not in combined
 
 
 def test_d02_empty_env(tmp_path: Path) -> None:
     _init(tmp_path)
     r = _run(tmp_path, env={ENV_KEY: ""})
-    assert r.returncode != 0
-    assert "CONFIG_EMPTY" in r.stdout or "CONFIG_EMPTY" in r.stderr
+    assert r.returncode == 0
+    combined = r.stdout + r.stderr
+    assert "NOT_RUN" in combined
+    assert "CONFIG_EMPTY" in combined
 
 
 def test_d03_whitespace_only(tmp_path: Path) -> None:
     _init(tmp_path)
     r = _run(tmp_path, env={ENV_KEY: "   \n\t\n  "})
-    assert r.returncode != 0
-    assert "CONFIG_EMPTY" in r.stdout or "CONFIG_EMPTY" in r.stderr
+    assert r.returncode == 0
+    combined = r.stdout + r.stderr
+    assert "NOT_RUN" in combined
+    assert "CONFIG_EMPTY" in combined
 
 
 def test_d04_valid_no_match(tmp_path: Path) -> None:

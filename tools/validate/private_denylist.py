@@ -5,7 +5,8 @@ Lee patrones desde AUTOWORKSPACE_PRIVATE_PATTERNS (o HYGIENE_DENYLIST como alias
 de entrada). Nunca imprime patrones, valores coincidentes ni rutas del hallazgo.
 
 Uso: python3 tools/validate/private_denylist.py [--root DIR]
-Exit 0 solo si la inspección completa no encuentra coincidencias.
+Exit 0: CLEAR (inspección sin coincidencias) o NOT_RUN (config ausente/vacía).
+Exit 1: REGEX_INVALID, errores de escaneo, timeout o DENYLIST_MATCH.
 """
 
 from __future__ import annotations
@@ -42,9 +43,11 @@ SCAN_TIMEOUT_SEC = 60.0
 # portable; limitamos longitud del patrón y usamos búsqueda lineal por archivo.
 PATTERN_MAX_LEN = 512
 
+ConfigReason = Literal["CONFIG_MISSING", "CONFIG_EMPTY"]
 Code = Literal[
     "CONFIG_MISSING",
     "CONFIG_EMPTY",
+    "NOT_RUN",
     "REGEX_INVALID",
     "ENUM_ERROR",
     "READ_ERROR",
@@ -59,7 +62,14 @@ def _emit(code: Code) -> None:
     print(f"private_denylist: {code}")
 
 
-def _load_raw_config() -> tuple[str | None, Code | None]:
+def _emit_not_run(reason: ConfigReason) -> int:
+    """Config ausente/vacía: omitir inspección (not_run), nunca fail el job."""
+    _emit("NOT_RUN")
+    print(f"private_denylist: WARN not_run ({reason})", file=sys.stderr)
+    return 0
+
+
+def _load_raw_config() -> tuple[str | None, ConfigReason | None]:
     found = False
     for key in ENV_KEYS:
         if key in os.environ:
@@ -121,14 +131,14 @@ def _scan_files(root: Path, files: list[str], patterns: list[re.Pattern[str]]) -
 def main_with_root(root: Path) -> int:
     raw, err = _load_raw_config()
     if err is not None:
-        _emit(err)
-        return 1
+        return _emit_not_run(err)
     assert raw is not None
     if raw.strip() == "":
-        _emit("CONFIG_EMPTY")
-        return 1
+        return _emit_not_run("CONFIG_EMPTY")
     patterns, perr = _parse_patterns(raw)
     if perr is not None:
+        if perr == "CONFIG_EMPTY":
+            return _emit_not_run("CONFIG_EMPTY")
         _emit(perr)
         return 1
     assert patterns is not None
