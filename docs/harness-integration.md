@@ -14,6 +14,20 @@ Cursor and Pi are the only supported harnesses. Both sit at level A: the determi
 - Dry-run creates neither the destination nor the manifest.
 - `scripts/tests/test_install.sh` and `scripts/tests/test_execution_e2e.sh` cover the gate. The E2E script does not invoke a harness binary.
 
+## Cursor contract surfaces
+
+Versioned under `.cursor/` (skills symlinks are **not** committed; run `install-cursor.sh`):
+
+- `.cursor/rules/autoworkspace.mdc` (`alwaysApply: true`)
+- `.cursor/hooks.json`, `.cursor/hooks/session_start.py`, `.cursor/hooks/shell_gate.py`
+- `.cursor/agents/aw-verifier.md`
+- `tools/validate/tests/test_shell_gate.py`
+
+Levels beyond A:
+
+- **B (native discovery/load):** Customize → Skills lists all 16; `/plan-continue` routes. Human IDE only → **`not_run` in CI**.
+- **C (shell gate in IDE):** an agent-proposed host-mutating shell (e.g. `apt-get upgrade`) is `deny` or `ask`. The `beforeShellExecution` matcher covers host mutation and outbound network only; unmatched commands (e.g. `python`, `git`, `npm`, `pytest`) never enter the hook and stay open. Human IDE only → **`not_run` in CI**.
+
 ## Permissions
 
 Loading a skill does not authorize Bash, network, secrets, or paths outside the project. Product restrictions (`DenyProvider`, `run_registered`, evidence binding) remain even when the harness can load the skill file.

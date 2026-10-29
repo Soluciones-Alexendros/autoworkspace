@@ -21,7 +21,7 @@ bash autoworkspace/scripts/install-cursor.sh --user
 
 ## Configuración en Cursor y Pi
 
-Cursor (IDE) y Pi (terminal) son los dos harnesses, ambos en nivel A: la puerta es el symlink, no un binario en CI. El catálogo versionado es solo `skills/`.
+Cursor (IDE) y Pi (terminal) son los dos harnesses, ambos en nivel A: la puerta es el symlink, no un binario en CI. El catálogo versionado es solo `skills/`. Cursor versiona hooks, rules y agents bajo `.cursor/`; los symlinks de skills se crean con `install-cursor.sh`.
 
 ```bash
 git clone https://github.com/Soluciones-Alexendros/autoworkspace.git

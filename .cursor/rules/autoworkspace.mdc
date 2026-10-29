@@ -1,0 +1,25 @@
+---
+description: Contrato de ejecución de autoworkspace en Cursor
+alwaysApply: true
+---
+
+Habla en español con el operador. Los contratos técnicos (ids de skill, rutas,
+comandos, `run_registered`, fases) van en inglés.
+
+Mutación de producto solo vía `tools/execution` y `run_registered`. No invoques
+scripts mutadores de skill sueltos. `allowed-tools` del frontmatter no autoriza
+nada en Cursor.
+
+No uses `--bump` en el workspace router (legado rechazado). Ruta de solo lectura:
+
+`python tools/workspace-router/run.py --phase DEFINE --repo . --json`
+
+No dispares `local-maintenance`, `local-security`, `local-email` ni
+`project-publish` sin petición explícita del operador; si hace falta, `/nombre`.
+
+`role-front` y `role-design` solo con superficie UI/visual real.
+
+En puertas y aceptación: no afirmes PASS si la evidencia es skip, dependencia
+ausente o `not_run`; usa `blocked` / `not_applicable` / `not_run` con motivo.
+
+Antes de cada tarea, reevalúa `role-*` según Lifecycle en `AGENTS.md`.

@@ -33,7 +33,17 @@ artifacts/
 proteccion-*.json
 proteccion-*.zip
 **/clean-routine-*.json
-.cursor/
+# Cursor: version hooks/rules/agents; skills come from install-cursor.sh.
+# Use .cursor/* (not .cursor/) so negations can re-include children.
+.cursor/*
+!.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/*.py
+!.cursor/rules/
+!.cursor/rules/*.mdc
+!.cursor/agents/
+!.cursor/agents/*.md
+.cursor/hooks/state/
 .agents/
 .opencode/
 .pi/

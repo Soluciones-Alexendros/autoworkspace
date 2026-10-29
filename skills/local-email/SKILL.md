@@ -11,6 +11,7 @@ metadata:
   keywords: local-email
 compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
+disable-model-invocation: true
 ---
 
 # Local Email

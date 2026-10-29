@@ -6,26 +6,19 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
-- `project-publish` 4.3.4 -> 4.3.5 (patch)
-
-- `project-publish` 4.3.3 -> 4.3.4 (patch)
-- `web-compliance` 4.1.2 -> 4.1.3 (patch)
-
-- `plan-continue` 4.3.5 -> 4.3.6 (patch)
-
-- `local-maintenance` 5.1.5 -> 5.1.6 (patch)
-- `local-proton` 5.1.3 -> 5.1.4 (patch)
-- `local-security` 5.1.2 -> 5.1.3 (patch)
-
 ## [7.0.0-alpha.0] - 2026-10-29
 
 ### Breaking
 
-- Harness support is Cursor and Pi. OpenCode, Codex and Copilot compatibility is removed, including `opencode.json`, `scripts/install-opencode.sh`, `scripts/install.sh`, and the committed `.opencode/`, `.agents/` and `.cursor/` trees.
-- `skills/` is the only versioned catalog. `skill-index.json` is generated and gitignored. README and `docs/TAXONOMY.md` take the skill table from `<!-- SKILL-INDEX:START -->` / `<!-- SKILL-INDEX:END -->`.
+- Harness support is Cursor and Pi. OpenCode, Codex and Copilot compatibility is removed, including `opencode.json`, `scripts/install-opencode.sh`, `scripts/install.sh`, and the committed `.opencode/` and `.agents/` trees. `.cursor/skills/` is not committed; installers create those symlinks.
+- `skills/` is the only versioned skill catalog. `skill-index.json` is generated and gitignored. README and `docs/TAXONOMY.md` take the skill table from `<!-- SKILL-INDEX:START -->` / `<!-- SKILL-INDEX:END -->`.
 - `templates/autoworkspace/` is `templates/harness/`. `templates/repo/` is `templates/product/`.
 - The Python project lives in `tools/pyproject.toml`. Ruff and Mypy stay configured at the repository root.
 - `local-proton` is `local-email`. The Proton client lives in `tools/email/drivers/proton/`. There is no skill alias.
+
+### Added
+
+- Cursor contract surfaces: `.cursor/hooks.json`, `session_start` / `shell_gate` hooks, `autoworkspace.mdc` always-apply rule, `aw-verifier` agent, and `.cursor-plugin/` metadata. `disable-model-invocation: true` on host-mutating local/project skills.
 
 ## [6.1.0] - 2026-10-26
 
