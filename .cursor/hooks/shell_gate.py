@@ -105,29 +105,31 @@ def decide(payload: dict[str, Any]) -> dict[str, str]:
         )
 
     if _rm_rf_only_allowed_tmp(command):
-        return _allow()
-
-    for pattern, agent_message in _DENY_PATTERNS:
-        if pattern.search(command):
-            return _deny(
-                f"Blocked host-mutating or privileged shell: {command[:120]}",
-                agent_message,
+        result = _allow()
+    else:
+        result = None
+        for pattern, agent_message in _DENY_PATTERNS:
+            if pattern.search(command):
+                result = _deny(
+                    f"Blocked host-mutating or privileged shell: {command[:120]}",
+                    agent_message,
+                )
+                break
+        if result is None and re.search(r"\b(curl|wget|nc)\b", command, re.I):
+            # Outbound network: allow only local help/version; else ask.
+            if _is_help_or_version(command):
+                result = _allow()
+            else:
+                result = _ask(
+                    f"Network shell requires confirmation: {command[:120]}",
+                    "Outbound network matched the shell gate. Prefer run_registered; ask the operator.",
+                )
+        if result is None:
+            result = _ask(
+                f"Shell gate matched; confirm: {command[:120]}",
+                "Command matched the host/network matcher. Prefer run_registered; ask the operator.",
             )
-
-    # Outbound network tools that matched the hook matcher (curl|wget|nc).
-    # Allow only evident local help/version; real network stays ask (doubt → ask).
-    if re.search(r"\b(curl|wget|nc)\b", command, re.I):
-        if _is_help_or_version(command):
-            return _allow()
-        return _ask(
-            f"Network shell requires confirmation: {command[:120]}",
-            "Outbound network matched the shell gate. Prefer run_registered; ask the operator.",
-        )
-
-    return _ask(
-        f"Shell gate matched; confirm: {command[:120]}",
-        "Command matched the host/network matcher. Prefer run_registered; ask the operator.",
-    )
+    return result
 
 
 def main() -> int:
