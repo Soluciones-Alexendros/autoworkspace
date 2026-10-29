@@ -7,11 +7,13 @@ Exit 0 si todas las skills cumplen; 1 en caso contrario (lista errores).
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 try:
@@ -24,7 +26,7 @@ ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else
 SKILLS = ROOT / "skills"
 
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
 SKILL_TOKEN_RE = re.compile(r"\b((?:plan|local|project|web|role)-[a-z0-9-]+)\b")
 ARROW_RE = re.compile(r"→\s*`?((?:plan|local|project|web|role)-[a-z0-9-]+)`?")
 H2_RE = re.compile(r"^## (.+?)\s*$", re.M)
@@ -123,25 +125,59 @@ def has_exec_scripts(sdir: Path) -> bool:
     return False
 
 
+def _load_generator() -> ModuleType:
+    path = Path(__file__).resolve().parents[1] / "skill-index" / "generate.py"
+    spec = importlib.util.spec_from_file_location("skill_index_generate", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def check_catalog(root: Path, names: set[str]) -> None:
-    readme = root / "README.md"
-    taxonomy = root / "docs" / "TAXONOMY.md"
-    if not readme.is_file():
-        ERRORS.append("[catalog] falta README.md")
+    """The only injection point is the SKILL-INDEX marker pair."""
+    try:
+        gen = _load_generator()
+    except RuntimeError as exc:
+        ERRORS.append(f"[catalog] {exc}")
         return
-    if not taxonomy.is_file():
-        ERRORS.append("[catalog] falta docs/TAXONOMY.md")
-        return
-    readme_names = catalog_names(readme.read_text(encoding="utf-8"))
-    tax_names = catalog_names(taxonomy.read_text(encoding="utf-8"))
-    if names != readme_names:
-        missing = sorted(names - readme_names)
-        extra = sorted(readme_names - names)
-        ERRORS.append(f"[catalog] README vs carpetas missing={missing} extra={extra}")
-    if names != tax_names:
-        missing = sorted(names - tax_names)
-        extra = sorted(tax_names - names)
-        ERRORS.append(f"[catalog] TAXONOMY vs carpetas missing={missing} extra={extra}")
+    for rel in gen.DOC_PATHS:
+        path = root / rel
+        if not path.is_file():
+            ERRORS.append(f"[catalog] falta {rel}")
+            continue
+        text = path.read_text(encoding="utf-8")
+        region = gen.extract_region(text)
+        if region is None:
+            ERRORS.append(f"[catalog] {rel} sin {gen.START} / {gen.END}")
+            continue
+        expected = gen.catalog_markdown(root).strip() + "\n"
+        if region != expected:
+            ERRORS.append(f"[catalog] {rel} bloque distinto del generador")
+        found = catalog_names(region)
+        extra = sorted(found - names)
+        if extra:
+            ERRORS.append(f"[catalog] {rel} token inexistente {extra}")
+
+
+def check_compatibility(skill: str, fm: dict[str, Any]) -> None:
+    raw = str(fm.get("compatibility", ""))
+    parts = {part.strip() for part in raw.split(",") if part.strip()}
+    if parts != {"cursor", "pi"}:
+        err(skill, f"compatibility debe ser solo cursor, pi: {raw!r}")
+
+
+def check_skill_md_locations(root: Path) -> None:
+    skip = {".git", ".worktrees", ".venv", "node_modules", "dist", ".cache"}
+    skills = (root / "skills").resolve()
+    for path in root.rglob("SKILL.md"):
+        if any(part in skip for part in path.parts):
+            continue
+        try:
+            path.resolve().relative_to(skills)
+        except ValueError:
+            ERRORS.append(f"[catalog] SKILL.md fuera de skills/: {path.relative_to(root)}")
 
 
 def check_description(skill: str, desc: str, names: set[str]) -> None:
@@ -267,7 +303,7 @@ def _check_metadata(skill: str, meta: dict[str, Any]) -> None:
 
     ver = meta.get("version", "")
     if ver and not SEMVER_RE.match(str(ver)):
-        err(skill, f"version no semver X.Y.Z: '{ver}'")
+        err(skill, f"version no semver X.Y.Z o X.Y.Z-prerelease: '{ver}'")
 
     dom = meta.get("domain", "")
     if dom and dom not in DOMINIOS:
@@ -301,6 +337,7 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
         return
 
     _check_frontmatter_name(skill, fm, names)
+    check_compatibility(skill, fm)
 
     meta = fm.get("metadata", {})
     if not isinstance(meta, dict):
@@ -323,6 +360,7 @@ def main() -> int:
     sdirs = skill_dirs(root)
     names = {p.name for p in sdirs}
     check_catalog(root, names)
+    check_skill_md_locations(root)
     for s in sdirs:
         check_skill(root, s, names)
     print(f"skills: {len(sdirs)}, errores: {len(ERRORS)}")

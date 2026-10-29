@@ -20,10 +20,29 @@ def load(path: Path, name: str) -> Any:
     return mod
 
 
-def fixture_root(tmp_path: Path, readme_version: str, package_version: str) -> Path:
+def fixture_root(
+    tmp_path: Path,
+    readme_version: str,
+    package_version: str,
+    overrides: dict[str, str] | None = None,
+) -> Path:
     """Repositorio mínimo y coherente; solo varía la versión de README/package."""
+    ov = overrides or {}
+    py_ver = ov.get("pyproject", package_version)
+    lk_ver = ov.get("lock", package_version)
+    uv_ver = ov.get("uv", package_version)
     (tmp_path / "package.json").write_text(json.dumps({"name": "t", "version": package_version}), encoding="utf-8")
     (tmp_path / "README.md").write_text(f"# t\n\nVersión **{readme_version}**. Skills.\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(f'[project]\nname = "t"\nversion = "{py_ver}"\n', encoding="utf-8")
+    lock_doc = {
+        "name": "t",
+        "version": lk_ver,
+        "lockfileVersion": 3,
+        "packages": {"": {"name": "t", "version": lk_ver}},
+    }
+    (tmp_path / "package-lock.json").write_text(json.dumps(lock_doc), encoding="utf-8")
+    uv_text = f'version = 1\n\n[[package]]\nname = "autoworkspace"\nversion = "{uv_ver}"\n'
+    (tmp_path / "uv.lock").write_text(uv_text, encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text(
         f"# Changelog\n\n## [Unreleased]\n\n- pending\n\n## [{package_version}] - 2026-10-26\n\n- x\n",
         encoding="utf-8",
@@ -43,6 +62,9 @@ def run_coherence(coh: Any, root: Path) -> list[str]:
     coh.ERRORS.clear()
     version = coh.package_version(root)
     coh.check_readme_version(root, version)
+    coh.check_pyproject_version(root, version)
+    coh.check_package_lock_version(root, version)
+    coh.check_uv_lock_version(root, version)
     coh.check_changelog(root, version, False)
     coh.check_workflows(root)
     return list(coh.ERRORS)
@@ -56,10 +78,95 @@ def test_readme_version_mismatch_fails(tmp_path: Path) -> None:
     assert any("README.md declara Versión **5.1.0**" in e for e in errors), errors
 
 
+def test_prerelease_fixture_parses(tmp_path: Path) -> None:
+    """7.0.0-alpha.0 es semver válido; 7.0.0a0 en pyproject y uv.lock equivale."""
+    coh = load(COH, "release_coherence_pre")
+    root = fixture_root(
+        tmp_path,
+        "7.0.0-alpha.0",
+        "7.0.0-alpha.0",
+        {"pyproject": "7.0.0a0", "uv": "7.0.0a0"},
+    )
+    assert run_coherence(coh, root) == []
+
+
+def test_stable_6_1_0_still_parses(tmp_path: Path) -> None:
+    coh = load(COH, "release_coherence_stable")
+    root = fixture_root(tmp_path, "6.1.0", "6.1.0")
+    assert run_coherence(coh, root) == []
+
+
+def test_cut_refuses_prerelease_stable_tag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cut = load(CUT, "cut_tag_pre")
+    (tmp_path / "package.json").write_text(
+        json.dumps({"name": "t", "version": "7.0.0-alpha.0"}),
+        encoding="utf-8",
+    )
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [7.0.0-alpha.0] - 2026-10-29\n\n- breaking\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cut, "latest_tag", lambda root: "6.1.0")
+    monkeypatch.setattr(cut, "git", lambda *args, **kwargs: None)
+    monkeypatch.setattr(cut, "write_output", lambda **kwargs: None)
+    args = argparse.Namespace(
+        root=tmp_path,
+        apply=True,
+        push=False,
+        notes_file=None,
+        dry_run=False,
+        strict_readiness=False,
+    )
+    assert cut.cmd_cut(args) == 1
+    assert cut.cmd_readiness(args) == 1
+
+
 def test_readme_version_matches_package(tmp_path: Path) -> None:
     coh = load(COH, "release_coherence")
     root = fixture_root(tmp_path, "6.0.0", "6.0.0")
     assert run_coherence(coh, root) == []
+
+
+def test_v02_pyproject_drift_fails(tmp_path: Path) -> None:
+    coh = load(COH, "release_coherence")
+    root = fixture_root(tmp_path, "6.1.0", "6.1.0", {"pyproject": "6.0.0"})
+    errors = run_coherence(coh, root)
+    assert any("pyproject.toml" in e for e in errors), errors
+
+
+def test_v02_package_lock_drift_fails(tmp_path: Path) -> None:
+    coh = load(COH, "release_coherence")
+    root = fixture_root(tmp_path, "6.1.0", "6.1.0", {"lock": "5.0.0"})
+    errors = run_coherence(coh, root)
+    assert any("package-lock.json" in e for e in errors), errors
+
+
+def test_v02_uv_lock_drift_fails(tmp_path: Path) -> None:
+    coh = load(COH, "release_coherence")
+    root = fixture_root(tmp_path, "6.1.0", "6.1.0", {"uv": "6.0.0"})
+    errors = run_coherence(coh, root)
+    assert any("uv.lock" in e for e in errors), errors
+
+
+def test_v04_skill_metadata_not_tied_to_global(tmp_path: Path) -> None:
+    """Skills conservan metadata.version propio; no se exige igualdad global."""
+    coh = load(COH, "release_coherence")
+    root = fixture_root(tmp_path, "6.1.0", "6.1.0")
+    skill = root / "skills" / "demo"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        '---\nname: demo\nmetadata:\n  version: "9.9.9"\n---\n',
+        encoding="utf-8",
+    )
+    assert run_coherence(coh, root) == []
+
+
+def test_v05_check_does_not_modify_files(tmp_path: Path) -> None:
+    coh = load(COH, "release_coherence")
+    root = fixture_root(tmp_path, "6.1.0", "6.1.0")
+    before = (root / "package.json").read_text(encoding="utf-8")
+    assert run_coherence(coh, root) == []
+    assert (root / "package.json").read_text(encoding="utf-8") == before
 
 
 def test_repo_head_passes_readme_version() -> None:

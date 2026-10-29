@@ -16,9 +16,12 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(sys.argv[sys.argv.index("--root") + 1]) if "--root" in sys.argv else Path(__file__).resolve().parents[2]
-SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
-README_VERSION_RE = re.compile(r"Versión \*\*(\d+\.\d+\.\d+)\*\*")
-CHANGELOG_H2 = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\] - (\d{4}-\d{2}-\d{2})(.*)$")
+SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
+PEP440_PRE_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?$")
+README_VERSION_RE = re.compile(r"Versión \*\*(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\*\*")
+CHANGELOG_H2 = re.compile(
+    r"^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\] - (\d{4}-\d{2}-\d{2})(.*)$"
+)
 USES_RE = re.compile(r"^\s+uses:\s+(\S+)", re.M)
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 ERRORS: list[str] = []
@@ -26,6 +29,23 @@ ERRORS: list[str] = []
 
 def err(msg: str) -> None:
     ERRORS.append(msg)
+
+
+def canonical_version(ver: str) -> str | None:
+    """Semver, con prerelease, o la forma PEP 440 `7.0.0a0` equivalente a `7.0.0-alpha.0`."""
+    if SEMVER_RE.match(ver):
+        return ver
+    match = PEP440_PRE_RE.match(ver)
+    if not match or not match.group(4):
+        return None
+    kind = {"a": "alpha", "b": "beta", "rc": "rc"}[match.group(4)]
+    return f"{match.group(1)}.{match.group(2)}.{match.group(3)}-{kind}.{match.group(5)}"
+
+
+def versions_equal(left: str, right: str) -> bool:
+    a = canonical_version(left)
+    b = canonical_version(right)
+    return a is not None and a == b
 
 
 def package_version(root: Path) -> str | None:
@@ -55,6 +75,84 @@ def check_readme_version(root: Path, version: str | None) -> None:
     for value in found:
         if value != version:
             err(f"README.md declara Versión **{value}** y package.json.version es {version}")
+
+
+def _project_file(root: Path, name: str) -> Path:
+    nested = root / "tools" / name
+    if nested.is_file():
+        return nested
+    return root / name
+
+
+def pyproject_version(root: Path) -> str | None:
+    path = _project_file(root, "pyproject.toml")
+    if not path.is_file():
+        err("falta tools/pyproject.toml")
+        return None
+    text = path.read_text(encoding="utf-8")
+    # Solo el bloque [project]; no inventar parsers TOML completos.
+    in_project = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_project = stripped == "[project]"
+            continue
+        if in_project and stripped.startswith("version"):
+            m = re.match(r'version\s*=\s*"([^"]+)"', stripped)
+            if not m or canonical_version(m.group(1)) is None:
+                err(f"pyproject.toml version no semver: {stripped!r}")
+                return None
+            return m.group(1)
+    err("pyproject.toml sin version en [project]")
+    return None
+
+
+def check_pyproject_version(root: Path, version: str | None) -> None:
+    py_ver = pyproject_version(root)
+    if version is None or py_ver is None:
+        return
+    if not versions_equal(py_ver, version):
+        err(f"pyproject.toml version {py_ver} != package.json.version {version}")
+
+
+def check_package_lock_version(root: Path, version: str | None) -> None:
+    path = root / "package-lock.json"
+    if not path.is_file():
+        err("falta package-lock.json")
+        return
+    if version is None:
+        return
+    data = json.loads(path.read_text(encoding="utf-8"))
+    top = str(data.get("version", ""))
+    pkg = data.get("packages", {}).get("", {})
+    nested = str(pkg.get("version", "")) if isinstance(pkg, dict) else ""
+    if top != version:
+        err(f"package-lock.json version {top} != package.json.version {version}")
+    if nested != version:
+        err(f"package-lock.json packages[''].version {nested} != package.json.version {version}")
+
+
+def check_uv_lock_version(root: Path, version: str | None) -> None:
+    path = _project_file(root, "uv.lock")
+    if not path.is_file():
+        err("falta tools/uv.lock")
+        return
+    if version is None:
+        return
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() == 'name = "autoworkspace"':
+            if i + 1 >= len(lines):
+                err("uv.lock: autoworkspace sin version")
+                return
+            m = re.match(r'version\s*=\s*"([^"]+)"', lines[i + 1].strip())
+            if not m:
+                err("uv.lock: version de autoworkspace ilegible")
+                return
+            if not versions_equal(m.group(1), version):
+                err(f"uv.lock autoworkspace version {m.group(1)} != package.json.version {version}")
+            return
+    err("uv.lock sin paquete autoworkspace")
 
 
 def changelog_sections(text: str) -> dict[str, dict[str, object]]:
@@ -175,11 +273,14 @@ def check_workflows(root: Path) -> None:
         _check_action_pins(rel, path.read_text(encoding="utf-8"))
 
 
-def main() -> int:
-    release_gate = "--release-gate" in sys.argv
-    root = ROOT
+def run_coherence(root: Path, *, release_gate: bool = False) -> int:
+    """API de prueba: no modifica archivos; limpia estado entre invocaciones."""
+    ERRORS.clear()
     version = package_version(root)
     check_readme_version(root, version)
+    check_pyproject_version(root, version)
+    check_package_lock_version(root, version)
+    check_uv_lock_version(root, version)
     check_changelog(root, version, release_gate)
     check_workflows(root)
     print(f"errores: {len(ERRORS)}")
@@ -187,6 +288,11 @@ def main() -> int:
         print("FAIL", e)
     print("RELEASE:", "OK" if not ERRORS else "CON-FALLOS")
     return 1 if ERRORS else 0
+
+
+def main() -> int:
+    release_gate = "--release-gate" in sys.argv
+    return run_coherence(ROOT, release_gate=release_gate)
 
 
 if __name__ == "__main__":

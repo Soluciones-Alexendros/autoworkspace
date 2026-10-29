@@ -46,6 +46,22 @@ def test_bump_version_magnitudes() -> None:
     assert bump.bump_version("0.1.0", "minor") == "0.2.0"
 
 
+def test_bump_version_prerelease_becomes_stable() -> None:
+    assert bump.bump_version("7.0.0-alpha.0", "patch") == "7.0.1"
+    assert bump.bump_version("7.0.0-alpha.0", "minor") == "7.1.0"
+    assert bump.bump_version("7.0.0-alpha.0", "major") == "8.0.0"
+
+
+def test_read_skill_prerelease(tmp_path: Path) -> None:
+    skill = tmp_path / "skills" / "demo-skill"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        '---\nname: demo-skill\nmetadata:\n  version: "7.0.0-alpha.0"\n---\n',
+        encoding="utf-8",
+    )
+    assert bump.read_skill_version(skill) == "7.0.0-alpha.0"
+
+
 def test_bump_version_invalid() -> None:
     try:
         bump.bump_version("1.2", "patch")

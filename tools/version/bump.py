@@ -28,8 +28,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "skills"
 CHANGELOG = ROOT / "CHANGELOG.md"
 
-SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
-VERSION_LINE_RE = re.compile(r'^(\s*version:\s*)["\']?(\d+\.\d+\.\d+)["\']?(\s*)$')
+SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z][0-9A-Za-z.-]*))?$")
+VERSION_LINE_RE = re.compile(
+    r'^(\s*version:\s*)["\']?(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)["\']?(\s*)$'
+)
 
 SKILLS_PATH_PARTS = 2
 KINDS = ("major", "minor", "patch")
@@ -59,6 +61,7 @@ def bump_version(current: str, kind: str) -> str:
     if not m:
         raise ValueError(f"version no semver: '{current}'")
     major, minor, patch = (int(m.group(i)) for i in (1, 2, 3))
+    # Un prerelease sale a una versión estable; bump no emite otro alpha.
     if kind == "major":
         return f"{major + 1}.0.0"
     if kind == "minor":
