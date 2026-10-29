@@ -8,7 +8,7 @@
   "dependencyDashboard": true,
   "minimumReleaseAge": "3 days",
   "internalChecksFilter": "strict",
-  "platformAutomerge": false,
+  "platformAutomerge": true,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 7am on monday"]
@@ -18,35 +18,37 @@
   },
   "packageRules": [
     {
-      "description": "Patch, pin y digest: sin automerge",
+      "description": "Automerge patch, pin y digest",
       "matchUpdateTypes": ["patch", "pin", "digest"],
-      "automerge": false
+      "automerge": true,
+      "automergeType": "pr"
     },
     {
-      "description": "Agrupar minors: sin automerge",
+      "description": "Agrupar y automergear minors",
       "matchUpdateTypes": ["minor"],
       "groupName": "minor dependencies",
-      "automerge": false
+      "automerge": true,
+      "automergeType": "pr"
     },
     {
-      "description": "Majors: revisi\u00f3n humana, cuarentena ampliada, sin automerge",
+      "description": "Majors: revisión humana, cuarentena ampliada, sin automerge",
       "matchUpdateTypes": ["major"],
       "minimumReleaseAge": "14 days",
       "automerge": false
     },
     {
-      "description": "Agrupar GitHub Actions no-major: sin automerge",
+      "description": "Agrupar GitHub Actions no-major",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "github-actions",
-      "automerge": false
+      "automerge": true
     },
     {
-      "description": "Autoworkspace: agrupar bumps Python (pip_requirements + pep621): sin automerge",
+      "description": "Autoworkspace: agrupar bumps Python (pip_requirements + pep621) con el resto de minor/patch",
       "matchManagers": ["pip_requirements", "pep621"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "python deps (minor + patch)",
-      "automerge": false
+      "automerge": true
     },
     {
       "description": "Archify (renderer de diagramas): subir el pin cambia los cuatro HTML, sin automerge",
@@ -61,7 +63,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Pin de Archify en el cat\u00e1logo de diagramas (P12 T5)",
+      "description": "Pin de Archify en el catálogo de diagramas (P12 T5)",
       "managerFilePatterns": [
         "/^docs\\/architecture\\/diagrams\\/catalog\\.json$/"
       ],
