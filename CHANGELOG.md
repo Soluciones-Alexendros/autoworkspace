@@ -6,6 +6,15 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+### Fixed
+
+- `install.sh --target .` and other relative targets resolve against the installer checkout, not the current working directory. A `..` segment is refused. `--user` overrides `--target` and warns on stderr.
+- Pi project skills stay in `.pi/skills`. User skills stay in `~/.pi/agent/skills` ([Pi Configuration](https://pi.dev/docs/latest/configuration)).
+
+### Added
+
+- Installer JSON reports version 7.0.2. Pi quickstart in `docs/harness-setup.md`. The install test matrix covers Pi idempotency, dry-run, a fake `HOME`, and absolute symlinks.
+
 ## [7.0.1] - 2026-10-29
 
 ### Added

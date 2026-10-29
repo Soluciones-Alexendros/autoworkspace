@@ -80,6 +80,7 @@ fi
 
 if [ "$FULL" = 1 ]; then
   echo "[8] Install scripts matrix"
+  echo "HARNESS_MATRIX: cursor,pi"
   bash scripts/tests/test_install.sh
 
   echo "[8b] Execution E2E mínimo"

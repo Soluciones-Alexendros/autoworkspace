@@ -13,3 +13,5 @@ cp templates/harness/status.yaml .autoworkspace/status.yaml
 - `schemas/` — esquemas de aceptación y stubs de test generados tras `plan-specification`.
 
 Flujo: DEFINE → SCHEMAS → IMPLEMENT → VALIDATE → INTEGRATE → STATUS.
+
+Skills de Pi: proyecto `.pi/skills`, usuario `~/.pi/agent/skills`. Comandos en [`docs/harness-setup.md`](../../docs/harness-setup.md).

@@ -17,7 +17,7 @@ MANIFEST_NAME=".autoworkspace-install-manifest.json"
 YES=0
 JSON_OUT=0
 HARNESS="cursor"
-VERSION="7.0.1"
+VERSION="7.0.2"
 INSTALLED=0
 CHANGED=0
 SKIPPED=0
@@ -26,8 +26,9 @@ CONFLICTS=0
 usage() {
   cat <<EOF
 Usage: bash $INSTALLER [--target DIR] [--user] [--dry-run] [--uninstall] [--yes] [--json]
-  --target DIR   Destination skills directory. Does not write to \$HOME.
-  --user         Destination is the harness user directory when --target is absent.
+  --target DIR   Destination skills directory. '.' is this script's checkout (\$ROOT), not the cwd.
+                 A path ending in .cursor/skills, .pi/skills, or .pi/agent/skills is used as-is.
+  --user         Destination is the harness user directory. Overrides --target.
   --dry-run      Preflight only — no mkdir, no links, no manifest.
   --uninstall    Remove only resources listed in the manifest under the destination.
   --yes          Non-interactive; does not overwrite foreign/real-dir conflicts.
@@ -106,7 +107,14 @@ done
 # --yes is accepted for AI/CI non-interactive mode; foreign/real-dir still refused.
 : "${YES}"
 
-if [ -n "$TARGET" ]; then
+if [ "$USER_INSTALL" = 1 ] && [ -n "$TARGET" ]; then
+  echo "WARN: --user overrides --target; ignoring --target $TARGET" >&2
+  if [ -z "$USER_TARGET" ]; then
+    echo "ERROR: --user without a user destination" >&2
+    exit 2
+  fi
+  TARGET="$USER_TARGET"
+elif [ -n "$TARGET" ]; then
   :
 elif [ "$USER_INSTALL" = 1 ]; then
   if [ -z "$USER_TARGET" ]; then
@@ -123,7 +131,8 @@ else
 fi
 
 # Fix Ojo: --target . or repo root → DEFAULT_TARGET (not links in repo root).
-if [ -n "$DEFAULT_TARGET" ]; then
+# Skipped after --user wins, so a discarded --target . cannot replace the user dir.
+if [ "$USER_INSTALL" != 1 ] && [ -n "$DEFAULT_TARGET" ]; then
   if [ "$TARGET" = "." ]; then
     TARGET="$DEFAULT_TARGET"
   elif [ -d "$TARGET" ]; then
@@ -140,6 +149,42 @@ is_privileged() {
     /|/etc|/usr|/var|/bin|/sbin|/boot|/root) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# Read-only: the nearest existing ancestor must be writable. Does not mkdir.
+assert_user_ancestor_writable() {
+  local dest="$1"
+  local cur="$dest"
+  while [ ! -e "$cur" ]; do
+    if [ "$cur" = "/" ] || [ -z "$cur" ] || [ "$cur" = "." ]; then
+      echo "ERROR: no existing ancestor for user target: $dest" >&2
+      exit 3
+    fi
+    cur=$(dirname -- "$cur")
+  done
+  if [ ! -w "$cur" ]; then
+    echo "ERROR: user target ancestor not writable: $cur" >&2
+    exit 3
+  fi
+}
+
+assert_planned_symlinks_absolute() {
+  local name dest link
+  for name in "${RESOURCES[@]}"; do
+    dest="$TARGET/$name"
+    if [ ! -L "$dest" ]; then
+      echo "ERROR: expected symlink at $dest" >&2
+      exit 1
+    fi
+    link=$(readlink -- "$dest")
+    case "$link" in
+      /*) ;;
+      *)
+        echo "ERROR: symlink is not absolute: $dest -> $link" >&2
+        exit 1
+        ;;
+    esac
+  done
 }
 
 resolve_existing_or_parent() {
@@ -248,6 +293,9 @@ TARGET=$(resolve_existing_or_parent "$TARGET") || exit 1
 if is_privileged "$TARGET"; then
   echo "ERROR: target too privileged: $TARGET" >&2
   exit 3
+fi
+if [ "$USER_INSTALL" = 1 ]; then
+  assert_user_ancestor_writable "$TARGET"
 fi
 
 MANIFEST="$TARGET/$MANIFEST_NAME"
@@ -459,6 +507,7 @@ tmp.replace(mf)
 print(f"manifest → {mf}", file=sys.stderr)
 PY
 validate_manifest_paths "$MANIFEST"
+assert_planned_symlinks_absolute
 rm -f "$JOURNAL"
 trap - ERR
 
