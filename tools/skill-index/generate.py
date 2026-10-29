@@ -80,6 +80,23 @@ def catalog_markdown(root: pathlib.Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+def normalize_catalog(text: str) -> str:
+    """Compare tables ignoring Prettier cell padding, dash width and blank lines."""
+    lines: list[str] = []
+    for raw in text.strip().splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("|"):
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            if cells and all(set(cell) <= {"-", ":"} and cell for cell in cells):
+                cells = ["---" for _ in cells]
+            lines.append("| " + " | ".join(cells) + " |")
+        else:
+            lines.append(line)
+    return "\n".join(lines) + "\n"
+
+
 def marked_block(root: pathlib.Path) -> str:
     return f"{START}\n{catalog_markdown(root)}{END}\n"
 
@@ -100,7 +117,7 @@ def replace_region(text: str, block: str) -> str:
 
 
 def region_errors(root: pathlib.Path) -> list[str]:
-    expected = catalog_markdown(root).strip() + "\n"
+    expected = normalize_catalog(catalog_markdown(root))
     errors: list[str] = []
     for rel in DOC_PATHS:
         path = root / rel
@@ -111,7 +128,7 @@ def region_errors(root: pathlib.Path) -> list[str]:
         if region is None:
             errors.append(f"[catalog] {rel} sin {START} / {END}")
             continue
-        if region != expected:
+        if normalize_catalog(region) != expected:
             errors.append(f"[catalog] {rel} bloque distinto del generador")
     return errors
 

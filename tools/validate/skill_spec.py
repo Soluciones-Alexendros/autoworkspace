@@ -152,8 +152,8 @@ def check_catalog(root: Path, names: set[str]) -> None:
         if region is None:
             ERRORS.append(f"[catalog] {rel} sin {gen.START} / {gen.END}")
             continue
-        expected = gen.catalog_markdown(root).strip() + "\n"
-        if region != expected:
+        expected = gen.normalize_catalog(gen.catalog_markdown(root))
+        if gen.normalize_catalog(region) != expected:
             ERRORS.append(f"[catalog] {rel} bloque distinto del generador")
         found = catalog_names(region)
         extra = sorted(found - names)
