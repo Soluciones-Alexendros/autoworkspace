@@ -4,12 +4,12 @@ description: "Specialist role for UI/UX and visual systems: intentional visual d
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.2.0"
+  version: "7.0.0-alpha.0"
   domain: role
   type: atomic
   language: en
   keywords: role-design
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

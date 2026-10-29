@@ -4,7 +4,7 @@
 
 - **Objetivos:** Describir el producto autoworkspace (pipeline agéntico), el árbol de skills y tools, las capas del canon/CI de flota, y cómo se valida.
 - **Estructura:** Esta meta-sección → producto → árbol → pipeline → capas canon/CI → CI → supply chain.
-- **Contenido a integrar según contexto:** Contratos de fase en `.autoworkspace/`; canon de flota en `docs/architecture/`, `stacks/` y `templates/repo/`.
+- **Contenido a integrar según contexto:** Contratos de fase en `.autoworkspace/`; canon de flota en `docs/architecture/`, `stacks/` y `templates/product/`.
 
 ## Producto
 
@@ -21,8 +21,8 @@
 | `docs/architecture/diagrams/`  | D01–D04: fuentes JSON (Archify); `make diagrams` → artefacto |
 | `stacks/`                      | CI callers per runtime (pin reusable by SHA)                 |
 | `.github/workflows/`           | `ci.yml` + reusables + quality/validate/version/release      |
-| `templates/repo/`              | Product P0/P1 skeleton (copy into a new repo)                |
-| `templates/autoworkspace/`     | Scaffolding for `.autoworkspace/`                            |
+| `templates/product/`           | Product P0/P1 skeleton (copy into a new repo)                |
+| `templates/harness/`           | Scaffolding for `.autoworkspace/`                            |
 
 Sixteen skills in five domains: `plan`, `local`, `project`, `web`, `role`.
 
@@ -42,11 +42,11 @@ Per-task role selection (backend / front / design / clean-code) is mandatory whe
 
 ## Capas canon / CI
 
-1. **Contrato de flota** — `templates/repo/AGENTS.md` §1–8; este repo declara cumplimiento en `AGENTS.md`.
+1. **Contrato de flota** — `templates/product/AGENTS.md` §1–8; este repo declara cumplimiento en `AGENTS.md`.
 2. **ADRs** — `docs/architecture/decisions/` (ci-gate, squash auto-merge, SemVer del contrato, packaging).
 3. **Reusables** — `.github/workflows/reusable-{node,rust,python,static}.yml` llamados por SHA desde `stacks/<stack>/ci.yml`.
 4. **Caller local** — `.github/workflows/ci.yml` con job `ci-gate` (nombre exacto) que agrega pipeline + hygiene + validate (y, hasta P2, check-bump vía workflow aparte required).
-5. **Plantilla de producto** — `templates/repo/` (sustituye «Use this template» de `repo-standard`).
+5. **Plantilla de producto** — `templates/product/` (sustituye «Use this template» de `repo-standard`).
 
 ## Continuous integration
 

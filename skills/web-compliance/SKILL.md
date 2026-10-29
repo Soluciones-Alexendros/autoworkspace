@@ -4,12 +4,12 @@ description: "Web compliance audit: accessibility (WCAG 2.2 AA / EN 301 549), le
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.1.3"
+  version: "7.0.0-alpha.0"
   domain: web
   type: atomic
   language: en
   keywords: web-compliance
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

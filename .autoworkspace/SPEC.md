@@ -34,7 +34,7 @@ python3 tools/workspace-router/run.py --phase DEFINE --repo . --json
 
 ```text
 skills/<nombre>/SKILL.md     → catálogo canónico (16)
-.agents/skills/ y .opencode/skills/ → enlaces al catálogo
+.cursor/skills/ y .pi/skills/ → symlinks locales, no versionados
 tools/skill-router/          → intent-map.yaml + skill-index.json
 tools/workspace-router/      → fase DEFINE…STATUS
 .autoworkspace/              → project.yaml, status.yaml, esta spec
@@ -46,7 +46,7 @@ Dominios vivos:
 | Dominio | Skills                                                   |
 | ------- | -------------------------------------------------------- |
 | plan    | plan-specification, plan-continue, plan-validators       |
-| local   | local-maintenance, local-security, local-proton          |
+| local   | local-maintenance, local-security, local-email           |
 | project | project-architecture, project-libraries, project-publish |
 | web     | web-compliance, web-owasp, web-performance               |
 | role    | role-back, role-clean-code, role-design, role-front      |

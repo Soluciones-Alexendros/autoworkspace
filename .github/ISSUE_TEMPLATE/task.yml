@@ -1,0 +1,57 @@
+name: Task
+description: Trabajo acotado con criterios de cierre verificables
+title: "[task] "
+labels: [documentation]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **No pegues secretos, patrones de denylist, datos de host/red ni informes brutos.**
+        Vincula evidencia a SHA/versión. Este formulario no publica labels nuevas.
+  - type: input
+    id: sha_version
+    attributes:
+      label: SHA o versión de partida
+      description: Base sobre la que se mide el trabajo.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema u obligación
+      description: Qué hay que completar y por qué ahora.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno mínimo
+      description: Herramientas, permisos y límites de autorización.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Cómo verificar
+      description: Comandos/tests exactos (sin secretos).
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Alcance y no objetivos
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Checklist binario para cerrar la tarea.
+    validations:
+      required: true

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Valida el esqueleto P0+P1 en templates/repo/ (parámetro de raíz) y el
+# Valida el esqueleto P0+P1 en templates/product/ (parámetro de raíz) y el
 # árbol del canon (ADRs, stacks, reusables) en la raíz del host.
 
 set -euo pipefail
@@ -7,7 +7,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-template_root="${1:-templates/repo}"
+template_root="${1:-templates/product}"
 if [[ ! -d "$template_root" ]]; then
   echo "FALTA directorio de plantilla: $template_root"
   exit 1
@@ -35,7 +35,7 @@ require_dir() {
 echo "check-structure: validando plantilla P0+P1 en $template_root"
 echo "check-structure: validando canon en $repo_root"
 
-# --- Plantilla de producto (templates/repo) ---
+# --- Plantilla de producto (templates/product) ---
 require_file "$template_root/README.md"
 require_file "$template_root/LICENSE"
 require_file "$template_root/CHANGELOG.md"

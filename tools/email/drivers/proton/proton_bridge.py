@@ -34,7 +34,7 @@ try:
 except ValueError:
     SMTP_PORT = 1025
 
-_TOOLS = Path(__file__).resolve().parents[3] / "tools"
+_TOOLS = Path(__file__).resolve().parents[3]
 if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 

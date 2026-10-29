@@ -4,12 +4,12 @@ description: "Drive implementation and QA with integrated tests: red-green-refac
 license: MIT
 metadata:
   author: addyosmani (adapted)
-  version: "5.1.0"
+  version: "7.0.0-alpha.0"
   domain: plan
   type: atomic
   language: en
   keywords: plan-validators, tdd, test coverage, qa
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

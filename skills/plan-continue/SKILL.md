@@ -4,12 +4,12 @@ description: "Autoworkspace orchestrator: continue from roadmap or .autoworkspac
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.3.6"
+  version: "7.0.0-alpha.0"
   domain: plan
   type: orchestrator
   language: en
   keywords: plan-continue
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 
@@ -40,7 +40,7 @@ DEFINE → SCHEMAS → IMPLEMENT → VALIDATE → INTEGRATE → STATUS
 ```
 
 1. Ensure `.autoworkspace/project.yaml` and `status.yaml` exist (copy from
-   `templates/autoworkspace/` or run the router once).
+   `templates/harness/` or run the router once).
 2. Route the current phase:
 
 ```bash

@@ -4,12 +4,12 @@ description: "Close a GitHub repository or work increment with local quality gat
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.3.5"
+  version: "7.0.0-alpha.0"
   domain: project
   type: atomic
   language: en
   keywords: project-publish, husky, lint-staged, pre-commit, release
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

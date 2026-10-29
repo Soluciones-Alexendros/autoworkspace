@@ -1,21 +1,17 @@
 # Using the skills
 
-## Generic harness (vendor-neutral)
+## Cursor and Pi
 
-Copy or link the skill folder into the user or project skills directory:
+Link the catalog instead of copying it. See `docs/harness-setup.md`.
 
 ```bash
-# global (example)
-cp -r skills/web-owasp ~/.agents/skills/
-# or per project
-cp -r skills/web-owasp /path/project/.agents/skills/
+bash scripts/install-cursor.sh --target .cursor/skills
+bash scripts/install-pi.sh --target .pi/skills
+bash scripts/install-cursor.sh --user
+bash scripts/install-pi.sh --user
 ```
 
-Compatible harnesses discover `SKILL.md` through its frontmatter (`name` + `description`).
-
-## OpenAI Codex / compatible agents
-
-Copy the folder to wherever the agent reads skills from (check its docs; `SKILL.md` + frontmatter is the open standard from [agentskills.io](https://agentskills.io)).
+Both harnesses discover `SKILL.md` through its frontmatter (`name` + `description`).
 
 ## Manual use
 

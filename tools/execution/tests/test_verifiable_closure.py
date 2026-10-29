@@ -467,7 +467,7 @@ def test_a32_idempotent_complete(tmp_path: Path) -> None:
 def test_a40_network_hard_blocks() -> None:
     r = preflight_contract(
         {
-            "skill": "local-proton",
+            "skill": "local-email",
             "distribution": "workspace-required",
             "system_requirements": {"binaries": [], "network": True},
         },

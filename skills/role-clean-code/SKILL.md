@@ -4,12 +4,12 @@ description: "Implements Clean Code principles to write expressive, maintainable
 license: MIT
 metadata:
   author: Soluciones-Alexendros
-  version: "1.2.0"
+  version: "7.0.0-alpha.0"
   domain: role
   type: atomic
   language: en
   keywords: role-clean-code, clean code, código limpio, refactor, refactoring, refactorización, code smells, meaningful names, nombres significativos, small functions, funciones pequeñas, duplicated code, código duplicado
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

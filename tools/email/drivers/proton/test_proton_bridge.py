@@ -4,22 +4,35 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 import unittest
 from collections.abc import Sequence
 from email.message import EmailMessage
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Literal, cast
 from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPTS))
-TOOLS = Path(__file__).resolve().parents[3] / "tools"
+TOOLS = Path(__file__).resolve().parents[3]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
-import proton_bridge  # noqa: E402
+
+def _load_driver() -> ModuleType:
+    """Load the sibling driver by path to avoid colliding with the skill wrapper."""
+    path = SCRIPTS / "proton_bridge.py"
+    spec = importlib.util.spec_from_file_location("proton_bridge_driver", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+proton_bridge: Any = _load_driver()
 from execution.approval import (  # noqa: E402
     ApprovalDecision,
     ApprovalProvider,

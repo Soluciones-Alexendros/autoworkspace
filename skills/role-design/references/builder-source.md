@@ -2,7 +2,7 @@
 name: design-system-builder
 description: "Genera design systems completos para React + Next.js/Vite con DESIGN.md como schema maestro. Crea árbol de archivos, tokens, componentes (shadcn-style), configuradores Tailwind/CSS vars, e instalación replicable. El eje central es DESIGN.md: un solo archivo que define toda la estructura, dependencias y swap points para retematizar sin deuda heredada. Usa cuando se pida crear, instalar o migrar un design system."
 license: MIT
-compatibility: opencode
+compatibility: cursor, pi
 metadata:
   source: custom
   category: design

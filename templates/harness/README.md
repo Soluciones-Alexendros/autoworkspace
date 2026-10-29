@@ -4,8 +4,8 @@ Copiar al repo de producto:
 
 ```bash
 mkdir -p .autoworkspace/schemas
-cp templates/autoworkspace/project.yaml .autoworkspace/project.yaml
-cp templates/autoworkspace/status.yaml .autoworkspace/status.yaml
+cp templates/harness/project.yaml .autoworkspace/project.yaml
+cp templates/harness/status.yaml .autoworkspace/status.yaml
 ```
 
 - `project.yaml` — variables del proyecto (profile, stack, skills, handoffs).

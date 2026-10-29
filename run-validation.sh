@@ -48,12 +48,12 @@ if [ "$FULL" = 1 ]; then
   echo "[4b] execution contracts (required)"
   python3 tools/contracts/validate_contracts.py --root "$ROOT"
 
-  echo "[5] skill-index.json check (read-only, no write)"
-  python3 tools/skill-router/build_index.py --check --root "$ROOT"
+  echo "[5] skill-index.json generate + marker check"
+  python3 tools/skill-index/generate.py --check --root "$ROOT"
 fi
 
 if [ "$CHECK_INDEX" = 1 ] && [ "$FULL" = 0 ]; then
-  python3 tools/skill-router/build_index.py --check --root "$ROOT"
+  python3 tools/skill-index/generate.py --check --root "$ROOT"
 fi
 
 if [ "$FULL" = 1 ] || [ "$ONLY_SMOKE" = 1 ]; then
@@ -69,7 +69,7 @@ if [ "$FULL" = 1 ] || [ "$ONLY_PYTEST" = 1 ]; then
     skills/local-maintenance/scripts/tests/ \
     skills/web-compliance/tests/ \
     skills/local-security/scripts/tests/ \
-    skills/local-proton/scripts/ \
+    tools/email/drivers/proton/ \
     -q
 fi
 

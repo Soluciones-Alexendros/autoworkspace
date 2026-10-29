@@ -6,7 +6,7 @@ Fuente de verdad **en este repo** (host: [ADR-0016](../../../docs/architecture/d
 | --- | --- |
 | ADRs | [`docs/architecture/decisions/`](../../../docs/architecture/decisions/) |
 | Reutilización | [`docs/REUTILIZACION.md`](../../../docs/REUTILIZACION.md) |
-| Plantilla de producto | [`templates/repo/`](../../../templates/repo/) |
+| Plantilla de producto | [`templates/product/`](../../../templates/product/) |
 | Callers CI | [`stacks/`](../../../stacks/) |
 | Reusables | [`.github/workflows/reusable-*.yml`](../../../.github/workflows/) |
 

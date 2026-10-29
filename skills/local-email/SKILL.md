@@ -1,26 +1,23 @@
 ---
-name: local-proton
-description: Proton Mail (Proton Mail Bridge IMAP/SMTP local, MCP Mail) and Proton Pass secrets (pass-cli v2.3+ with JSON output, MCP Pass). Use when the operator requests reading, searching, sending or classifying Proton Mail, or obtaining tokens, passwords and API keys stored in Proton Pass. Do not use for other email providers or CI/GitHub secrets.
+name: local-email
+description: Email local con drivers (proton, gmail via bridge). Use when operator requests email. Not for other providers without driver.
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "5.1.4"
+  version: "7.0.0-alpha.0"
   domain: local
   type: atomic
   language: en
-  keywords: local-proton
-compatibility: opencode, codex, cursor, copilot
+  keywords: local-email
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 
-# Local Proton
+# Local Email
 
 ## Overview
 
-Proton Mail (Proton Mail Bridge IMAP/SMTP local, MCP Mail) and Proton Pass secrets
-(pass-cli v2.3+ with stable JSON output, MCP Pass). Use when the operator requests reading,
-searching, sending or classifying Proton Mail, or obtaining tokens, passwords and API keys
-stored in Proton Pass. Do not use for other email providers or CI/GitHub secrets.
+Local email with drivers. The Proton driver is the one that runs today (Bridge IMAP/SMTP and Proton Pass). Gmail via bridge has no driver yet: stop and say so. Do not use a provider that has no driver.
 
 ## When to Use
 
@@ -55,4 +52,4 @@ Send email
 
 ## Tools
 
-- `scripts/proton_bridge.py` — Proton Mail Bridge IMAP/SMTP client.
+- `scripts/proton_bridge.py` — delegates to `tools/email/drivers/proton/proton_bridge.py`.

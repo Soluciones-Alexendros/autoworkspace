@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deterministic router for Soluciones-Alexendros/autoworkspace — OpenCode-first
+Deterministic router for Soluciones-Alexendros/autoworkspace — Cursor and Pi
 No LLM, vendor-neutral, pure Python TF + trigger boost.
 Usage:
   python tools/skill-router/route.py "audita y publica este repo" --top 3
@@ -8,6 +8,7 @@ Usage:
 """
 
 import argparse
+import importlib.util
 import json
 import math
 import pathlib
@@ -24,10 +25,17 @@ INDEX_PATHS = [
 
 def load_index():
     for p in INDEX_PATHS:
-        if p.exists():
+        if p.is_file():
             return json.loads(p.read_text(encoding="utf-8"))
-    print("skill-index.json not found", file=sys.stderr)
-    sys.exit(1)
+    gen_path = ROOT / "tools" / "skill-index" / "generate.py"
+    spec = importlib.util.spec_from_file_location("skill_index_generate", gen_path)
+    if spec is None or spec.loader is None:
+        print("skill-index.json not found", file=sys.stderr)
+        sys.exit(1)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.ensure_index(ROOT)
+    return json.loads((ROOT / "skill-index.json").read_text(encoding="utf-8"))
 
 
 def tokenize(s: str):
@@ -122,7 +130,7 @@ def _emit_results(results: list, as_json: bool) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Skill router for OpenCode")
+    parser = argparse.ArgumentParser(description="Skill router for Cursor and Pi")
     parser.add_argument("prompt", nargs="*", help="User prompt")
     parser.add_argument("--top", type=int, default=3)
     parser.add_argument("--interactive", action="store_true")

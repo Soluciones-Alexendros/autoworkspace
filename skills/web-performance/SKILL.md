@@ -4,12 +4,12 @@ description: "Web performance audit: Core Web Vitals (LCP, INP, CLS), Lighthouse
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "4.1.0"
+  version: "7.0.0-alpha.0"
   domain: web
   type: atomic
   language: en
   keywords: web-performance
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

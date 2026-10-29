@@ -10,7 +10,7 @@ Objetivo: **alinear**, no clonar a ciegas. El repo de producto conserva su stack
 
 Haz **un PR por repo**. Sin force-push. Checklist = plantilla §8.
 
-Repo nuevo desde esqueleto: `gh repo create Soluciones-Alexendros/<n> --private --clone && cp -a templates/repo/. <n>/` ([ADR-0016](./architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)). Merge de flota: `gh pr merge --auto --squash`; required check: `ci-gate` (sin etiqueta `automerge`).
+Repo nuevo desde esqueleto: `gh repo create Soluciones-Alexendros/<n> --private --clone && cp -a templates/product/. <n>/` ([ADR-0016](./architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)). Merge de flota: `gh pr merge --auto --squash`; required check: `ci-gate` (sin etiqueta `automerge`).
 
 ## Antes de tocar nada
 

@@ -1,21 +1,18 @@
 # Harness integration status
 
-Classification of agent harnesses for autoworkspace skills.
+Cursor and Pi are the only supported harnesses. Both sit at level A: the deterministic symlink gate. CI does not require either binary.
 
-| Harness  | Status                                                                                                    | Evidence                                                                                       |
-| -------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| OpenCode | partial (A pass; B version; C help surface) — full ask/deny skill load still pending deeper harness proof | `opencode.json`, `scripts/install-opencode.sh --target`, `scripts/tests/test_execution_e2e.sh` |
-| Cursor   | documented-not-proven                                                                                     | project `skills/` + optional `.agents/skills` symlinks                                         |
-| Codex    | documented-not-proven                                                                                     | install target via `scripts/install.sh --target`                                               |
-| Copilot  | documented-not-proven                                                                                     | folder layout only                                                                             |
+| Harness | Level | Evidence                                                                      |
+| ------- | ----- | ----------------------------------------------------------------------------- |
+| Cursor  | A     | `bash scripts/install-cursor.sh --target <dir>` symlinks each `skills/<name>` |
+| Pi      | A     | `bash scripts/install-pi.sh --target <dir>` symlinks each `skills/<name>`     |
 
-## OpenCode acceptance levels
+## Level A
 
-- **A (deterministic gate):** configuration, contracts, and `tools/execution` tests. No network/accounts/models. Required for every merge.
-- **B (native discovery/load):** real OpenCode binary of a declared version (currently **1.18.34**) is present; version and skill discovery/load are demonstrated with redacted output.
-- **C (permissions):** skill allow/deny independent of action permission; a denied action must not create a sentinel; no `--auto`. Ask/prompt proof requires a channel that actually surfaces the prompt.
-
-If the binary is unavailable, B and C are `not_run` and the E2E script must **not** print an integral `E2E OK`. Gate A may still pass.
+- Symlinks are absolute and resolve to `skills/<name>`.
+- `--target` does not write `$HOME`. `--user` is the only path that writes the user skills directory.
+- Dry-run creates neither the destination nor the manifest.
+- `scripts/tests/test_install.sh` and `scripts/tests/test_execution_e2e.sh` cover the gate. The E2E script does not invoke a harness binary.
 
 ## Permissions
 

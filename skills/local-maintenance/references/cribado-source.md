@@ -10,7 +10,7 @@ description: >
   filesystem", "revisar higiene del sistema", "auditar espacio en disco".
   NO ejecuta borrados destructivos sin confirmación explícita.
 license: MIT
-compatibility: opencode
+compatibility: cursor, pi
 metadata:
   version: "2.0.0"
   author: alexendros

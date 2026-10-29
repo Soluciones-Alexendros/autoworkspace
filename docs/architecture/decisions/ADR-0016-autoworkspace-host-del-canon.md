@@ -29,9 +29,9 @@ Análisis y opción A: `integracion-repo-standard-autoworkspace.md` (2026-10-25)
 1. **Host único y público:** `Soluciones-Alexendros/autoworkspace` absorbe el canon de `repo-standard@e518eb1` (P11). «repo-standard» sigue siendo el **nombre de la norma**, no el del repo host.
 2. **Versión única** del producto+canon desde **autoworkspace v6.0.0**. [ADR-0010](./ADR-0010-semver-contrato-estandar.md) (SemVer del contrato) se aplica a autoworkspace: un cambio incompatible para callers es major.
 3. **Callers:** `uses: Soluciones-Alexendros/autoworkspace/.github/workflows/reusable-<stack>.yml@<SHA> # vX.Y.Z`.
-4. **Plantilla de producto:** `templates/repo/` sustituye «Use this template» de `repo-standard`. Crear repo: `gh repo create … && cp -a templates/repo/. <repo>/`.
+4. **Plantilla de producto:** `templates/product/` sustituye «Use this template» de `repo-standard`. Crear repo: `gh repo create … && cp -a templates/product/. <repo>/`.
 5. **`repo-standard`:** se archiva (humano) con descripción «Movido a Soluciones-Alexendros/autoworkspace»; sin PR de despedida.
-6. Esta decisión **supersede en parte** [ADR-0001](./ADR-0001-canon-repo-standard.md) (el host ya no es el repo `repo-standard`). [ADR-0011](./ADR-0011-bootstrap-desde-plantilla.md) queda **sustituido** por el flujo `templates/repo/` (sin bootstrap script nuevo en P11).
+6. Esta decisión **supersede en parte** [ADR-0001](./ADR-0001-canon-repo-standard.md) (el host ya no es el repo `repo-standard`). [ADR-0011](./ADR-0011-bootstrap-desde-plantilla.md) queda **sustituido** por el flujo `templates/product/` (sin bootstrap script nuevo en P11).
 
 ## Consecuencias
 
@@ -45,7 +45,7 @@ Análisis y opción A: `integracion-repo-standard-autoworkspace.md` (2026-10-25)
 
 ## Checklist de implementación
 
-- [x] Importación P11 T0 (`templates/repo/`, reusables, ADRs)
+- [x] Importación P11 T0 (`templates/product/`, reusables, ADRs)
 - [x] Consolidación raíz / AGENTS squash (T1)
 - [ ] Callers `stacks/*` → autoworkspace@SHA (T5)
 - [ ] `package.json` 6.0.0 + tag (T6 / release.yml)
@@ -60,5 +60,5 @@ Análisis y opción A: `integracion-repo-standard-autoworkspace.md` (2026-10-25)
 
 - [ADR-0001](./ADR-0001-canon-repo-standard.md) (parcialmente superseded)
 - [ADR-0010](./ADR-0010-semver-contrato-estandar.md)
-- [ADR-0011](./ADR-0011-bootstrap-desde-plantilla.md) (sustituido por `templates/repo/`)
+- [ADR-0011](./ADR-0011-bootstrap-desde-plantilla.md) (sustituido por `templates/product/`)
 - [REUTILIZACION.md](../../REUTILIZACION.md)

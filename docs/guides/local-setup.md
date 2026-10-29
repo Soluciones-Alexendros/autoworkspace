@@ -4,14 +4,14 @@
 
 - **Objetivos:** Cómo clonar y dejar el repo listo para el primer PR (canon o producto).
 - **Estructura:** Esta meta-sección → setup de este canon → setup de producto por stack → hooks recomendados.
-- **Contenido a integrar según contexto:** En producto, deja un solo camino (el del stack). Sustituye versiones (Node/pnpm, MSRV). Si naciste de la plantilla, declara comandos reales o usa el bootstrap ([templates/repo/](../../templates/repo/), [ADR-0016](../architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)). Nunca commitees `.env`.
+- **Contenido a integrar según contexto:** En producto, deja un solo camino (el del stack). Sustituye versiones (Node/pnpm, MSRV). Si naciste de la plantilla, declara comandos reales o usa el bootstrap ([templates/product/](../../templates/product/), [ADR-0016](../architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)). Nunca commitees `.env`.
 
 ## Este canon
 
 ```bash
 git clone https://github.com/Soluciones-Alexendros/autoworkspace.git
 cd autoworkspace
-uv sync
+uv sync --project tools
 npm ci
 make validate
 make test

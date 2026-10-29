@@ -18,7 +18,7 @@
 
 | Documento                                            | Contenido                                                            |
 | ---------------------------------------------------- | -------------------------------------------------------------------- |
-| [REUTILIZACION.md](REUTILIZACION.md)                 | Alinear un repo existente; crear desde `templates/repo/`             |
+| [REUTILIZACION.md](REUTILIZACION.md)                 | Alinear un repo existente; crear desde `templates/product/`          |
 | [architecture/overview.md](architecture/overview.md) | Diseño del canon                                                     |
 | [architecture/diagrams/](architecture/diagrams/)     | Diagramas D01–D04: fuentes JSON + `make diagrams` (HTML = artefacto) |
 | [architecture/decisions/](architecture/decisions/)   | ADRs (0001…0016)                                                     |
@@ -38,4 +38,4 @@ Política vigente: check único `ci-gate`, merge `gh pr merge --auto --squash`, 
 - [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) — conducta de la comunidad
 - [SECURITY.md](../SECURITY.md) — divulgación de vulnerabilidades
 - [AGENTS.md](../AGENTS.md) — contrato de enrutado + flota
-- [templates/repo/](../templates/repo/) — esqueleto P0/P1 de producto
+- [templates/product/](../templates/product/) — esqueleto P0/P1 de producto

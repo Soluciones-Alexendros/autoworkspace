@@ -4,13 +4,13 @@ description: "Systematic Linux system maintenance by IA agent: hygiene, updates,
 license: MIT
 metadata:
   author: Soluciones-Alexendros (adapted)
-  version: "5.1.6"
+  version: "7.0.0-alpha.0"
   domain: local
   type: atomic
   language: en
   keywords: local-maintenance
   health: integrated
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

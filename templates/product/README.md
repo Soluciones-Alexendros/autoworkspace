@@ -28,7 +28,7 @@ Esqueleto P0/P1 de **Soluciones-Alexendros**. El canon vivo (ADRs, reusables, st
 
 ```bash
 gh repo create Soluciones-Alexendros/<n> --private --clone
-cp -a /ruta/a/autoworkspace/templates/repo/. <n>/
+cp -a /ruta/a/autoworkspace/templates/product/. <n>/
 cd <n>
 # Ajusta README, .env.example, CODEOWNERS; copia stacks/<stack>/ci.yml → .github/workflows/ci.yml pineado al SHA de autoworkspace
 make validate || true   # en producto, sustituye stubs

@@ -4,12 +4,12 @@ description: "Specialist role for frontend application work: UI stability, brows
 license: MIT
 metadata:
   author: Soluciones-Alexendros
-  version: "1.2.0"
+  version: "7.0.0-alpha.0"
   domain: role
   type: atomic
   language: en
   keywords: role-front
-compatibility: opencode, codex, cursor, copilot
+compatibility: cursor, pi
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 

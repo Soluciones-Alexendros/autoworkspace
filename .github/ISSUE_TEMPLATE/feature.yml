@@ -1,0 +1,62 @@
+name: Feature
+description: Mejora o capacidad nueva del pipeline, validators o canon
+title: "[feat] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **No pegues secretos ni datos operativos de host.** Propón alcance y aceptación medible.
+        No reabras decisiones de flota (Renovate único, ci-gate, squash) sin ADR nuevo.
+  - type: input
+    id: sha_version
+    attributes:
+      label: SHA o versión de contexto
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Necesidad
+      description: Problema que resuelve la propuesta.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento deseado
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Situación actual
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno / consumidores
+    validations:
+      required: false
+  - type: textarea
+    id: scope
+    attributes:
+      label: Alcance y no objetivos
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+    validations:
+      required: true
+  - type: checkboxes
+    id: fleet_decisions
+    attributes:
+      label: Decisiones de flota
+      options:
+        - label: Entiendo que Renovate es el único bot de version-updates
+          required: true
+        - label: Entiendo que el único check required es ci-gate
+          required: true

@@ -1,0 +1,12 @@
+line-length = 120
+target-version = "py312"
+extend-exclude = [".worktrees", ".venv", "node_modules"]
+
+[format]
+quote-style = "double"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C90", "N", "PL", "RUF"]
+
+[lint.mccabe]
+max-complexity = 10

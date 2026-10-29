@@ -4,7 +4,7 @@
 
 - **Objetivos:** Cómo añadir o cambiar skills, bump de versión, gates locales y de CI, y convenciones de PR en este repositorio.
 - **Estructura:** Esta meta-sección → skills → versionado → smoke → PRs → issues → planificación.
-- **Contenido a integrar según contexto:** Árbol de skills en [docs/STANDARD.md](docs/STANDARD.md). Canon de flota en [docs/REUTILIZACION.md](docs/REUTILIZACION.md) y `templates/repo/`. Merge: `gh pr merge --auto --squash` ([templates/repo/AGENTS.md](templates/repo/AGENTS.md) §5).
+- **Contenido a integrar según contexto:** Árbol de skills en [docs/STANDARD.md](docs/STANDARD.md). Canon de flota en [docs/REUTILIZACION.md](docs/REUTILIZACION.md) y `templates/product/`. Merge: `gh pr merge --auto --squash` ([templates/product/AGENTS.md](templates/product/AGENTS.md) §5).
 
 ## Adding or changing a skill
 
@@ -16,7 +16,7 @@
 6. Pass local validation green before the PR:
 
 ```bash
-uv sync --frozen
+uv sync --frozen --project tools
 make validate
 # equivalent: uv run bash run-validation.sh
 ```
@@ -47,7 +47,7 @@ bash skills/<skill>/scripts/tests/smoke_sh.sh
 - CI: `validate`, `hygiene`, `check-bump` (required clásicos) y `ci-gate` en `ci.yml`. All must be green.
 - Auto-merge: `gh pr merge --auto --squash` (prohibidos `--merge`, `--rebase`, `--admin`). Flujo `plan/*` cuando aplique la norma de flota.
 - Do not commit residues (`__pycache__/`, `.pytest_cache/`, `.log`, `.tmp`): they are in `.gitignore` and CI rejects them when tracked by git.
-- PR template de producto: [`templates/repo/.github/PULL_REQUEST_TEMPLATE.md`](templates/repo/.github/PULL_REQUEST_TEMPLATE.md) (copiar al repo de producto).
+- PR template de producto: [`templates/product/.github/PULL_REQUEST_TEMPLATE.md`](templates/product/.github/PULL_REQUEST_TEMPLATE.md) (copiar al repo de producto).
 - Conventional Commits. Renovate is the only dependency update bot; do not add `dependabot.yml` for version updates.
 - Contacto de conducta / ops: **operaciones@alexendros.dev** (ver `CODE_OF_CONDUCT.md` / plantilla).
 

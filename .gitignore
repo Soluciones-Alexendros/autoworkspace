@@ -34,8 +34,10 @@ proteccion-*.json
 proteccion-*.zip
 **/clean-routine-*.json
 .cursor/
-# Permitir hooks de proyecto vacíos (evita ERROR de parseo en Cursor si existe .cursor/)
-!.cursor/hooks.json
+.agents/
+.opencode/
+.pi/
+skill-index.json
 
 # Env local (P11 T4)
 .env

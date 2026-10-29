@@ -3,7 +3,7 @@
 Checklist y orden para alinear un repo existente:
 [`docs/REUTILIZACION.md`](../../../docs/REUTILIZACION.md).
 
-Repo nuevo: `gh repo create … && cp -a templates/repo/. <repo>/`
+Repo nuevo: `gh repo create … && cp -a templates/product/. <repo>/`
 ([ADR-0016](../../../docs/architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)).
 
 Merge de flota: `gh pr merge --auto --squash`. Required check: `ci-gate`

@@ -1,7 +1,7 @@
 ---
 version: "1.0.0"
 date: "2026-09-24"
-status: "Superseded by templates/repo (ADR-0016)"
+status: "Superseded by templates/product (ADR-0016)"
 adr_id: "ADR-0011"
 priority: "P1"
 ---
@@ -11,7 +11,7 @@ priority: "P1"
 > **Histórico (Superseded by ADR-0016).** No aplicar; la decisión vigente está en [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md).
 
 **Fecha:** 2026-09-24
-**Estado:** Superseded — sustituido por `templates/repo/` y [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md) (sin script `bootstrap-from-template.sh` en P11)
+**Estado:** Superseded — sustituido por `templates/product/` y [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md) (sin script `bootstrap-from-template.sh` en P11)
 **Prioridad:** P1
 
 ### Propósito de este documento
