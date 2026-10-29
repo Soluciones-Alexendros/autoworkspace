@@ -20,13 +20,13 @@ implements_on_order: "Implementa fix denylist not_run"
 
 [`tools/validate/private_denylist.py`](../../tools/validate/private_denylist.py) es fail-closed en configuración:
 
-| Condición | Código emitido | Exit hoy |
-| --------- | -------------- | -------- |
-| Env ausente (`CONFIG_MISSING`) | `CONFIG_MISSING` | 1 |
-| Vacío / solo whitespace (`CONFIG_EMPTY`) | `CONFIG_EMPTY` | 1 |
-| Regex inválida | `REGEX_INVALID` | 1 |
-| Match | `DENYLIST_MATCH` | 1 |
-| Sin match | `CLEAR` | 0 |
+| Condición                                | Código emitido   | Exit hoy |
+| ---------------------------------------- | ---------------- | -------- |
+| Env ausente (`CONFIG_MISSING`)           | `CONFIG_MISSING` | 1        |
+| Vacío / solo whitespace (`CONFIG_EMPTY`) | `CONFIG_EMPTY`   | 1        |
+| Regex inválida                           | `REGEX_INVALID`  | 1        |
+| Match                                    | `DENYLIST_MATCH` | 1        |
+| Sin match                                | `CLEAR`          | 0        |
 
 Los tests `test_d01`–`test_d03` en [`tools/validate/tests/test_private_denylist.py`](../../tools/validate/tests/test_private_denylist.py) fijan exit ≠ 0 para missing/empty/whitespace.
 
@@ -47,10 +47,10 @@ Inyectan `secrets.HYGIENE_DENYLIST` (alias `AUTOWORKSPACE_PRIVATE_PATTERNS`). Si
 
 ### Fail-open vs fail-closed
 
-| Modo | Cuándo | Comportamiento |
-| ---- | ------ | -------------- |
-| **not_run (fail-open de config)** | Secreto ausente, vacío o solo whitespace | Paso documentado como omitido; CI verde; no hay inspección de patrones |
-| **fail-closed real** | Secreto `HYGIENE_DENYLIST` con ≥1 patrón válido (uno por línea) | CLEAR → verde; match / regex inválida → rojo |
+| Modo                              | Cuándo                                                          | Comportamiento                                                         |
+| --------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **not_run (fail-open de config)** | Secreto ausente, vacío o solo whitespace                        | Paso documentado como omitido; CI verde; no hay inspección de patrones |
+| **fail-closed real**              | Secreto `HYGIENE_DENYLIST` con ≥1 patrón válido (uno por línea) | CLEAR → verde; match / regex inválida → rojo                           |
 
 Configurar fail-closed: Settings → Secrets → Actions → `HYGIENE_DENYLIST` con patrones personales (uno por línea, sin valores vacíos). Local: `AUTOWORKSPACE_PRIVATE_PATTERNS`.
 
@@ -82,12 +82,12 @@ CI en `main`/`release` verde con secreto vacío o ausente.
 
 ## Ship log 7.0.2
 
-| Ítem | Ref |
-| ---- | --- |
-| 7.0.1 install AI API | [#52](https://github.com/Soluciones-Alexendros/autoworkspace/pull/52) |
-| 7.0.2 Pi install (contrato oficial) | [#53](https://github.com/Soluciones-Alexendros/autoworkspace/pull/53) |
-| CHANGELOG → `[7.0.2] - 2026-10-29` | [#54](https://github.com/Soluciones-Alexendros/autoworkspace/pull/54) |
-| Tag + Release | [v7.0.2](https://github.com/Soluciones-Alexendros/autoworkspace/releases/tag/v7.0.2) via `cut_tag` fallback (notes del CHANGELOG) |
+| Ítem                                | Ref                                                                                                                               |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 7.0.1 install AI API                | [#52](https://github.com/Soluciones-Alexendros/autoworkspace/pull/52)                                                             |
+| 7.0.2 Pi install (contrato oficial) | [#53](https://github.com/Soluciones-Alexendros/autoworkspace/pull/53)                                                             |
+| CHANGELOG → `[7.0.2] - 2026-10-29`  | [#54](https://github.com/Soluciones-Alexendros/autoworkspace/pull/54)                                                             |
+| Tag + Release                       | [v7.0.2](https://github.com/Soluciones-Alexendros/autoworkspace/releases/tag/v7.0.2) via `cut_tag` fallback (notes del CHANGELOG) |
 
 ## Próxima orden explícita
 
