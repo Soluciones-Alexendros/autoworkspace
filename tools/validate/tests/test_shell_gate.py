@@ -85,3 +85,65 @@ def test_curl_help_is_allow() -> None:
 def test_missing_command_field_is_deny() -> None:
     mod = _load_gate()
     assert mod.decide({"cwd": "/tmp"})["permission"] == "deny"
+
+
+def test_empty_stdin_is_deny_not_allow() -> None:
+    code, out = _run_stdin(b"")
+    assert code == 0
+    assert out["permission"] == "deny"
+    assert out["permission"] != "allow"
+
+
+def test_non_string_command_is_deny() -> None:
+    mod = _load_gate()
+    assert mod.decide({"command": ["apt-get", "upgrade"]})["permission"] == "deny"
+
+
+@pytest.mark.parametrize(
+    ("command", "skill_hint"),
+    [
+        ("sudo pacman -Syu", "local-"),
+        ("systemctl restart sshd", "local-"),
+        ("rm -rf /tmp/x", "local-"),
+        ("mkfs.ext4 /dev/sdz", "local-"),
+        ("dd if=/dev/zero of=/tmp/x bs=1M count=1", "local-"),
+        ("shutdown -h now", "local-maintenance"),
+        ("iptables -F", "local-security"),
+        ("ssh user@host", "local-"),
+    ],
+)
+def test_deny_families_point_at_run_registered(command: str, skill_hint: str) -> None:
+    code, out = _run_stdin(json.dumps({"command": command}))
+    assert code == 0
+    assert out["permission"] == "deny"
+    assert "run_registered" in out["agent_message"]
+    assert skill_hint in out["agent_message"]
+
+
+def test_wget_network_is_ask() -> None:
+    code, out = _run_stdin(json.dumps({"command": "wget https://example.com"}))
+    assert code == 0
+    assert out["permission"] == "ask"
+
+
+def test_decide_fallback_ask_for_unclassified_match() -> None:
+    # Hook matcher may fire on strings the deny/network branches do not classify.
+    mod = _load_gate()
+    assert mod.decide({"command": "echo matched-but-unclassified"})["permission"] == "ask"
+
+
+def test_session_start_emits_additional_context() -> None:
+    script = REPO / ".cursor" / "hooks" / "session_start.py"
+    proc = subprocess.run(
+        [sys.executable, str(script)],
+        input=b'{"session_id":"t","is_background_agent":false}',
+        capture_output=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", errors="replace")
+    out = json.loads(proc.stdout.decode("utf-8"))
+    assert "additional_context" in out
+    assert "run_registered" in out["additional_context"]
+    assert "--bump" in out["additional_context"]
+    assert out["additional_context"].strip()
+    assert proc.returncode != 2
