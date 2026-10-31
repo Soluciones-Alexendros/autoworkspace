@@ -2,7 +2,7 @@
 
 ```
 Repos, en este orden (de menor a mayor riesgo):
-alignux-app, ecommerce-rejasballesta (privado), saas-atlaps (privado), ecommerce-graficasnasve, saas-afiladocs, webconfig, website-frontvalencia, vapelog, website-alexendrosme (Soluciones-Alexendros) y alexendrosdev (Alexendros, cuenta personal).
+ecommerce-rejasballesta (privado), saas-atlaps (privado), ecommerce-graficasnasve, saas-afiladocs, webconfig, website-frontvalencia, vapelog, website-alexendrosme (Soluciones-Alexendros) y alexendrosdev (Alexendros, cuenta personal).
 Patrón: el validado en P3 (caller ci.yml de autoworkspace@<SHA> # v6.x por SHA + job ci-gate + automerge.yml + release.yml + release-please). Un PR por repo, con título "ci: adopta el canon repo-standard de autoworkspace (ci-gate, auto-merge, release-please)".
 Reglas comunes:
 - Conserva como jobs dentro de `pipeline` (inputs) o como jobs extra en ci.yml los checks valiosos que ya existen (e2e, lighthouse/lhci, a11y, visual, sql-integration, supply-chain…). TODOS deben ir en needs del ci-gate: lo que hoy es informativo y falla se arregla o se elimina, no se deja colgando.

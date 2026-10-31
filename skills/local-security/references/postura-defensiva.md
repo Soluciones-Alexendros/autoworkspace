@@ -50,7 +50,7 @@ Baseline sano: rootlogin no, MaxAuthTries ≤ 4, sin password si hay claves. En 
 - `~/Aplicaciones/Terminal` (canon CLI): su **raíz + binarios + `Scripts/`** deben ser `root:root`, 0755, `chattr +i` (`lsattr -d`), regla auditd `terminal_canon` (`auditctl -l | grep terminal_canon`) y presentes en AIDE (`zgrep -c Terminal /var/lib/aide/aide.db`).
 - **Excluidos de la vigilancia** (estado mutable del usuario): `~/Aplicaciones/Terminal/Shell` y `~/Aplicaciones/Terminal/Agentes` — deben ser del usuario y **sin** `chattr +i`.
 - Cualquier binario de usuario editable por procesos sin confinar que toque secretos (gh, sops, gestores de claves) es un hallazgo P2: vía de troyanización.
-- Canon del home y notación de referencia ALIGNUX: `../../disenar-constitucion/references/DirectoriosEsenciales.md` (`·Aplicaciones` = raíz de aplicaciones, estrato 1; `··Terminal` = canon CLI, estrato 2; `·Audiovisual` = medios).
+- Canon del home y notación de referencia: `../../disenar-constitucion/references/DirectoriosEsenciales.md` (`·Aplicaciones` = raíz de aplicaciones, estrato 1; `··Terminal` = canon CLI, estrato 2; `·Audiovisual` = medios).
 
 ## 6. Parches de seguridad
 

@@ -1,11 +1,6 @@
-# P8 · Repos especiales · alignux, clienteafirma-alexendros, sysXray, archmaker (un PR por repo)
+# P8 · Repos especiales · clienteafirma-alexendros, sysXray, archmaker (un PR por repo)
 
 ```
-alignux (Soluciones-Alexendros): Rust OS con gates L0–L3 (QEMU).
-- ci-gate en pr.yml con needs de L0 Estática, L1/L2 Tests y L3 Boot QEMU.
-- Elimina .github/dependabot.yml y añade .github/renovate.json de flota. Contradice la decisión "Renovate único bot"; cierra los PRs abiertos de Dependabot después de que Renovate abra los equivalentes.
-- Arregla "Auditoría de dependencias" (hoy en rojo en main). Fuzzing de 6 h y mutation testing siguen en nightly, fuera del ci-gate.
-- release-please (rust) y packaging de la imagen/ISO que ya produzca release.yml + SHA256SUMS + attestation; automerge.yml.
 clienteafirma-alexendros (fork de ctt-gob-es/clienteafirma, rama master, Java):
 - ci-gate con needs de quality, test, build, smoke, build-linux-jdk8, crypto-validation, f2-vectors y accessibility (código).
 - Arregla Dependency Review (rojo en master), Generate SBOM y Merge SARIF.
