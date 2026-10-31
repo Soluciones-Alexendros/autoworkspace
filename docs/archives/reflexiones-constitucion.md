@@ -1,4 +1,4 @@
-# REFLEXIONES — ALIGNUX.constitucion
+# REFLEXIONES — constitucion
 
 Registro de los razonamientos del autor durante la revisión de
 `GLibUnix.signal_add` (keybackcon, `gui/main.py`). Contiene exclusivamente
@@ -52,7 +52,7 @@ Invalídalo. Se invalidan: `signal_add` (añadir lo que emite otro),
 `trap` (trampa/atasco), `copy` (confusión con edición), "loop" para el
 proceso en escucha, e invocar al núcleo como emisor solemne.
 
-## II. Constitución ALIGNUX
+## II. Constitución
 
 0. El nombre es conocimiento. Precisión binaria verificable por cualquiera
    con raciocinio elemental. Lo que no describe lo real con exactitud, sobra.
@@ -76,8 +76,8 @@ Su nombre queda invalidado bajo I.5; su función, admitida bajo VII.
 
 ## IV. Pendientes
 
-- Instalar este fichero en `$HOME/.agents/skills/ALIGNUX.constitucion/` _(ejemplo: ruta histórica; el slug actual en este repo es `alignux-constitucion`)_
-  (comando abajo). El staging anterior (`ALIGNUX.constitucion.SKILL.md`,
+- Instalar este fichero en `$HOME/.agents/skills/constitucion/`
+  (comando abajo). El staging anterior (`constitucion.SKILL.md`,
   con la propuesta `trap` ya invalidada) se elimina en el mismo comando.
 - Pipeline keybackcon en cola: fix `avanzar()` a suelo/techo estrictos +
   validación + PR.

@@ -1,12 +1,12 @@
 # P10 · Flujo plan/* y despliegue a producción solo en main (integración → publicación)
 
 ```
-Repos: Soluciones-Alexendros/autoworkspace (núcleo, host del canon tras P11) y Soluciones-Alexendros/website-landingpage-template (piloto). La Fase 0 toca los 11 repos web. La adopción completa en el resto va dentro de P4.
+Repos: Soluciones-Alexendros/autoworkspace (núcleo, host del canon tras P11) y Soluciones-Alexendros/website-landingpage-template (piloto). La Fase 0 toca los 10 repos web. La adopción completa en el resto va dentro de P4.
 Contexto obligatorio: /workspace/10-ingenieros/github-org-policy/2026-10-25/adr-flujo-planes-deploy.md (normas 1–18), plantillas en plantillas-p10/ y rulesets nuevos en rulesets/ (repo-plan-branches.json, repo-ci-gate-v2.json, repo-tags-release.json, environment-production.json).
 Prerrequisitos: F0 ninguno. F1–F3: P11 y P2 fusionados y GitHub App de CI instalada (vars.CI_APP_CLIENT_ID, secrets.CI_APP_PRIVATE_KEY). autoworkspace ya es público. Si falta, haz solo F0 y detente; nunca uses PAT ni GITHUB_TOKEN como sustituto de la App.
 Este plan se ejecuta ya con su propio flujo: rama plan/p10-flujo-plan-deploy en autoworkspace y PRs de tareas hacia ella. F0 va como hotfix/vercel-fase0 por repo, porque es urgente y no despliega.
 
-F0 · Freno inmediato de cuota Vercel (11 repos: website-landingpage-template, alignux-app, ecommerce-rejasballesta, saas-atlaps, ecommerce-graficasnasve, saas-afiladocs, webconfig, website-frontvalencia, vapelog, website-alexendrosme, Alexendros/alexendrosdev):
+F0 · Freno inmediato de cuota Vercel (10 repos: website-landingpage-template, ecommerce-rejasballesta, saas-atlaps, ecommerce-graficasnasve, saas-afiladocs, webconfig, website-frontvalencia, vapelog, website-alexendrosme, Alexendros/alexendrosdev):
 1. Un PR por repo, título "fix(ci): limita despliegues Vercel a main, plan/** y hotfix/**":
    - Fusiona en vercel.json existente (sin perder sus otras claves) el bloque git.deploymentEnabled de plantillas-p10/vercel.fase0.json: {"**": false, "main": true, "plan/**": true, "hotfix/**": true}. Quita cualquier ignoreCommand cuyo fin sea ahorrar despliegues: no ahorra cuota, según docs de Vercel.
    - Sustituye .github/renovate.json por plantillas-p10/renovate.json, o fusiónalo conservando reglas propias justificadas.

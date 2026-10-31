@@ -284,7 +284,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 - `verificar-performance` 2.0.0 -> 3.0.0 (major)
 - `verificar-repo` 1.0.0 -> 2.0.0 (major)
 
-  Reestructuración a 4 familias por fase SDLC (disenar/construir/verificar/operar); fusión email-proton+protonpass → construir-proton-suite v1.0.0; dominios alignux, datos, integraciones suprimidos
+  Reestructuración a 4 familias por fase SDLC (disenar/construir/verificar/operar); fusión email-proton+protonpass → construir-proton-suite v1.0.0; dominios datos, integraciones suprimidos
 
 ## 1.0.0 - 2026-09-27
 
