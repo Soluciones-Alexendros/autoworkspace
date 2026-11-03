@@ -198,3 +198,70 @@ def test_load_profile_family_corrupt_fallback(tmp_path: Path) -> None:
     p.write_text("{no-json", encoding="utf-8")
     fam, mgr, _did, _vid, _cod = common.load_profile_family(str(p))
     assert isinstance(fam, str) and isinstance(mgr, str)
+
+
+# --- PKG-03: kernel running vs installed (pacman) ---
+
+
+def test_check_pkg_03_pacman_linux_estandar_coincide() -> None:
+    c = common.FindingCollector()
+
+    def runner(cmd: str, timeout: int = 10) -> str:
+        if cmd == "uname -r":
+            return "6.12.1-arch1-1\n"
+        if cmd.startswith("pacman -Qo"):
+            return "/usr/lib/modules/6.12.1-arch1-1/vmlinuz is owned by linux 6.12.1.arch1-1\n"
+        return ""
+
+    common.check_pkg_03(c, "pacman", runner=runner)
+    assert c.findings[0]["status"] == "PASS"
+
+
+def test_check_pkg_03_pacman_linux_estandar_mismatch() -> None:
+    c = common.FindingCollector()
+
+    def runner(cmd: str, timeout: int = 10) -> str:
+        if cmd == "uname -r":
+            return "6.12.1-arch1-1\n"
+        if cmd.startswith("pacman -Qo"):
+            return ""  # módulos del kernel viejo ya eliminados
+        if cmd.startswith("pacman -Q linux "):
+            return "6.12.2.arch1-1\n"
+        return ""
+
+    common.check_pkg_03(c, "pacman", runner=runner)
+    assert c.findings[0]["status"] == "FAIL"
+
+
+def test_check_pkg_03_pacman_omarchy_no_es_falso_positivo() -> None:
+    """Regresión: linux-omarchy no está en la lista hardcodeada; debe PASS vía pacman -Qo."""
+    c = common.FindingCollector()
+
+    def runner(cmd: str, timeout: int = 10) -> str:
+        if cmd == "uname -r":
+            return "7.2.15-1-omarchy\n"
+        if cmd.startswith("pacman -Qo"):
+            return "/usr/lib/modules/7.2.15-1-omarchy/vmlinuz is owned by linux-omarchy 7.2.15-1\n"
+        return ""
+
+    common.check_pkg_03(c, "pacman", runner=runner)
+    assert c.findings[0]["status"] == "PASS"
+    assert "unknown" not in c.findings[0]["evidence"]
+
+
+def test_check_pkg_03_pacman_omarchy_reboot_pendiente_real() -> None:
+    """Kernel omarchy actualizado sin reiniciar: módulos viejos fuera, fallback detecta mismatch."""
+    c = common.FindingCollector()
+
+    def runner(cmd: str, timeout: int = 10) -> str:
+        if cmd == "uname -r":
+            return "7.2.8-9-omarchy\n"
+        if cmd.startswith("pacman -Qo"):
+            return ""  # /usr/lib/modules/7.2.8-9-omarchy ya no existe
+        if cmd.startswith("pacman -Q linux-omarchy"):
+            return "7.2.15-1\n"
+        return ""
+
+    common.check_pkg_03(c, "pacman", runner=runner)
+    assert c.findings[0]["status"] == "FAIL"
+    assert "7.2.15-1" in c.findings[0]["evidence"]

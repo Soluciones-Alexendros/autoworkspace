@@ -6,6 +6,10 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+### Fixed
+
+- local-maintenance: `check_pkg_03` (PKG-03) ya no reporta falso positivo "installed: unknown" en kernels con nombre de paquete no estandar (`linux-omarchy`, `linux-cachyos`, ...): detecta el dueño del vmlinuz del kernel en ejecucion via `pacman -Qo /usr/lib/modules/$(uname -r)/vmlinuz` con fallback a la lista de candidatos. La comparacion pasa a tokens `[.-]` (pkgver `6.12.1.arch1-1` vs uname `6.12.1-arch1-1`), lo que corrige tambien un FAIL latente en kernels Arch estandar al dia.
+
 ## [7.0.2] - 2026-10-29
 
 ### Fixed
