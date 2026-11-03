@@ -773,16 +773,28 @@ def check_pkg_03(collector: FindingCollector, pkg_mgr: str, runner: Callable[...
     running_kernel = _run_with(runner, "uname -r", 5).strip()
     installed_kernel = ""
     if pkg_mgr == "pacman":
-        for kernel_pkg in ("linux", "linux-lts", "linux-zen", "linux-hardened"):
-            kv = _run_with(runner, f"pacman -Q {kernel_pkg} 2>/dev/null | awk '{{print $2}}'").strip()
-            if kv:
-                installed_kernel = kv
-                break
+        # Primario generico: dueño del vmlinuz del kernel en ejecucion.
+        # Funciona con cualquier nombre de paquete (linux-omarchy, linux-cachyos...).
+        owner = _run_with(runner, f"pacman -Qo /usr/lib/modules/{running_kernel}/vmlinuz 2>/dev/null").strip()
+        m = re.search(r"is owned by \S+ (\S+)$", owner)
+        if m:
+            installed_kernel = m.group(1)
+        else:
+            # Fallback: el directorio de modulos del kernel en ejecucion ya no
+            # existe (kernel actualizado sin reiniciar) -> lista de candidatos.
+            for kernel_pkg in ("linux", "linux-lts", "linux-zen", "linux-hardened", "linux-omarchy", "linux-cachyos"):
+                kv = _run_with(runner, f"pacman -Q {kernel_pkg} 2>/dev/null | awk '{{print $2}}'").strip()
+                if kv:
+                    installed_kernel = kv
+                    break
         if not installed_kernel:
             installed_kernel = "unknown"
-        running_base = running_kernel.split("-")[0] if "-" in running_kernel else running_kernel
-        installed_base = installed_kernel.split("-")[0] if "-" in installed_kernel else installed_kernel
-        mismatch = running_base != installed_base
+        # Compara por tokens (separadores '.' y '-'): el pkgver de Arch usa
+        # '.' donde uname usa '-' ("6.12.1.arch1-1" vs "6.12.1-arch1-1") y
+        # los sabores añaden sufijo ("7.2.15-1" vs "7.2.15-1-omarchy").
+        tok_run = re.split(r"[.-]", running_kernel)
+        tok_ins = re.split(r"[.-]", installed_kernel)
+        mismatch = tok_run[: len(tok_ins)] != tok_ins
     elif pkg_mgr == "apt":
         installed_kernel = _run_with(
             runner,
