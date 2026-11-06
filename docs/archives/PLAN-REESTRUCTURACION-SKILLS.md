@@ -4,20 +4,20 @@ Fecha: 2026-09-26 · Repo: `agent-skills` (21 skills → objetivo 19)
 
 ## Petición inicial
 
-> Unifica: auditoria-360-web y web-audit bajo el nombre web-compliance / Suprime: datos-postgress / Integra: dependency-audit en codigo-seguridad y renombra a web-seguridad / Renombra: playwright-e2e-audit a web-playwright / Suprime: planificacion-archivos / Renombra: git-hooks a repo-precommit / Renombra: alignux-seguridad a linux-seguridad y alignux-mantenimiento a linux-mantenimiento / Para las skills de proton, extrae referencias y vincula directamente las mismas al contenido de: https://github.com/Soluciones-Alexendros/protonsuite-tools
+> Unifica: auditoria-360-web y web-audit bajo el nombre web-compliance / Suprime: datos-postgress / Integra: dependency-audit en codigo-seguridad y renombra a web-seguridad / Renombra: playwright-e2e-audit a web-playwright / Suprime: planificacion-archivos / Renombra: git-hooks a repo-precommit / Para las skills de proton, extrae referencias y vincula directamente las mismas al contenido de: https://github.com/Soluciones-Alexendros/protonsuite-tools
 
 ## Decisiones de alcance (cuestionario previo)
 
 1. **Split del dominio web en dos:** `auditoria-360-web` se convierte en `web-compliance` (absorbe y desarrolla todas las cuestiones de accesibilidad, legal, posicionamiento, etc.) y se crea `web-rendimiento` (todas las cuestiones de rapidez de carga, estabilidad, compatibilidad, renderizado, tecnologías, etc.).
 2. **`web-seguridad` queda en dominio web** (no se mueve a `codigo-*`).
-3. **Nuevo dominio `linux-*`** para `linux-seguridad` y `linux-mantenimiento` (antes `alignux-*`).
+3. **Nuevo dominio `linux-*`** para `linux-seguridad` y `linux-mantenimiento`.
 4. **Borrado directo** de las skills suprimidas, con limpieza de referencias.
 
 ## Pre-flight (verificado en exploración read-only)
 
-- 21 skills inventariadas. Leídos los `SKILL.md` de: `auditoria-360-web` (51 checks ACC/TEC/ONP/OFF/SEM/ANA/LEG; scripts `audit_page/contrast/score/report/selftest`), `web-audit` (CWV/Lighthouse + SEO + WCAG 2.1, sin scripts), `codigo-seguridad` (OWASP, 19 refs), `dependency-audit` (pipeline 7 etapas npm/Socket/depcheck/pip/cargo), `playwright-e2e-audit` (42 checks, 8 fases; scripts `discovery/measure/score/report/validate`), `git-hooks` (Husky), `alignux-seguridad` (postura), `alignux-mantenimiento` (R0–R3), `email-proton` (Bridge `127.0.0.1:1143/1025`), `protonpass` (pass-cli), `datos-postgres` (36 reglas), `planificacion-archivos`.
+- 21 skills inventariadas. Leídos los `SKILL.md` de: `auditoria-360-web` (51 checks ACC/TEC/ONP/OFF/SEM/ANA/LEG; scripts `audit_page/contrast/score/report/selftest`), `web-audit` (CWV/Lighthouse + SEO + WCAG 2.1, sin scripts), `codigo-seguridad` (OWASP, 19 refs), `dependency-audit` (pipeline 7 etapas npm/Socket/depcheck/pip/cargo), `playwright-e2e-audit` (42 checks, 8 fases; scripts `discovery/measure/score/report/validate`), `git-hooks` (Husky), `linux-seguridad` (postura), `linux-mantenimiento` (R0–R3), `email-proton` (Bridge `127.0.0.1:1143/1025`), `protonpass` (pass-cli), `datos-postgres` (36 reglas), `planificacion-archivos`.
 - Estándares: `docs/STANDARD.md` (frontmatter, cuerpo < 500 líneas, references planas, `name == carpeta`), `docs/TAXONOMY.md` (cerrada), validador `skill_spec.py` (`DOMINIOS`, `NAME_RE`, SEMVER), `README.md` (21 skills), `CHANGELOG.md` (Unreleased), `CONTRIBUTING.md` (bump major/minor/patch).
-- Referencias cruzadas detectadas vía grep: `repo-ending→git-hooks`, `upstash→datos-postgres`, `web-diseno/webapp-testing/design-system/repo-starting→web-audit/dependency-audit/playwright`, `alignux` mutuas, `proton` mutuas.
+- Referencias cruzadas detectadas vía grep: `repo-ending→git-hooks`, `upstash→datos-postgres`, `web-diseno/webapp-testing/design-system/repo-starting→web-audit/dependency-audit/playwright`, `proton` mutuas.
 - `protonsuite-tools` verificado: MCP multi-producto v1.4.0, 47 tools (Mail 14, Pass 4+, Drive 8+, Calendar stub), docs `bridge-core/mcp-tools/agent-quickstart/deployment`, licencia AGPL-3.0 vs MIT del repo (solo enlaces, no vendorizar código).
 - Riesgos: límite 500 líneas por `SKILL.md`, `skill_links`, deriva `main` vs tag pineado.
 
@@ -48,14 +48,12 @@ Fecha: 2026-09-26 · Repo: `agent-skills` (21 skills → objetivo 19)
 |---|---|
 | `playwright-e2e-audit` | `web-playwright` |
 | `git-hooks` | `repo-precommit` |
-| `alignux-seguridad` | `linux-seguridad` |
-| `alignux-mantenimiento` | `linux-mantenimiento` |
 
-- En cada una: `git mv`, actualizar `name:` del frontmatter (`name == carpeta`), `skill_links` internas (`repo-ending→repo-precommit`, mutuas `alignux→linux`), README y TAXONOMY.
+- En cada una: `git mv`, actualizar `name:` del frontmatter (`name == carpeta`), `skill_links` internas (`repo-ending→repo-precommit`), README y TAXONOMY.
 
 ## §5 — `docs/TAXONOMY.md` + validador + README + STANDARD
 
-- TAXONOMY: alta de `web-compliance`, `web-rendimiento`, `web-seguridad`, `web-playwright`, `repo-precommit`, `linux-seguridad`, `linux-mantenimiento`; baja de `auditoria-360-web`, `web-audit`, `codigo-seguridad`, `dependency-audit`, `playwright-e2e-audit`, `git-hooks`, `alignux-*`, `datos-postgres`, `planificacion-archivos`.
+- TAXONOMY: alta de `web-compliance`, `web-rendimiento`, `web-seguridad`, `web-playwright`, `repo-precommit`, `linux-seguridad`, `linux-mantenimiento`; baja de `auditoria-360-web`, `web-audit`, `codigo-seguridad`, `dependency-audit`, `playwright-e2e-audit`, `git-hooks`, `datos-postgres`, `planificacion-archivos`.
 - Validador `skill_spec.py`: añadir dominio `linux` (y `repo` si no existe) en `DOMINIOS`.
 - README: conteo 21 → 19 + tabla actualizada.
 - STANDARD: sin cambios salvo que se decida matizar el límite de 500 líneas ante fusiones grandes (se recomienda trocear a `references/`).
