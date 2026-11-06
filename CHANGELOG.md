@@ -6,6 +6,13 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.0.3] - 2026-11-03
+
+### Fixed
+
+- `local-maintenance` 7.0.0 -> 7.0.1 (patch)
+- local-maintenance: `check_pkg_03` (PKG-03) ya no reporta falso positivo "installed: unknown" en kernels con nombre de paquete no estandar (`linux-omarchy`, `linux-cachyos`, ...): detecta el dueño del vmlinuz del kernel en ejecucion via `pacman -Qo /usr/lib/modules/$(uname -r)/vmlinuz` con fallback a la lista de candidatos. La comparacion pasa a tokens `[.-]` (pkgver `6.12.1.arch1-1` vs uname `6.12.1-arch1-1`), lo que corrige tambien un FAIL latente en kernels Arch estandar al dia.
+
 ## [7.0.2] - 2026-10-29
 
 ### Fixed
@@ -314,7 +321,8 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 - Estructura `skills/<nombre>/` con frontmatter normalizado (`license: MIT`, `metadata` con autor, versión, dominio e idioma).
 - Validadores `tools/validate/` (spec + enlaces), CI en `.github/workflows/` y `run-validation.sh` agregado.
 
-[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v6.0.0...HEAD
+[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.0.3...HEAD
+[7.0.3]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.0.2...v7.0.3
 [6.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v5.0.0...v6.0.0
 [5.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v4.1.0...v5.0.0
 [4.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v4.0.0...v4.1.0
