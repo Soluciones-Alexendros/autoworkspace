@@ -97,7 +97,33 @@
                   "enum": ["yes", "no", "unknown"]
                 },
                 "approval_required": { "type": "boolean" },
+                "snapshot_required": { "type": "boolean" },
                 "recovery_required": { "type": "boolean" },
+                "timeout_seconds": { "type": "integer", "minimum": 1 },
+                "argv_template": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "completion_phases": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "DEFINE",
+                      "SCHEMAS",
+                      "IMPLEMENT",
+                      "VALIDATE",
+                      "INTEGRATE",
+                      "STATUS"
+                    ]
+                  }
+                },
+                "required_verifications": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
                 "description": { "type": "string" }
               }
             }

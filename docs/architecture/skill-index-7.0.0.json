@@ -164,6 +164,31 @@
       "compatibility": "cursor, pi"
     },
     {
+      "name": "project-autoworkspace",
+      "description": "Audit and improve the autoworkspace system itself: canon map, control plane, harnesses, migrations and self-change protocol. Use when self-auditing autoworkspace, checking harness A/B/C drift, or planning an approved change to the pipeline. Not for generic architecture reviews (→ project-architecture), continuing an arbitrary product plan (→ plan-continue), or publishing a release (→ project-publish). ES: autoauditoría autoworkspace, deriva de harnesses, mejora del propio sistema.",
+      "domain": "project",
+      "type": "orchestrator",
+      "language": "en",
+      "keywords": [
+        "project-autoworkspace",
+        "self-audit",
+        "harness-doctor",
+        "autoworkspace"
+      ],
+      "triggers": [
+        "audita autoworkspace",
+        "autoauditoría autoworkspace",
+        "deriva de harnesses",
+        "doctor nativo",
+        "harness A/B/C",
+        "mejora del propio sistema",
+        "project-autoworkspace",
+        "self-audit autoworkspace"
+      ],
+      "entry": "skills/project-autoworkspace/SKILL.md",
+      "compatibility": "cursor, pi"
+    },
+    {
       "name": "project-libraries",
       "description": "Dependency audit (SCA/CVE): multi-language pipeline (npm/pip/cargo/go/maven/gradle/composer/gem) to detect vulnerabilities, malware, typosquatting, unused dependencies and outdated. Use when performing dependency audit, SCA, CVE scanning, supply chain security or SBOM generation. Not for code security review (→ web-owasp) nor web compliance audits (→ web-compliance).",
       "domain": "project",

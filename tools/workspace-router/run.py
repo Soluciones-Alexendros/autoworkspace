@@ -24,7 +24,7 @@ from project_load import (  # noqa: E402
     handoff_for_phase,
     load_project,
 )
-from status_bump import advance_status, load_status  # noqa: E402
+from status_bump import advance_status, load_status, migrate_status  # noqa: E402
 
 
 def load_catalog() -> list[str]:
@@ -115,6 +115,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap.add_argument("--init", action="store_true", help="Create .autoworkspace scaffold")
     ap.add_argument("--list", action="store_true", help="List allowed skills (read-only)")
     ap.add_argument("--status", action="store_true", help="Show status.yaml (read-only)")
+    ap.add_argument("--migrate-status", action="store_true", help="Persist status schema migration explicitly")
     ap.add_argument(
         "--bump",
         action="store_true",
@@ -165,6 +166,15 @@ def _cmd_status(repo: Path, args: argparse.Namespace) -> int:
     except Exception as exc:  # el CLI informa de cualquier fallo de lectura
         return _fail(exc)
     print(json.dumps(status, ensure_ascii=False, indent=2) if args.json else status)
+    return 0
+
+
+def _cmd_migrate_status(repo: Path, args: argparse.Namespace) -> int:
+    try:
+        data = migrate_status(repo)
+    except (ValueError, OSError) as exc:
+        return _fail(exc)
+    print(json.dumps(data, ensure_ascii=False, indent=2) if args.json else "status migration complete")
     return 0
 
 
@@ -246,6 +256,10 @@ def _dispatch_phase(repo: Path, args: argparse.Namespace) -> int:
 
 
 def _dispatch(repo: Path, args: argparse.Namespace) -> int:
+    if args.migrate_status:
+        if args.phase or args.list or args.status or args.init:
+            return _fail("--migrate-status cannot be combined with other commands")
+        return _cmd_migrate_status(repo, args)
     if args.init and not args.phase and not args.list and not args.status:
         return _cmd_init(repo, args)
     if args.list:

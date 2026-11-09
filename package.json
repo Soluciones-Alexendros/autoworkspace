@@ -1,10 +1,21 @@
 {
   "name": "autoworkspace",
-  "version": "7.0.3",
-  "description": "Autoworkspace \u2014 agentic pipeline: spec \u2192 schemas/tests \u2192 code \u2192 validate \u2192 integrate \u2192 declarative status",
+  "version": "7.1.0",
+  "description": "Autoworkspace — agentic pipeline: spec → schemas/tests → code → validate → integrate → declarative status",
   "private": true,
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "skills": [
+      "./skills"
+    ],
+    "extensions": [
+      "./extensions/autoworkspace/index.ts"
+    ]
+  },
   "scripts": {
-    "prepare": "husky",
+    "prepare": "node scripts/prepare.mjs",
     "syntax-check": "python3 -m py_compile tools/validate/skill_spec.py tools/validate/skill_links.py tools/validate/release_coherence.py tools/validate/hygiene.py tools/validate/private_denylist.py tools/validate/g1_run_expressions.py tools/validate/ci_gate.py tools/contracts/loader.py tools/contracts/result.py tools/version/bump.py tools/version/cut_tag.py && echo 'syntax-check: OK'",
     "typecheck": "uv run --project tools --frozen mypy --config-file mypy.ini --strict .",
     "test": "uv run --project tools --frozen bash run-validation.sh --pytest-only --smoke-only",

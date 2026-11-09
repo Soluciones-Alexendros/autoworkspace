@@ -2,6 +2,18 @@
 
 `skills/` is the only catalog that is committed. Installers create symlinks; they do not copy skill bodies.
 
+## Pi native Git package (release installation)
+
+Install an immutable release as one Pi package; no symlink installer is needed:
+
+```bash
+pi install git:github.com/Soluciones-Alexendros/autoworkspace@v7.1.0
+```
+
+Use `--local` for a project-local declaration, subject to Pi project trust. `pi list` shows the configured package. Updating requires selecting a new tag explicitly; a pinned ref does not move on `pi update`. npm distribution is not part of this release channel.
+
+The symlink installers below remain the development flow for a local checkout.
+
 ## Public API (flat destinations)
 
 | Destination                               | Command                                                    |
@@ -10,11 +22,11 @@
 | Project `.cursor/skills` via `--target .` | `bash scripts/install-cursor.sh --target .`                |
 | Project `.cursor/skills` explicit         | `bash scripts/install-cursor.sh --target .cursor/skills`   |
 | User `~/.cursor/skills`                   | `bash scripts/install-cursor.sh --user`                    |
-| Any directory (flat 16 symlinks)          | `bash scripts/install-cursor.sh --target /tmp/test-cursor` |
+| Any directory (flat 17 symlinks)          | `bash scripts/install-cursor.sh --target /tmp/test-cursor` |
 | Project `.pi/skills` (default)            | `bash scripts/install-pi.sh`                               |
 | Project `.pi/skills` via `--target .`     | `bash scripts/install-pi.sh --target .`                    |
 | User `~/.pi/agent/skills`                 | `bash scripts/install-pi.sh --user`                        |
-| Any directory (flat 16 symlinks)          | `bash scripts/install-pi.sh --target /tmp/test-pi`         |
+| Any directory (flat 17 symlinks)          | `bash scripts/install-pi.sh --target /tmp/test-pi`         |
 
 `--target .` (or the checkout root) resolves to the harness default skills directory — it does **not** place symlinks in the repository root. Arbitrary `--target DIR` stays flat (compat 7.0.0).
 
@@ -30,13 +42,23 @@
 
 The wrapper nests under `.cursor/skills` or `.pi/skills` unless the path already ends in a skills directory. `.` and any other relative `--target` anchor to this checkout, not the current working directory. `--user` overrides `--target` and warns on stderr. Public `install-cursor.sh --target /tmp/test-cursor` remains flat.
 
+### Cursor component modes
+
+The default `--components skills` is explicitly a partial installation. To install skills, rules, agents and hooks transactionally into a project root:
+
+```bash
+bash scripts/install.sh --harness cursor --components full --target /tmp/ai-cursor --yes --json
+```
+
+A full target is the project root, not its skills directory. `--user --components full` targets `~/.cursor`. Full dry-run writes nothing; uninstall uses the full manifest and retains foreign or changed resources. The Cursor plugin remains the native distribution for the complete harness.
+
 ## Pi notes
 
 Pi loads project skills from `.pi/skills/` and user skills from `~/.pi/agent/skills/`. Source: [Pi Configuration](https://pi.dev/docs/latest/configuration). Skill loading behavior: [Skills](https://pi.dev/docs/latest/skills).
 
 After install or update of user-level skills, run `/reload` (or start a new Pi session) so `<available_skills>` picks up the catalog.
 
-Quickstart (`--user` writes `$HOME/.pi/agent/skills`; the fourth line is the idempotent rerun, `changed` 0 and `skipped` 16):
+Quickstart (`--user` writes `$HOME/.pi/agent/skills`; the fourth line is the idempotent rerun, `changed` 0 and `skipped` 17):
 
 ```bash
 bash scripts/install-pi.sh
@@ -44,6 +66,16 @@ bash scripts/install-pi.sh --user
 bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq .installed
 bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq '{installed,changed,skipped}'
 ```
+
+## Verified release bootstrap
+
+With `gh`, `uv` and the selected harness available, this one-line flow clones the installer at an immutable tag, downloads the release assets, verifies SHA-256 and provenance before extraction, installs, and runs the doctor:
+
+```bash
+git clone --depth 1 --branch v7.1.0 https://github.com/Soluciones-Alexendros/autoworkspace.git /tmp/autoworkspace-7.1.0 && bash /tmp/autoworkspace-7.1.0/scripts/bootstrap.sh --version 7.1.0 --harness cursor --target /path/to/project --json
+```
+
+Use `--harness pi` for the bootstrap flow, or the simpler native `pi install git:…@vX.Y.Z` command above. `--dry-run` performs no writes. A checksum, attestation, extraction or doctor failure prevents installation or triggers owned-resource rollback. No `curl | bash` is used.
 
 ## Execution and privileges
 

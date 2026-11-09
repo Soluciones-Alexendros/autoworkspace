@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from execution.ops import NON_TERMINAL, OpResult
+from execution.registry import OpSpec, get_operation, known_operation_ids
 
 TERMINAL_OK = frozenset({"succeeded"})
 SCHEMA_VERSION = 1
@@ -40,6 +41,7 @@ _EXCLUDE_PREFIXES = (
     ".autoworkspace/status.yaml.tmp",
     ".autoworkspace/journal/",
     ".autoworkspace/diary/",
+    ".autoworkspace/runs/",
 )
 
 _RUN_ID_RE = re.compile(
@@ -47,15 +49,14 @@ _RUN_ID_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Exact operation_id allowlists per phase (no permissive prefixes).
-# local_gates / validate_snapshot never complete DEFINE or IMPLEMENT.
+# Compatibility view derived from the canonical registry; never an independent allowlist.
 PHASE_EVIDENCE_OPS: dict[str, frozenset[str]] = {
-    "DEFINE": frozenset({"plan_specification", "spec_write"}),
-    "SCHEMAS": frozenset({"plan_specification", "schema_write"}),
-    "IMPLEMENT": frozenset({"implement"}),
-    "VALIDATE": frozenset({"local_gates", "validate", "validate_snapshot"}),
-    "INTEGRATE": frozenset({"local_gates", "integrate"}),
-    "STATUS": frozenset({"local_gates", "status"}),
+    phase: frozenset(
+        operation_id
+        for operation_id in known_operation_ids()
+        if phase in get_operation(operation_id).completion_phases
+    )
+    for phase in ("DEFINE", "SCHEMAS", "IMPLEMENT", "VALIDATE", "INTEGRATE", "STATUS")
 }
 
 # Required fields for succeeded evidence (store and load).
@@ -72,15 +73,14 @@ REQUIRED_SUCCEEDED_FIELDS = (
     "target",
 )
 
-# Phase → required verification kinds (must appear with ok=True).
-PHASE_REQUIRED_VERIFICATIONS: dict[str, frozenset[str]] = {
-    "DEFINE": frozenset({"spec_deliverable"}),
-    "SCHEMAS": frozenset({"schema_deliverable"}),
-    "IMPLEMENT": frozenset({"implementation_deliverable"}),
-    "VALIDATE": frozenset({"gate_result"}),
-    "INTEGRATE": frozenset({"integrate_result"}),
-    "STATUS": frozenset({"status_result"}),
-}
+def _completion_spec(operation_id: str, phase: str) -> OpSpec:
+    try:
+        spec = get_operation(operation_id)
+    except KeyError as exc:
+        raise ValueError(f"evidence operation {operation_id!r} cannot complete phase {phase}") from exc
+    if phase not in spec.completion_phases:
+        raise ValueError(f"evidence operation {operation_id!r} cannot complete phase {phase}")
+    return spec
 
 
 def _excluded(rel: str) -> bool:
@@ -345,17 +345,14 @@ def _validate_digests(data: dict[str, Any]) -> None:
 def _validate_completion_requirements(data: dict[str, Any]) -> None:
     phase = str(data["phase"])
     op = str(data["operation_id"])
-    allowed = PHASE_EVIDENCE_OPS.get(phase)
-    if allowed is None:
-        raise ValueError(f"unknown phase: {phase}")
-    if op not in allowed:
-        raise ValueError(f"evidence operation {op!r} cannot complete phase {phase}")
-    required_v = PHASE_REQUIRED_VERIFICATIONS.get(phase, frozenset())
+    spec = _completion_spec(op, phase)
+    if data.get("skill") != spec.skill:
+        raise ValueError(f"evidence skill {data.get('skill')!r} does not match operation skill {spec.skill!r}")
     verifications = data.get("verifications")
     if not isinstance(verifications, list) or not verifications:
         raise ValueError("evidence verifications required and non-empty for complete")
     kinds = {str(v.get("kind")) for v in verifications if isinstance(v, dict) and v.get("ok") is True}
-    missing = required_v - kinds
+    missing = set(spec.required_verifications) - kinds
     if missing:
         raise ValueError(f"evidence missing required verifications: {sorted(missing)}")
 
@@ -433,6 +430,8 @@ def _store_payload(
         "phase": bindings.get("phase") or "",
         "skill": bindings.get("skill") or "",
         "target": bindings.get("target") or "",
+        "plan_id": bindings.get("plan_id") or "",
+        "task_id": bindings.get("task_id") or "",
         "verifications": list(bindings.get("verifications") or []),
         "stored_at": now,
     }
@@ -446,6 +445,8 @@ def store_result(  # noqa: PLR0913  # API pública de evidencia: keyword-only, e
     phase: str = "",
     skill: str = "",
     target: str = "",
+    plan_id: str = "",
+    task_id: str = "",
     input_digest: str | None = None,
     output_digest: str | None = None,
     verifications: list[dict[str, Any]] | None = None,
@@ -475,6 +476,8 @@ def store_result(  # noqa: PLR0913  # API pública de evidencia: keyword-only, e
         "phase": phase,
         "skill": skill,
         "target": target,
+        "plan_id": plan_id,
+        "task_id": task_id,
         "verifications": verifications,
     }
     payload = _store_payload(result, run_id, bindings, (in_digest, out_digest), root)
@@ -552,12 +555,7 @@ def _check_phase_operation(data: dict[str, Any], expected_phase: str) -> None:
     op = str(data.get("operation_id") or "")
     if not op:
         raise ValueError("evidence missing operation_id")
-    allowed = PHASE_EVIDENCE_OPS.get(expected_phase)
-    if allowed is None:
-        raise ValueError(f"unknown phase: {expected_phase}")
-    # Exact match only — no permissive prefixes (H02)
-    if op not in allowed:
-        raise ValueError(f"evidence operation {op!r} cannot complete phase {expected_phase}")
+    _completion_spec(op, expected_phase)
 
 
 def _check_expected_field(

@@ -33,6 +33,14 @@ tools:
         approval_required: true
         recovery_required: false
         description: local-email:send_mail
+      - id: proton_send
+        effect: communicate-external
+        dry_run: "no"
+        idempotency: "no"
+        approval_required: true
+        recovery_required: false
+        timeout_seconds: 120
+        description: local-email:proton_send
       - id: access_secret
         effect: access-secret
         dry_run: "no"
@@ -67,6 +75,7 @@ tools:
         dry_run: "yes"
         idempotency: "no"
         approval_required: true
+        snapshot_required: true
         recovery_required: true
         description: local-maintenance:clean_routine
       - id: create_snapshot
@@ -75,13 +84,86 @@ tools:
         idempotency: "no"
         approval_required: true
         recovery_required: false
+        timeout_seconds: 600
         description: local-maintenance:create_snapshot
+      - id: validate_snapshot
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: local-maintenance:validate_snapshot
+      - id: clean_package_cache
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        snapshot_required: true
+        recovery_required: true
+        timeout_seconds: 600
+        description: local-maintenance:clean_package_cache
+      - id: clean_journal
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        snapshot_required: true
+        recovery_required: true
+        timeout_seconds: 600
+        description: local-maintenance:clean_journal
+      - id: clean_orphans
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        snapshot_required: true
+        recovery_required: true
+        timeout_seconds: 600
+        description: local-maintenance:clean_orphans
+      - id: clean_temp
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        snapshot_required: true
+        recovery_required: true
+        timeout_seconds: 600
+        description: local-maintenance:clean_temp
+      - id: clean_needrestart
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        snapshot_required: true
+        recovery_required: true
+        timeout_seconds: 600
+        description: local-maintenance:clean_needrestart
+      - id: update_firmware
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        snapshot_required: true
+        recovery_required: true
+        timeout_seconds: 900
+        description: local-maintenance:update_firmware
+      - id: clean_userspace_caches
+        effect: mutate-host
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: true
+        snapshot_required: true
+        recovery_required: true
+        timeout_seconds: 600
+        description: local-maintenance:clean_userspace_caches
       - id: restore_snapshot
         effect: mutate-host
         dry_run: "yes"
         idempotency: "no"
         approval_required: true
+        snapshot_required: true
         recovery_required: true
+        timeout_seconds: 600
         description: local-maintenance:restore_snapshot
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
@@ -148,12 +230,32 @@ tools:
         approval_required: false
         recovery_required: false
         description: plan-continue:init
+      - id: schema_write
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        completion_phases: [SCHEMAS]
+        required_verifications: [schema_deliverable]
+        description: plan-continue:schema_write
+      - id: integrate
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        completion_phases: [INTEGRATE]
+        required_verifications: [integrate_result]
+        description: plan-continue:integrate
       - id: status
         effect: read
         dry_run: "yes"
         idempotency: "yes"
         approval_required: false
         recovery_required: false
+        completion_phases: [STATUS]
+        required_verifications: [status_result]
         description: plan-continue:status
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
@@ -175,6 +277,8 @@ tools:
         idempotency: "no"
         approval_required: false
         recovery_required: false
+        completion_phases: [DEFINE]
+        required_verifications: [spec_deliverable]
         description: plan-specification:specify
       - id: plan
         effect: write-workspace
@@ -217,6 +321,8 @@ tools:
         idempotency: "no"
         approval_required: false
         recovery_required: false
+        completion_phases: [VALIDATE]
+        required_verifications: [gate_result]
         description: plan-validators:red_green
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
@@ -239,6 +345,9 @@ tools:
         idempotency: "yes"
         approval_required: false
         recovery_required: false
+        timeout_seconds: 1800
+        completion_phases: [VALIDATE]
+        required_verifications: [gate_result]
         description: project-publish:local_gates (may write via gate-husky.sh)
       - id: publish
         effect: communicate-external
@@ -250,6 +359,36 @@ tools:
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
       stay blocked without approval.
+  - tool_id: project-autoworkspace
+    skill: project-autoworkspace
+    entrypoint: tools/harness
+    description: Execution tool for skill project-autoworkspace
+    execution_kind: agent
+    distribution: workspace-required
+    shared_dependencies:
+      - tools/harness
+      - tools/execution
+    system_requirements:
+      binaries: []
+      network: false
+    operations:
+      - id: self_audit
+        effect: read
+        dry_run: "yes"
+        idempotency: "yes"
+        approval_required: false
+        recovery_required: false
+        description: project-autoworkspace:self_audit
+      - id: plan_self_change
+        effect: write-workspace
+        dry_run: "yes"
+        idempotency: "no"
+        approval_required: false
+        recovery_required: false
+        completion_phases: [DEFINE]
+        required_verifications: [spec_deliverable]
+        description: project-autoworkspace:plan_self_change
+    automation_limits: No publish operations; hand off to project-publish for release.
   - tool_id: role-back
     skill: role-back
     entrypoint: tools/execution
@@ -267,6 +406,8 @@ tools:
         idempotency: "no"
         approval_required: false
         recovery_required: false
+        completion_phases: [IMPLEMENT]
+        required_verifications: [implementation_deliverable]
         description: role-back:implement_api
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
@@ -288,6 +429,8 @@ tools:
         idempotency: "no"
         approval_required: false
         recovery_required: false
+        completion_phases: [IMPLEMENT]
+        required_verifications: [implementation_deliverable]
         description: role-clean-code:refactor
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
@@ -309,6 +452,8 @@ tools:
         idempotency: "no"
         approval_required: false
         recovery_required: false
+        completion_phases: [IMPLEMENT]
+        required_verifications: [implementation_deliverable]
         description: role-design:deliver_visual
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
@@ -330,6 +475,8 @@ tools:
         idempotency: "no"
         approval_required: false
         recovery_required: false
+        completion_phases: [IMPLEMENT]
+        required_verifications: [implementation_deliverable]
         description: role-front:implement_ui
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators

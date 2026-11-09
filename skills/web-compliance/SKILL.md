@@ -4,7 +4,7 @@ description: "Web compliance audit: accessibility (WCAG 2.2 AA / EN 301 549), le
 license: MIT
 metadata:
   author: "Soluciones-Alexendros (adapted)"
-  version: "7.0.0"
+  version: "7.1.0"
   domain: web
   type: audit
   language: en

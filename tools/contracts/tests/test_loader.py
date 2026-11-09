@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 BLOCKED_EXIT_CODE = 3
-EXPECTED_REGISTRY_TOOLS = 11
+EXPECTED_REGISTRY_TOOLS = 12
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))

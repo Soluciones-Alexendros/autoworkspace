@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autoworkspace.local/schemas/harness-report.schema.json",
+  "title": "Autoworkspace harness doctor report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "harness",
+    "harness_version",
+    "package_version",
+    "source",
+    "ref",
+    "target",
+    "components",
+    "checks",
+    "capabilities",
+    "outcome",
+    "reasons"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "harness": { "type": "string", "enum": ["pi", "cursor", "all"] },
+    "harness_version": { "type": ["string", "null"] },
+    "package_version": { "type": ["string", "null"] },
+    "source": { "type": "string" },
+    "ref": { "type": "string" },
+    "target": { "type": "string" },
+    "components": { "type": "array", "items": { "type": "string" } },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "level", "outcome", "detail", "required"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "level": { "type": "string", "enum": ["A", "B", "C", "contract"] },
+          "outcome": {
+            "type": "string",
+            "enum": ["pass", "fail", "blocked", "not_run", "not_applicable"]
+          },
+          "detail": { "type": "string" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["pass", "fail", "blocked", "not_run"]
+    },
+    "reasons": { "type": "array", "items": { "type": "string" } }
+  }
+}

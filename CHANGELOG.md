@@ -6,6 +6,28 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.1.0] - 2026-11-09
+
+- `local-email` 7.0.0 -> 7.1.0 (minor)
+- `local-maintenance` 7.0.1 -> 7.1.0 (minor)
+- `local-security` 7.0.0 -> 7.1.0 (minor)
+- `plan-continue` 7.0.0 -> 7.1.0 (minor)
+- `plan-specification` 7.0.0 -> 7.1.0 (minor)
+- `plan-validators` 7.0.0 -> 7.1.0 (minor)
+- `project-architecture` 7.0.1 -> 7.1.0 (minor)
+- `project-autoworkspace` 1.0.0 (new) (minor)
+- `project-libraries` 7.0.0 -> 7.1.0 (minor)
+- `project-publish` 7.0.0 -> 7.1.0 (minor)
+- `role-back` 7.0.0 -> 7.1.0 (minor)
+- `role-clean-code` 7.0.0 -> 7.1.0 (minor)
+- `role-design` 7.0.0 -> 7.1.0 (minor)
+- `role-front` 7.0.0 -> 7.1.0 (minor)
+- `web-compliance` 7.0.0 -> 7.1.0 (minor)
+- `web-owasp` 7.0.0 -> 7.1.0 (minor)
+- `web-performance` 7.0.0 -> 7.1.0 (minor)
+
+  Harness natives, orchestration adapters, bootstrap attestation, project-autoworkspace skill 17
+
 ## [7.0.3] - 2026-11-03
 
 ### Fixed
@@ -321,7 +343,8 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 - Estructura `skills/<nombre>/` con frontmatter normalizado (`license: MIT`, `metadata` con autor, versión, dominio e idioma).
 - Validadores `tools/validate/` (spec + enlaces), CI en `.github/workflows/` y `run-validation.sh` agregado.
 
-[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.0.3...HEAD
+[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.0...HEAD
+[7.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.0.3...v7.1.0
 [7.0.3]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.0.2...v7.0.3
 [6.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v5.0.0...v6.0.0
 [5.0.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v4.1.0...v5.0.0

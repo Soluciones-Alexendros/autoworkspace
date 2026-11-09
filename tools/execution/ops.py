@@ -7,7 +7,9 @@ import signal
 import subprocess
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from execution.approval import (
@@ -32,6 +34,16 @@ class OpResult:
     effect: str
     run_id: str = ""
     plan_digest: str = ""
+
+
+@dataclass(frozen=True)
+class VerifiedExecution:
+    run_id: str
+    operation_id: str
+    outcome: str
+    input_digest: str
+    output_digest: str
+    result: OpResult
 
 
 SHELL_ESCAPES = {"bash", "sh", "dash", "zsh"}
@@ -312,6 +324,127 @@ def _run_subprocess(  # noqa: PLR0913  # ejecutor: keyword-only, espejo de la op
             run_id=run_id,
             plan_digest=digest,
         )
+
+
+def _failed_verification(result: OpResult, detail: str) -> OpResult:
+    return OpResult(
+        operation_id=result.operation_id,
+        outcome="failed",
+        returncode=1,
+        duration_ms=result.duration_ms,
+        detail=detail[:500],
+        effect=result.effect,
+        run_id=result.run_id,
+        plan_digest=result.plan_digest,
+    )
+
+
+def verify_and_store(  # noqa: PLR0913  # API pública: evidencia de una ejecución ya realizada
+    result: OpResult,
+    *,
+    repo: Path,
+    input_digest: str,
+    phase: str,
+    skill: str,
+    target: str,
+    plan_id: str,
+    task_id: str,
+    artifacts: list[str | dict[str, Any]],
+    verifier: Callable[[OpResult, Path], list[dict[str, Any]]],
+    verification_repo: Path | None = None,
+) -> VerifiedExecution:
+    """Verify an actual operation result and bind it to artifacts and task identity."""
+    if not plan_id.strip() or not task_id.strip():
+        raise ValueError("plan_id and task_id required")
+    if not artifacts:
+        raise ValueError("artifacts required for verified evidence")
+    root = Path(repo).resolve()
+    verify_root = (verification_repo or root).resolve()
+    spec = get_operation(result.operation_id)
+    if spec.skill != skill:
+        raise ValueError(f"skill {skill!r} does not match operation skill {spec.skill!r}")
+    from execution.evidence import store_result, work_digest  # noqa: PLC0415
+
+    verifications: list[dict[str, Any]] = []
+    if result.outcome == "succeeded":
+        try:
+            verifications = verifier(result, verify_root)
+            kinds = {str(v.get("kind")) for v in verifications if isinstance(v, dict) and v.get("ok") is True}
+            if not verifications or any(
+                not isinstance(v, dict) or v.get("ok") is not True or not str(v.get("kind", "")).strip()
+                for v in verifications
+            ):
+                result = _failed_verification(result, "verification failed or returned an invalid result")
+            elif set(spec.required_verifications) - kinds:
+                missing = sorted(set(spec.required_verifications) - kinds)
+                result = _failed_verification(result, f"missing required verifications: {missing}")
+        except Exception as exc:
+            result = _failed_verification(result, f"verifier error: {type(exc).__name__}: {exc}")
+    output_digest = work_digest(root)
+    run_id = result.run_id
+    if result.outcome in {"succeeded", "failed"}:
+        run_id = store_result(
+            root,
+            result,
+            artifacts=artifacts,
+            phase=phase,
+            skill=skill,
+            target=target,
+            plan_id=plan_id,
+            task_id=task_id,
+            input_digest=input_digest,
+            output_digest=output_digest,
+            verifications=verifications,
+            require_complete_fields=result.outcome == "succeeded",
+        )
+    return VerifiedExecution(run_id, result.operation_id, result.outcome, input_digest, output_digest, result)
+
+
+def run_verified(  # noqa: PLR0913  # API pública: contexto completo de ejecución y evidencia
+    operation_id: str,
+    params: dict[str, Any] | None = None,
+    *,
+    repo: Path,
+    phase: str,
+    skill: str,
+    target: str,
+    plan_id: str,
+    task_id: str,
+    artifacts: list[str | dict[str, Any]],
+    verifier: Callable[[OpResult, Path], list[dict[str, Any]]] | None,
+    cwd: str | None = None,
+) -> VerifiedExecution:
+    """Execute a registered operation and persist only independently verified success."""
+    if verifier is None:
+        raise ValueError("verifier required before execution")
+    if not plan_id.strip() or not task_id.strip():
+        raise ValueError("plan_id and task_id required")
+    if not artifacts:
+        raise ValueError("artifacts required before execution")
+    spec = get_operation(operation_id)
+    if spec.skill != skill:
+        raise ValueError(f"skill {skill!r} does not match operation skill {spec.skill!r}")
+    root = Path(repo).resolve()
+    if not root.is_dir():
+        raise ValueError(f"repo is not a directory: {root}")
+
+    # Local import avoids the ops ↔ evidence module cycle.
+    from execution.evidence import work_digest  # noqa: PLC0415
+
+    input_digest = work_digest(root)
+    result = run_registered(operation_id, params, target=target, cwd=cwd)
+    return verify_and_store(
+        result,
+        repo=root,
+        input_digest=input_digest,
+        phase=phase,
+        skill=skill,
+        target=target,
+        plan_id=plan_id,
+        task_id=task_id,
+        artifacts=artifacts,
+        verifier=verifier,
+    )
 
 
 def run_operation(  # noqa: PLR0913  # API pública: keyword-only, espejo del schema

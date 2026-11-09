@@ -72,7 +72,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       id-token: write
-      contents: read
+      contents: write
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -86,6 +86,15 @@ jobs:
           if [ -z "$VERSION" ]; then VERSION="${GITHUB_REF_NAME#v}"; fi
           git archive --format=tar.gz --prefix="autoworkspace-${VERSION}/" -o "autoworkspace-${VERSION}.tar.gz" HEAD
           echo "ARCHIVE=autoworkspace-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+      - name: Checksum source archive
+        run: sha256sum "${ARCHIVE}" > SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: ${{ env.ARCHIVE }}
+      - name: Upload attested release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${VERSION:-${GITHUB_REF_NAME#v}}"
+          gh release upload "v${VERSION}" "${ARCHIVE}" SHA256SUMS

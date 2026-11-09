@@ -4,7 +4,7 @@ description: "Specialist role for UI/UX and visual systems: intentional visual d
 license: MIT
 metadata:
   author: "Soluciones-Alexendros (adapted)"
-  version: "7.0.0"
+  version: "7.1.0"
   domain: role
   type: atomic
   language: en

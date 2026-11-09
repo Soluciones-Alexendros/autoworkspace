@@ -20,7 +20,7 @@ from status_bump import advance_status, load_status  # noqa: E402
 DIG = "e" * 64
 
 
-def _ok_run(repo: Path, op: str = "plan_specification", phase: str = "DEFINE") -> str:
+def _ok_run(repo: Path, op: str = "specify", phase: str = "DEFINE") -> str:
     (repo / "keepalive.txt").write_text("x", encoding="utf-8")
     art = repo / "artifact.txt"
     art.write_text("ok")
@@ -46,7 +46,7 @@ def _ok_run(repo: Path, op: str = "plan_specification", phase: str = "DEFINE") -
             plan_digest=DIG,
         ),
         phase=phase,
-        skill="plan-specification",
+        skill={"DEFINE": "plan-specification", "SCHEMAS": "plan-continue"}.get(phase, "plan-continue"),
         target="/fixture",
         artifacts=[str(art)],
         verifications=[{"kind": kind, "ok": True}],
@@ -89,7 +89,7 @@ class TestStatusBump(unittest.TestCase):
             rid2 = store_result(
                 root,
                 OpResult(
-                    operation_id="local_gates",
+                    operation_id="integrate",
                     outcome="succeeded",
                     returncode=0,
                     duration_ms=1,
@@ -99,7 +99,7 @@ class TestStatusBump(unittest.TestCase):
                     plan_digest=DIG,
                 ),
                 phase="INTEGRATE",
-                skill="project-publish",
+                skill="plan-continue",
                 target="/fixture",
                 artifacts=[str(art)],
                 verifications=[{"kind": "integrate_result", "ok": True}],
@@ -110,7 +110,7 @@ class TestStatusBump(unittest.TestCase):
                 advance_status(
                     root,
                     phase="INTEGRATE",
-                    skill="project-publish",
+                    skill="plan-continue",
                     evidence_ok=True,
                     run_id=rid2,
                     target="/fixture",
@@ -133,11 +133,11 @@ class TestStatusBump(unittest.TestCase):
             self.assertEqual(s1["advance"], 1)
             self.assertEqual(s1["state_revision"], 1)
             self.assertEqual(s1["version"], "0.1.0")
-            rid2 = _ok_run(root, "plan_specification", phase="SCHEMAS")
+            rid2 = _ok_run(root, "schema_write", phase="SCHEMAS")
             s2 = advance_status(
                 root,
                 phase="SCHEMAS",
-                skill="plan-specification",
+                skill="plan-continue",
                 evidence_ok=True,
                 run_id=rid2,
                 bump_product_version=True,

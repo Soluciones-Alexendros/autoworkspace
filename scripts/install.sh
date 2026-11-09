@@ -10,6 +10,8 @@ USER_MODE=false
 YES=false
 JSON_OUT=false
 DRY_RUN=false
+UNINSTALL=false
+COMPONENTS="skills"
 
 reject_parent_segments() {
   local rest="${1%/}"
@@ -26,6 +28,19 @@ reject_parent_segments() {
       break
     fi
   done
+}
+
+resolve_project_root() {
+  local t="$1"
+  reject_parent_segments "$t" || return $?
+  if [[ "$t" != "/" && "$t" == */ ]]; then t="${t%/}"; fi
+  if [[ "$t" == "." ]]; then
+    echo "$ROOT"
+  elif [[ "$t" != /* ]]; then
+    echo "$ROOT/${t#./}"
+  else
+    echo "$t"
+  fi
 }
 
 is_skills_dir() {
@@ -91,19 +106,27 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --user) USER_MODE=true; shift ;;
+    --components)
+      if [[ $# -lt 2 ]]; then echo "ERROR: --components requires skills|full" >&2; exit 2; fi
+      COMPONENTS="$2"
+      shift 2
+      ;;
     --yes|-y) YES=true; shift ;;
     --json) JSON_OUT=true; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
+    --uninstall) UNINSTALL=true; shift ;;
     --help|-h)
       cat <<'HELP'
-Usage: bash scripts/install.sh --harness cursor|pi [--target DIR] [--user] [--yes] [--dry-run] [--json]
+Usage: bash scripts/install.sh --harness cursor|pi [--components skills|full] [--target DIR] [--user] [--yes] [--dry-run] [--uninstall] [--json]
 
   --harness cursor|pi   Required. Which harness installer to run.
   --target DIR          Destination project directory. '.' is this script's checkout
                         ($ROOT), not the cwd. Relative paths anchor to $ROOT.
                         A path ending in .cursor/skills, .pi/skills, or .pi/agent/skills
                         is used as-is. Default without --user: /tmp/ai-<harness>, then nested.
-  --user                Install into the harness user skills directory. Overrides --target.
+  --components skills|full  Cursor full installs skills, rules, agents and hooks.
+  --user                Install into the harness user directory. Overrides --target.
+  --uninstall           Remove only owned resources recorded in the manifest.
   --yes                 Non-interactive (forwarded).
   --dry-run             No filesystem writes (forwarded).
   --json                JSON on stdout (forwarded).
@@ -118,6 +141,34 @@ done
 if [[ "$HARNESS" != "cursor" && "$HARNESS" != "pi" ]]; then
   echo "ERROR: --harness cursor|pi required" >&2
   exit 2
+fi
+if [[ "$COMPONENTS" != "skills" && "$COMPONENTS" != "full" ]]; then
+  echo "ERROR: --components must be skills|full" >&2
+  exit 2
+fi
+
+if [[ "$COMPONENTS" == "full" ]]; then
+  if [[ "$HARNESS" != "cursor" ]]; then
+    echo "ERROR: --components full is only supported for cursor" >&2
+    exit 2
+  fi
+  if [[ "$USER_MODE" == true ]]; then
+    if [[ -n "$TARGET" ]]; then echo "WARN: --user overrides --target; ignoring --target $TARGET" >&2; fi
+    FULL_TARGET="${HOME}/.cursor"
+  else
+    if [[ -z "$TARGET" ]]; then TARGET="/tmp/ai-cursor"; fi
+    if is_skills_dir "$TARGET"; then
+      echo "ERROR: full Cursor install expects a project root, not a skills directory" >&2
+      exit 2
+    fi
+    FULL_TARGET="$(resolve_project_root "$TARGET")" || exit $?
+  fi
+  FULL_ARGS=(--source "$ROOT" --target "$FULL_TARGET")
+  if [[ "$YES" == true ]]; then FULL_ARGS+=(--yes); fi
+  if [[ "$JSON_OUT" == true ]]; then FULL_ARGS+=(--json); fi
+  if [[ "$DRY_RUN" == true ]]; then FULL_ARGS+=(--dry-run); fi
+  if [[ "$UNINSTALL" == true ]]; then FULL_ARGS+=(--uninstall); fi
+  exec python3 "$ROOT/tools/harness/cursor_install.py" "${FULL_ARGS[@]}"
 fi
 
 if [[ "$USER_MODE" == true ]]; then
@@ -136,6 +187,7 @@ fi
 if [[ "$YES" == true ]]; then ARGS+=("--yes"); fi
 if [[ "$JSON_OUT" == true ]]; then ARGS+=("--json"); fi
 if [[ "$DRY_RUN" == true ]]; then ARGS+=("--dry-run"); fi
+if [[ "$UNINSTALL" == true ]]; then ARGS+=("--uninstall"); fi
 
 if [[ "$HARNESS" == "cursor" ]]; then
   exec bash "$ROOT/scripts/install-cursor.sh" "${ARGS[@]}"
