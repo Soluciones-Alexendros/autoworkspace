@@ -28,7 +28,12 @@ def _commands(names: list[str], origin: str = "package") -> list[dict[str, Any]]
 
 
 def test_rpc_response_requires_successful_get_commands() -> None:
-    response = {"type": "response", "command": "get_commands", "success": True, "data": {"commands": _commands(["one"])}}
+    response = {
+        "type": "response",
+        "command": "get_commands",
+        "success": True,
+        "data": {"commands": _commands(["one"])},
+    }
     assert pi.skill_commands(response) == _commands(["one"])
     with pytest.raises(ValueError, match="get_commands"):
         pi.skill_commands({"type": "response", "success": False})

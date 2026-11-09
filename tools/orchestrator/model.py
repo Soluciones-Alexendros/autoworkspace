@@ -32,7 +32,6 @@ class RunSummary:
         return {
             "outcome": self.outcome,
             "results": [
-                {"outcome": result.outcome, "run_id": result.run_id, "detail": result.detail}
-                for result in self.results
+                {"outcome": result.outcome, "run_id": result.run_id, "detail": result.detail} for result in self.results
             ],
         }

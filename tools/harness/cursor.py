@@ -108,10 +108,7 @@ def discovery_check(target: Path, expected_skills: set[str]) -> Check:
         # Planner/worker land in T22; verifier alone is enough for B during T15.
         if "aw-verifier.md" not in agent_names:
             return Check("cursor-native-discovery", "B", "fail", "aw-verifier.md missing")
-    detail = (
-        f"skills={len(found)} agents={sorted(agent_names)} "
-        f"hooks={len(hook_scripts)} rules=autoworkspace.mdc"
-    )
+    detail = f"skills={len(found)} agents={sorted(agent_names)} hooks={len(hook_scripts)} rules=autoworkspace.mdc"
     return Check("cursor-native-discovery", "B", "pass", detail)
 
 

@@ -12,6 +12,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 
+
 def _clean_clone_env() -> dict[str, str]:
     env = os.environ.copy()
     for key in (
@@ -25,6 +26,7 @@ def _clean_clone_env() -> dict[str, str]:
     ):
         env.pop(key, None)
     return env
+
 
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -44,7 +46,9 @@ def _isolated_repo(tmp_path: Path) -> Path:
 
 
 def _head(repo: Path) -> str:
-    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout.strip()
 
 
 def _task(scope: list[str]) -> dict[str, Any]:
@@ -62,7 +66,9 @@ def test_untracked_patch_applies_to_staging_without_commit(tmp_path: Path) -> No
         staging = manager.create("staging")
         manager.apply_patch(staging, patch)
         assert (staging / "fixture-orchestration.txt").read_text(encoding="utf-8") == "integrated\n"
-        assert subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True).stdout.strip() == _head(repo)
+        assert subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True
+        ).stdout.strip() == _head(repo)
     finally:
         manager.cleanup()
 

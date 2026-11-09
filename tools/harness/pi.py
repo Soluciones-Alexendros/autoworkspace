@@ -28,7 +28,11 @@ from orchestrator.ports import AdapterResult  # noqa: E402
 
 
 def response_commands(response: dict[str, Any]) -> list[dict[str, Any]]:
-    if response.get("type") != "response" or response.get("command") != "get_commands" or response.get("success") is not True:
+    if (
+        response.get("type") != "response"
+        or response.get("command") != "get_commands"
+        or response.get("success") is not True
+    ):
         raise ValueError("Pi get_commands response missing or unsuccessful")
     commands = response.get("data", {}).get("commands")
     if not isinstance(commands, list):
@@ -52,7 +56,9 @@ def rpc_commands(cwd: Path, *, timeout: int = 20, env: dict[str, str] | None = N
         start_new_session=True,
     )
     try:
-        stdout, stderr = process.communicate(json.dumps({"id": "aw-skills", "type": "get_commands"}) + "\n", timeout=timeout)
+        stdout, stderr = process.communicate(
+            json.dumps({"id": "aw-skills", "type": "get_commands"}) + "\n", timeout=timeout
+        )
     except subprocess.TimeoutExpired:
         os.killpg(process.pid, signal.SIGKILL)
         process.wait(timeout=5)
@@ -90,9 +96,7 @@ def discovery_check(cwd: Path, expected_skills: set[str], *, require_package: bo
         return Check("pi-native-discovery", "B", "fail", f"missing skills: {missing}")
     if require_package:
         wrong_origin = sorted(
-            name
-            for name in expected_skills
-            if by_name[name].get("sourceInfo", {}).get("origin") != "package"
+            name for name in expected_skills if by_name[name].get("sourceInfo", {}).get("origin") != "package"
         )
         if wrong_origin:
             return Check("pi-native-discovery", "B", "fail", f"skills not loaded from a package: {wrong_origin}")
@@ -203,7 +207,9 @@ class PiSubagentAdapter:
                         stop_reason = str(message.get("stopReason") or stop_reason)
                         content = message.get("content") or []
                         final_text = "".join(
-                            str(part.get("text", "")) for part in content if isinstance(part, dict) and part.get("type") == "text"
+                            str(part.get("text", ""))
+                            for part in content
+                            if isinstance(part, dict) and part.get("type") == "text"
                         )
         except (json.JSONDecodeError, AttributeError) as exc:
             stop_reason = "error"

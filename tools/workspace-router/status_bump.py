@@ -111,8 +111,7 @@ def activate_plan(repo: Path | str, plan_path: Path | str) -> dict[str, Any]:
         }
         out["plan_digest"] = document.digest
         out["tasks"] = {
-            str(task["id"]): {"state": "pending", "depends_on": list(task["depends_on"])}
-            for task in document.tasks
+            str(task["id"]): {"state": "pending", "depends_on": list(task["depends_on"])} for task in document.tasks
         }
         out["phase"] = str(document.tasks[0]["phase"])
         out["state_revision"] = int(out.get("state_revision") or 0) + 1
@@ -162,10 +161,7 @@ def _task_entry(data: dict[str, Any], task_id: str) -> dict[str, Any]:
 
 
 def _dependencies_complete(data: dict[str, Any], task: dict[str, Any]) -> bool:
-    return all(
-        _task_entry(data, str(dependency)).get("state") == "succeeded"
-        for dependency in task["depends_on"]
-    )
+    return all(_task_entry(data, str(dependency)).get("state") == "succeeded" for dependency in task["depends_on"])
 
 
 def _set_task_state(data: dict[str, Any], task_id: str, state: str) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -292,9 +288,7 @@ def complete_task(
         out["last_skill"] = spec.skill
         out["updated_at"] = _utc_stamp()
         remaining = [
-            item
-            for item in current_document.tasks
-            if out["tasks"][str(item["id"])].get("state") != "succeeded"
+            item for item in current_document.tasks if out["tasks"][str(item["id"])].get("state") != "succeeded"
         ]
         out["phase"] = str(remaining[0]["phase"]) if remaining else "STATUS"
         history = list(out.get("history") or [])

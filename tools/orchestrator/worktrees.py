@@ -98,8 +98,19 @@ class WorktreeManager:
                 hashes[relative] = "deleted"
             else:
                 raise ValueError(f"non-file artifact rejected: {relative}")
-            if relative in set(untracked for untracked in self._git(worktree, ["ls-files", "--others", "--exclude-standard"]).decode().splitlines()):
-                patches.append(self._git(worktree, ["diff", "--binary", "--no-index", "--", "/dev/null", relative], allowed_returncodes={1}))
+            if relative in set(
+                untracked
+                for untracked in self._git(worktree, ["ls-files", "--others", "--exclude-standard"])
+                .decode()
+                .splitlines()
+            ):
+                patches.append(
+                    self._git(
+                        worktree,
+                        ["diff", "--binary", "--no-index", "--", "/dev/null", relative],
+                        allowed_returncodes={1},
+                    )
+                )
         patch = self.temp_root / f"{task['id']}.patch"
         patch.write_bytes(b"".join(patches))
         manifest = {"files": files, "sha256": hashes, "base_revision": self.base_revision}

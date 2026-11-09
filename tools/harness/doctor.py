@@ -69,7 +69,11 @@ def skill_link_check(root: Path, harness: str, *, source_root: Path | None = Non
     root = root.resolve()
     source = (source_root or root).resolve() / "skills"
     destination = root / (".pi/skills" if harness == "pi" else ".cursor/skills")
-    expected = sorted(path for path in source.iterdir() if path.is_dir() and (path / "SKILL.md").is_file()) if source.is_dir() else []
+    expected = (
+        sorted(path for path in source.iterdir() if path.is_dir() and (path / "SKILL.md").is_file())
+        if source.is_dir()
+        else []
+    )
     if not expected or not destination.is_dir():
         return Check(f"{harness}-skill-links", "A", "fail", "catalog or destination missing")
     for skill in expected:
@@ -114,9 +118,7 @@ def collect_checks(
     source = (source_root or root).resolve()
     checks = version_coherence_checks(source, expected_version)
     expected_skills = {
-        path.name
-        for path in (source / "skills").iterdir()
-        if path.is_dir() and (path / "SKILL.md").is_file()
+        path.name for path in (source / "skills").iterdir() if path.is_dir() and (path / "SKILL.md").is_file()
     }
     if harness in {"pi", "all"}:
         if not native:

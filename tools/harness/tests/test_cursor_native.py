@@ -26,11 +26,7 @@ def test_discovery_after_full_install(tmp_path: Path) -> None:
     target.mkdir()
     result = install_full(ROOT, target)
     assert result["status"] == "ok"
-    expected = {
-        path.name
-        for path in (ROOT / "skills").iterdir()
-        if path.is_dir() and (path / "SKILL.md").is_file()
-    }
+    expected = {path.name for path in (ROOT / "skills").iterdir() if path.is_dir() and (path / "SKILL.md").is_file()}
     check = discovery_check(target, expected)
     assert check.outcome == "pass", check
     assert "aw-verifier.md" in check.detail

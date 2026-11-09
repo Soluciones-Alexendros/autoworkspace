@@ -120,8 +120,10 @@ def install_full(source_root: Path, target: Path, *, dry_run: bool = False) -> d
             destination = config / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             previous = os.readlink(destination) if destination.is_symlink() else None
-            action = "unchanged" if destination.is_symlink() and destination.resolve() == source.resolve() else (
-                "replaced" if destination.is_symlink() else "created"
+            action = (
+                "unchanged"
+                if destination.is_symlink() and destination.resolve() == source.resolve()
+                else ("replaced" if destination.is_symlink() else "created")
             )
             entry = {
                 "destination": str(destination),
@@ -215,11 +217,15 @@ def main(argv: list[str] | None = None) -> int:
         )
     except (ConflictError, ValueError, OSError) as exc:
         if args.json:
-            print(json.dumps({"status": "conflict" if isinstance(exc, ConflictError) else "failed", "detail": str(exc)}))
+            print(
+                json.dumps({"status": "conflict" if isinstance(exc, ConflictError) else "failed", "detail": str(exc)})
+            )
         else:
             print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-    print(json.dumps(result, ensure_ascii=False) if args.json else f"Cursor full {result['status']}: {result['target']}")
+    print(
+        json.dumps(result, ensure_ascii=False) if args.json else f"Cursor full {result['status']}: {result['target']}"
+    )
     return 0
 
 

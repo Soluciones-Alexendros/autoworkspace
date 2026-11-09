@@ -52,9 +52,7 @@ _RUN_ID_RE = re.compile(
 # Compatibility view derived from the canonical registry; never an independent allowlist.
 PHASE_EVIDENCE_OPS: dict[str, frozenset[str]] = {
     phase: frozenset(
-        operation_id
-        for operation_id in known_operation_ids()
-        if phase in get_operation(operation_id).completion_phases
+        operation_id for operation_id in known_operation_ids() if phase in get_operation(operation_id).completion_phases
     )
     for phase in ("DEFINE", "SCHEMAS", "IMPLEMENT", "VALIDATE", "INTEGRATE", "STATUS")
 }
@@ -72,6 +70,7 @@ REQUIRED_SUCCEEDED_FIELDS = (
     "skill",
     "target",
 )
+
 
 def _completion_spec(operation_id: str, phase: str) -> OpSpec:
     try:

@@ -15,6 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 
+
 def _clean_clone_env() -> dict[str, str]:
     env = os.environ.copy()
     for key in (
@@ -28,6 +29,7 @@ def _clean_clone_env() -> dict[str, str]:
     ):
         env.pop(key, None)
     return env
+
 
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools" / "workspace-router"))
@@ -58,7 +60,9 @@ def _task(task_id: str, phase: str, operation: str, path: str, dependencies: lis
 
 
 def _activate(root: Path) -> None:
-    revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+    revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.strip()
     data = {
         "schema_version": 1,
         "plan_id": "worktree-full-flow",
