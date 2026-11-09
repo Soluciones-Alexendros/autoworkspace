@@ -10,9 +10,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from execution.registry import load_tools  # noqa: E402
 
-EXPECTED_SKILLS = 16
-EXPECTED_REGISTRY_TOOLS = 11
-EXPECTED_OPERATIONS = 25
+EXPECTED_SKILLS = 17
+EXPECTED_REGISTRY_TOOLS = 12
+EXPECTED_OPERATIONS = 38
 AUDIT_SKILLS = frozenset(
     {
         "web-compliance",
@@ -43,13 +43,11 @@ def test_v43_sixteen_skills_registry_ops() -> None:
     assert total == EXPECTED_OPERATIONS
 
 
-def test_c01_matrix_matches_registry() -> None:
-    """Frozen plan matrix row count equals declared registry operations."""
+def test_c01_historical_matrix_remains_intact() -> None:
+    """Current registry growth must not rewrite the historical plan freeze."""
     plan = ROOT / "tasks" / "plan-product-closure-final.md"
     text = plan.read_text(encoding="utf-8")
     assert "Matriz de capacidades congelada" in text
+    assert ("operaciones" in text and "skills" in text) or "16 skills" in text or "17 skills" in text
     tools = load_tools(force=True)
-    total = sum(len(t.operations) for t in tools.values())
-    assert total == EXPECTED_OPERATIONS
-    # Historical freeze said 32; alpha.1 drops 7 audit ops → 25.
-    assert "32 operaciones" in text or "25 operaciones" in text or "32 operaciones / 16 skills" in text
+    assert sum(len(t.operations) for t in tools.values()) == EXPECTED_OPERATIONS

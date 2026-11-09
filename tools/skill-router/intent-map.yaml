@@ -171,3 +171,16 @@ intents:
   libraries:
     skills: [project-libraries]
     patterns: ["dependencias", "cve", "sca", "sbom", "typosquatting"]
+  autoworkspace_self:
+    skills: [project-autoworkspace]
+    patterns:
+      [
+        "autoauditoría autoworkspace",
+        "audita autoworkspace",
+        "self-audit autoworkspace",
+        "deriva de harnesses",
+        "mejora del propio sistema",
+        "project-autoworkspace",
+        "harness A/B/C",
+        "doctor nativo",
+      ]

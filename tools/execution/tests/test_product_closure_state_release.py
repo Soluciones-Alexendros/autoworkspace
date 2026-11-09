@@ -24,7 +24,7 @@ DIG = "d" * 64
 CUT = ROOT / "tools" / "version" / "cut_tag.py"
 
 
-def _store(repo: Path, phase: str = "DEFINE", op: str = "plan_specification", **kw: Any) -> str:
+def _store(repo: Path, phase: str = "DEFINE", op: str = "specify", **kw: Any) -> str:
     art = repo / "artifact.txt"
     if not art.exists():
         art.write_text("ok")
@@ -140,6 +140,8 @@ def _init_release_repo(tmp: Path, version: str, notes_section: str | None) -> Pa
     subprocess.run(["git", "init"], cwd=tmp, check=True, capture_output=True)
     subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp, check=True, capture_output=True)
     subprocess.run(["git", "config", "user.name", "t"], cwd=tmp, check=True, capture_output=True)
+    # Fixtures must not inherit host commit.gpgsign; GPG I/O failures are not readiness signals.
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=tmp, check=True, capture_output=True)
     (tmp / "package.json").write_text(json.dumps({"version": version}))
     cl = "# Changelog\n\n"
     if notes_section is not None:

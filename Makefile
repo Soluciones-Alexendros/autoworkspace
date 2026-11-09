@@ -1,4 +1,4 @@
-.PHONY: quality validate lint test smoke diagrams help new-product new-harness
+.PHONY: quality validate lint test smoke diagrams help new-product new-harness validate-harnesses e2e-orchestration
 
 # Carga .env local si existe (sin commitear; ver .env.example / docs/USAGE.md).
 ifneq (,$(wildcard .env))
@@ -13,6 +13,8 @@ help:
 	@echo "  make lint      — hygiene (quality local)"
 	@echo "  make test      — pytest tools/ + skill script tests"
 	@echo "  make smoke     — scripts/smoke.sh (canon contract)"
+	@echo "  make validate-harnesses — Pi/Cursor native A/B/C (exit 3 = blocked/not_run)"
+	@echo "  make e2e-orchestration — core + Pi/Cursor native orchestration"
 	@echo "  make new-product DEST=dir — copy templates/product/"
 	@echo "  make new-harness DEST=dir — copy harness yaml into DEST/.autoworkspace/"
 
@@ -34,6 +36,15 @@ test:
 
 smoke:
 	bash scripts/smoke.sh
+
+validate-harnesses:
+	bash scripts/tests/test_pi_native.sh
+	bash scripts/tests/test_cursor_native.sh
+
+e2e-orchestration:
+	bash scripts/tests/test_orchestration_core.sh
+	bash scripts/tests/test_pi_orchestration.sh
+	bash scripts/tests/test_cursor_orchestration.sh
 
 diagrams:
 	bash scripts/diagrams.sh

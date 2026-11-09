@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autoworkspace.local/schemas/plan.schema.json",
+  "title": "Autoworkspace structured plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "base_revision", "tasks"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "plan_id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "base_revision": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "phase",
+          "operation",
+          "roles",
+          "depends_on",
+          "read_scope",
+          "write_scope",
+          "artifacts",
+          "acceptance",
+          "verification",
+          "on_failure"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "DEFINE",
+              "SCHEMAS",
+              "IMPLEMENT",
+              "VALIDATE",
+              "INTEGRATE",
+              "STATUS"
+            ]
+          },
+          "operation": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "roles": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "role-back",
+                "role-front",
+                "role-design",
+                "role-clean-code"
+              ]
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string" }
+          },
+          "read_scope": { "$ref": "#/$defs/scopes" },
+          "write_scope": { "$ref": "#/$defs/scopes" },
+          "artifacts": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "acceptance": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "verification": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "on_failure": {
+            "type": "string",
+            "enum": ["stop", "continue-independent"]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "scopes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

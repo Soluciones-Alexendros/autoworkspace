@@ -256,6 +256,44 @@ def _check_action_pins(rel: str, text: str) -> None:
             err(f"{rel}: uses sin SHA de 40 hex: {action}")
 
 
+def release_asset_errors(root: Path) -> list[str]:  # noqa: C901  # ordered release asset gate
+    """Require archive → checksum → attestation → upload in the release workflow."""
+    path = root / ".github" / "workflows" / "release.yml"
+    if not path.is_file():
+        return []
+    import yaml  # noqa: PLC0415
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    provenance = data.get("jobs", {}).get("provenance", {})
+    steps = provenance.get("steps") or []
+    errors: list[str] = []
+    if (provenance.get("permissions") or {}).get("contents") != "write":
+        errors.append("release provenance needs contents: write for asset upload")
+    runs = [str(step.get("run", "")) for step in steps if isinstance(step, dict)]
+    uses = [str(step.get("uses", "")) for step in steps if isinstance(step, dict)]
+    archive = next((i for i, run in enumerate(runs) if "git archive" in run), None)
+    checksum = next((i for i, run in enumerate(runs) if "sha256sum" in run and "SHA256SUMS" in run), None)
+    attest = next((i for i, use in enumerate(uses) if "actions/attest-build-provenance@" in use), None)
+    upload = next((i for i, run in enumerate(runs) if "gh release upload" in run), None)
+    positions = {"archive": archive, "checksum": checksum, "attestation": attest, "upload": upload}
+    for name, position in positions.items():
+        if position is None:
+            errors.append(f"release provenance missing {name} step")
+    if archive is not None and checksum is not None and attest is not None and upload is not None:
+        ordered = [archive, checksum, attest, upload]
+        if ordered != sorted(ordered):
+            errors.append("release asset steps must be ordered archive → checksum → attestation → upload")
+    if upload is not None:
+        upload_run = runs[upload]
+        if "SHA256SUMS" not in upload_run or "${ARCHIVE}" not in upload_run:
+            errors.append("release upload must include archive and SHA256SUMS")
+        if "--clobber" in upload_run:
+            errors.append("release upload must not clobber existing assets")
+        if "GH_TOKEN" not in str(steps[upload].get("env", {})):
+            errors.append("release upload requires GH_TOKEN")
+    return errors
+
+
 def check_workflows(root: Path) -> None:
     wf_dir = root / ".github" / "workflows"
     if not wf_dir.is_dir():
@@ -273,6 +311,9 @@ def check_workflows(root: Path) -> None:
             continue
         _check_job_timeouts(rel, data)
         _check_action_pins(rel, path.read_text(encoding="utf-8"))
+        if rel == ".github/workflows/release.yml":
+            for error in release_asset_errors(root):
+                err(error)
 
 
 def run_coherence(root: Path, *, release_gate: bool = False) -> int:

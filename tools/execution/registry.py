@@ -36,6 +36,8 @@ class OpSpec:
     recovery_required: bool = False
     argv_template: tuple[str, ...] | None = None
     description: str = ""
+    completion_phases: tuple[str, ...] = ()
+    required_verifications: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -52,109 +54,7 @@ class ToolSpec:
 
 _HANDLERS: dict[str, Callable[..., Any]] = {}
 # Mutable cache avoids `global` rebinding (ruff PLW0603).
-_CACHE: dict[str, Any] = {"tools": None, "contract_ops": None}
-
-# Runtime ops that run_registered dispatches. Each skill must exist as tool_id
-# in registry.yaml. Declarative-only ops (agent/orchestrator) need no OpSpec.
-OPERATIONS: dict[str, OpSpec] = {
-    "create_snapshot": OpSpec(
-        "create_snapshot",
-        "write-workspace",
-        "local-maintenance",
-        require_approval=True,
-        timeout=600,
-        description="Create pre-change snapshot",
-    ),
-    "restore_snapshot": OpSpec(
-        "restore_snapshot",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=600,
-        recovery_required=True,
-        description="Restore snapshot into program staging only",
-    ),
-    "validate_snapshot": OpSpec(
-        "validate_snapshot",
-        "read",
-        "local-maintenance",
-        require_approval=False,
-        description="Validate snapshot metadata",
-    ),
-    "clean_package_cache": OpSpec(
-        "clean_package_cache",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=600,
-    ),
-    "clean_journal": OpSpec(
-        "clean_journal",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=600,
-    ),
-    "clean_orphans": OpSpec(
-        "clean_orphans",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=600,
-    ),
-    "clean_temp": OpSpec(
-        "clean_temp",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=600,
-    ),
-    "clean_needrestart": OpSpec(
-        "clean_needrestart",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=600,
-    ),
-    "update_firmware": OpSpec(
-        "update_firmware",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=900,
-    ),
-    "clean_userspace_caches": OpSpec(
-        "clean_userspace_caches",
-        "mutate-host",
-        "local-maintenance",
-        require_approval=True,
-        require_snapshot=True,
-        timeout=600,
-    ),
-    "proton_send": OpSpec(
-        "proton_send",
-        "communicate-external",
-        "local-email",
-        require_approval=True,
-        timeout=120,
-        description="Send mail via Proton Bridge",
-    ),
-    "local_gates": OpSpec(
-        "local_gates",
-        "write-workspace",
-        "project-publish",
-        require_approval=False,
-        timeout=1800,
-        description="Local publish gates (may write via husky/gate scripts)",
-    ),
-}
+_CACHE: dict[str, Any] = {"tools": None, "contract_ops": None, "op_specs": None}
 
 
 def registry_path() -> Path:
@@ -217,7 +117,35 @@ def load_tools(*, force: bool = False) -> dict[str, ToolSpec]:
             contract_ops[oid] = {**op, "tool_id": tool_id, "skill": spec.skill}
     _CACHE["tools"] = tools
     _CACHE["contract_ops"] = contract_ops
+    _CACHE["op_specs"] = None
     return tools
+
+
+def _operation_specs() -> dict[str, OpSpec]:
+    cached = _CACHE["op_specs"]
+    if cached is not None:
+        return cached  # type: ignore[no-any-return]
+    load_tools()
+    contracts = _CACHE["contract_ops"]
+    assert contracts is not None
+    specs = {
+        operation_id: OpSpec(
+            operation_id=operation_id,
+            effect=str(raw["effect"]),
+            skill=str(raw["skill"]),
+            require_approval=bool(raw.get("approval_required", False)),
+            require_snapshot=bool(raw.get("snapshot_required", False)),
+            timeout=int(raw.get("timeout_seconds", 60)),
+            recovery_required=bool(raw.get("recovery_required", False)),
+            argv_template=tuple(raw["argv_template"]) if raw.get("argv_template") is not None else None,
+            description=str(raw.get("description", "")),
+            completion_phases=tuple(raw.get("completion_phases", [])),
+            required_verifications=tuple(raw.get("required_verifications", [])),
+        )
+        for operation_id, raw in contracts.items()
+    }
+    _CACHE["op_specs"] = specs
+    return specs
 
 
 def known_tool_ids() -> frozenset[str]:
@@ -258,7 +186,7 @@ def load_execution_contract_for_skill(skill: str) -> dict[str, Any]:
 
 
 def register_handler(operation_id: str, handler: Callable[..., Any]) -> None:
-    if operation_id not in OPERATIONS:
+    if operation_id not in _operation_specs():
         raise KeyError(f"cannot register handler for unknown operation: {operation_id}")
     _HANDLERS[operation_id] = handler
 
@@ -268,13 +196,14 @@ def get_handler(operation_id: str) -> Callable[..., Any] | None:
 
 
 def get_operation(operation_id: str) -> OpSpec:
-    if operation_id not in OPERATIONS:
+    specs = _operation_specs()
+    if operation_id not in specs:
         raise KeyError(f"unknown operation: {operation_id}")
-    return OPERATIONS[operation_id]
+    return specs[operation_id]
 
 
 def known_operation_ids() -> frozenset[str]:
-    return frozenset(OPERATIONS)
+    return frozenset(_operation_specs())
 
 
 def resolve_argv(spec: OpSpec, params: dict[str, Any]) -> list[str]:
@@ -317,12 +246,15 @@ def _check_tools_against_catalog(
 
 
 def _check_runtime_ops(tools: dict[str, ToolSpec]) -> list[str]:
-    skill_names = {t.skill for t in tools.values()} | set(tools)
     errors: list[str] = []
-    for op_id, spec in OPERATIONS.items():
-        if spec.skill not in skill_names or get_tool_for_skill(spec.skill) is None:
-            errors.append(f"runtime op {op_id}: skill {spec.skill!r} missing from registry")
+    for operation_id in _HANDLERS:
+        if operation_id not in tools_operation_ids(tools):
+            errors.append(f"registered handler {operation_id}: missing from registry")
     return errors
+
+
+def tools_operation_ids(tools: dict[str, ToolSpec]) -> frozenset[str]:
+    return frozenset(str(op["id"]) for tool in tools.values() for op in tool.operations)
 
 
 def check_registry(*, root: Path | None = None) -> list[str]:

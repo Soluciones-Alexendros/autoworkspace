@@ -4,7 +4,7 @@ description: "Specialist role for frontend application work: UI stability, brows
 license: MIT
 metadata:
   author: Soluciones-Alexendros
-  version: "7.0.0"
+  version: "7.1.0"
   domain: role
   type: atomic
   language: en

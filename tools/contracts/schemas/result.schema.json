@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autoworkspace.local/schemas/verified-execution.schema.json",
+  "title": "Autoworkspace verified execution evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "operation_id",
+    "outcome",
+    "plan_digest",
+    "input_digest",
+    "output_digest",
+    "phase",
+    "skill",
+    "target",
+    "plan_id",
+    "task_id",
+    "artifacts",
+    "verifications"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "run_id": { "type": "string", "format": "uuid" },
+    "operation_id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "outcome": { "type": "string", "enum": ["succeeded", "failed"] },
+    "plan_digest": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "input_digest": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "output_digest": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "DEFINE",
+        "SCHEMAS",
+        "IMPLEMENT",
+        "VALIDATE",
+        "INTEGRATE",
+        "STATUS"
+      ]
+    },
+    "skill": { "type": "string", "minLength": 1 },
+    "target": { "type": "string", "minLength": 1 },
+    "plan_id": { "type": "string", "minLength": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "artifacts": { "type": "array" },
+    "verifications": { "type": "array" },
+    "returncode": { "type": ["integer", "null"] },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "detail": { "type": "string" },
+    "effect": { "type": "string" },
+    "work_digest": { "type": "string" },
+    "stored_at": { "type": "string" }
+  }
+}

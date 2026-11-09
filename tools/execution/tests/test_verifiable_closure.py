@@ -217,10 +217,10 @@ def _phase_meta(phase: str, op: str = "local_gates") -> dict[str, Any]:
     }[phase]
     skill = {
         "DEFINE": "plan-specification",
-        "SCHEMAS": "plan-specification",
+        "SCHEMAS": "plan-continue",
         "IMPLEMENT": "role-back",
         "VALIDATE": "project-publish",
-        "INTEGRATE": "project-publish",
+        "INTEGRATE": "plan-continue",
         "STATUS": "plan-continue",
     }[phase]
     return {
@@ -395,7 +395,7 @@ def test_a28_concurrent_writers(tmp_path: Path) -> None:
             errors.append(str(exc))
 
     # Sequential unique run_ids under lock — both should serialize without lost update
-    rids = [_store_ok(tmp_path, op="plan_specification", phase="DEFINE") for _ in range(2)]
+    rids = [_store_ok(tmp_path, op="specify", phase="DEFINE") for _ in range(2)]
     barrier = threading.Barrier(2)
 
     def w(rid: str) -> None:
@@ -439,7 +439,7 @@ def test_a30_status_to_define_rejected(tmp_path: Path) -> None:
             }
         )
     )
-    rid = _store_ok(tmp_path, op="plan_specification", phase="DEFINE")
+    rid = _store_ok(tmp_path, op="specify", phase="DEFINE")
     with pytest.raises(ValueError, match=r"regress|restart|invalid"):
         advance_status(
             tmp_path,
@@ -453,7 +453,7 @@ def test_a30_status_to_define_rejected(tmp_path: Path) -> None:
 def test_a32_idempotent_complete(tmp_path: Path) -> None:
     (tmp_path / "c").write_text("z")
     (tmp_path / ".autoworkspace").mkdir()
-    rid = _store_ok(tmp_path, op="plan_specification", phase="DEFINE")
+    rid = _store_ok(tmp_path, op="specify", phase="DEFINE")
     s1 = advance_status(tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid)
     s2 = advance_status(tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid)
     assert s1["state_revision"] == 1
