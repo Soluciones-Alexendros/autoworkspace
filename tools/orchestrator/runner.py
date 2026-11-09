@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import json
 import shutil
-from dataclasses import replace
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from execution.evidence import work_digest
 from execution.ops import OpResult, verify_and_store
 from execution.registry import get_operation
+
 from orchestrator.model import RunContext
 from orchestrator.ports import AdapterResult, SubagentAdapter
 from orchestrator.worktrees import WorktreeManager

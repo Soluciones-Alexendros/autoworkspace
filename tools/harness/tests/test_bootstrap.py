@@ -31,7 +31,8 @@ def test_valid_archive_extracts_private_files(tmp_path: Path) -> None:
     destination = tmp_path / "new-target"
     safe_extract(archive, destination)
     assert (destination / "package" / "file.txt").read_bytes() == b"content"
-    assert destination.stat().st_mode & 0o777 == 0o700
+    private_mode = 0o700
+    assert destination.stat().st_mode & 0o777 == private_mode
 
 
 def test_existing_destination_is_rejected(tmp_path: Path) -> None:

@@ -53,8 +53,9 @@ class Scheduler:
         max_parallel: int = 4,
         resume: bool = True,
     ) -> None:
-        if not 1 <= max_parallel <= 8:
-            raise ValueError("max_parallel must be between 1 and 8")
+        max_parallel_cap = 8
+        if not 1 <= max_parallel <= max_parallel_cap:
+            raise ValueError(f"max_parallel must be between 1 and {max_parallel_cap}")
         self.repo = repo.resolve()
         self.adapter = adapter
         self.max_parallel = max_parallel
@@ -109,7 +110,7 @@ class Scheduler:
                 return AdapterResult("failed", detail=f"{result.detail}; state failure: {exc}")
         return result
 
-    def run(self) -> RunSummary:
+    def run(self) -> RunSummary:  # noqa: C901, PLR0912  # DAG loop: schedule/wait/stop branches
         if self.adapter is None:
             raise ValueError("adapter required for non-dry-run execution")
         status = load_status(self.repo)

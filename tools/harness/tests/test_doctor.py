@@ -40,7 +40,7 @@ def test_failed_required_check_blocks_pass() -> None:
 def test_required_not_run_is_never_pass() -> None:
     report = build_report("cursor", [Check("native", "C", "not_run", "agent unavailable")])
     assert report["outcome"] == "not_run"
-    assert report_exit_code(report) == 3
+    assert report_exit_code(report) == 3  # noqa: PLR2004  # not_run exit code
 
 
 def test_optional_not_run_does_not_hide_required_pass() -> None:

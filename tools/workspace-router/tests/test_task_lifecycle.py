@@ -104,7 +104,7 @@ def test_failure_blocks_dependents_and_retry_is_explicit(tmp_path: Path) -> None
     retried = retry_task(tmp_path, "first")
     assert retried["tasks"]["first"]["state"] == "ready"
     started = start_task(tmp_path, "first")
-    assert started["tasks"]["first"]["attempts"] == 2
+    assert started["tasks"]["first"]["attempts"] == 2  # noqa: PLR2004  # retry then restart
 
 
 def test_evidence_from_another_task_cannot_complete(tmp_path: Path) -> None:

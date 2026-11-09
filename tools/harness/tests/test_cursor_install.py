@@ -67,14 +67,14 @@ def test_symlink_failure_rolls_back_prior_resources(tmp_path: Path, monkeypatch:
     def fail_second(*args: Any, **kwargs: Any) -> None:
         nonlocal calls
         calls += 1
-        if calls == 2:
+        if calls == 2:  # noqa: PLR2004  # fail on second symlink
             raise OSError("injected symlink failure")
         return original(*args, **kwargs)
 
     monkeypatch.setattr(os, "symlink", fail_second)
     with pytest.raises(OSError, match="injected"):
         install_full(ROOT, target)
-    assert calls == 2
+    assert calls == 2  # noqa: PLR2004  # second call injected the failure
     assert not list(target.rglob("plan-continue"))
 
 

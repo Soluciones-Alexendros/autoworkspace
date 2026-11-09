@@ -106,7 +106,7 @@ def cursor_full_check(root: Path) -> Check:
     return Check("cursor-full-components", "A", "pass", f"{len(resources)} full components verified")
 
 
-def collect_checks(
+def collect_checks(  # noqa: PLR0913  # doctor entry: keyword-only harness/native/full options
     root: Path,
     harness: str,
     expected_version: str | None,

@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools" / "workspace-router"))
 
 from status_bump import (  # noqa: E402
+    STATUS_SCHEMA_VERSION,
     activate_plan,
     load_active_plan,
     load_status,
@@ -42,7 +43,7 @@ def test_legacy_load_is_pure_and_has_no_active_plan(tmp_path: Path) -> None:
     _legacy(tmp_path)
     before = status_path(tmp_path).read_bytes()
     data = load_status(tmp_path)
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == STATUS_SCHEMA_VERSION
     assert data["active_plan"] is None
     assert data["tasks"] == {}
     assert status_path(tmp_path).read_bytes() == before
@@ -51,7 +52,7 @@ def test_legacy_load_is_pure_and_has_no_active_plan(tmp_path: Path) -> None:
 def test_explicit_migration_preserves_history_and_is_idempotent(tmp_path: Path) -> None:
     _legacy(tmp_path)
     migrated = migrate_status(tmp_path)
-    assert migrated["schema_version"] == 2
+    assert migrated["schema_version"] == STATUS_SCHEMA_VERSION
     assert migrated["history"][0]["note"] == "historical"
     first = status_path(tmp_path).read_bytes()
     again = migrate_status(tmp_path)

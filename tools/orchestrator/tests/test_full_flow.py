@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import shutil
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -156,7 +156,7 @@ def test_complete_flow_closes_without_applying_to_operator_checkout(tmp_path: Pa
         for produced in ("spec.md", "implementation.txt", "validation.txt"):
             assert not (repo / produced).exists()
         runs = list((repo / ".autoworkspace" / "runs").glob("*/*.patch"))
-        assert len(runs) == 3
+        assert len(runs) == 3  # noqa: PLR2004  # three-phase fixture patches
     finally:
         _cleanup_fixture(repo)
 

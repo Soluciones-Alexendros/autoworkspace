@@ -67,7 +67,7 @@ def test_untracked_patch_applies_to_staging_without_commit(tmp_path: Path) -> No
         manager.apply_patch(staging, patch)
         assert (staging / "fixture-orchestration.txt").read_text(encoding="utf-8") == "integrated\n"
         assert subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True
+            ["git", "rev-parse", "HEAD"], check=False, cwd=repo, capture_output=True, text=True
         ).stdout.strip() == _head(repo)
     finally:
         manager.cleanup()
@@ -108,5 +108,7 @@ def test_cleanup_only_removes_temporary_worktrees(tmp_path: Path) -> None:
     (writer / "temporary.txt").write_text("disposable", encoding="utf-8")
     manager.cleanup()
     assert not root.exists()
-    listed = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=repo, capture_output=True, text=True).stdout
+    listed = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"], check=False, cwd=repo, capture_output=True, text=True
+    ).stdout
     assert str(writer) not in listed

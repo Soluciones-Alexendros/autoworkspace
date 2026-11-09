@@ -13,7 +13,6 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from harness import pi  # noqa: E402
-from harness.base import Check  # noqa: E402
 
 
 def _commands(names: list[str], origin: str = "package") -> list[dict[str, Any]]:

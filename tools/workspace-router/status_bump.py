@@ -8,7 +8,10 @@ import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from contracts.plan import PlanDocument
 
 try:
     import yaml
@@ -124,7 +127,7 @@ def activate_plan(repo: Path | str, plan_path: Path | str) -> dict[str, Any]:
 def load_active_plan(repo: Path | str) -> PlanDocument:
     """Load the selected plan and reject identity drift."""
     _ensure_tools_on_path()
-    from contracts.plan import PlanDocument, load_plan  # noqa: PLC0415
+    from contracts.plan import load_plan  # noqa: PLC0415
 
     root = Path(repo).resolve()
     status = load_status(root)

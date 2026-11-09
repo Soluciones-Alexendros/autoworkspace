@@ -22,9 +22,10 @@ if str(TOOLS) not in sys.path:
 
 from execution.ops import OpResult  # noqa: E402
 from execution.registry import get_operation  # noqa: E402
-from harness.base import Check, build_report, report_exit_code  # noqa: E402
 from orchestrator.model import RunContext  # noqa: E402
 from orchestrator.ports import AdapterResult  # noqa: E402
+
+from harness.base import Check, build_report, report_exit_code  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 SHELL_GATE = ROOT / ".cursor" / "hooks" / "shell_gate.py"
@@ -78,7 +79,7 @@ def agent_authenticated(binary: str | None = None) -> bool:
     return result.returncode == 0
 
 
-def discovery_check(target: Path, expected_skills: set[str]) -> Check:
+def discovery_check(target: Path, expected_skills: set[str]) -> Check:  # noqa: PLR0911
     """Level B: skills, rules, agents and hooks are present after full install."""
     cursor = target.resolve() / ".cursor"
     if not cursor.is_dir():
@@ -104,10 +105,9 @@ def discovery_check(target: Path, expected_skills: set[str]) -> Check:
         return Check("cursor-native-discovery", "B", "fail", "hook scripts missing")
     required_agents = {"aw-verifier.md", "aw-planner.md", "aw-worker.md"}
     agent_names = {path.name for path in agents}
-    if not required_agents <= agent_names:
-        # Planner/worker land in T22; verifier alone is enough for B during T15.
-        if "aw-verifier.md" not in agent_names:
-            return Check("cursor-native-discovery", "B", "fail", "aw-verifier.md missing")
+    # Planner/worker land in T22; verifier alone is enough for B during T15.
+    if not required_agents <= agent_names and "aw-verifier.md" not in agent_names:
+        return Check("cursor-native-discovery", "B", "fail", "aw-verifier.md missing")
     detail = f"skills={len(found)} agents={sorted(agent_names)} hooks={len(hook_scripts)} rules=autoworkspace.mdc"
     return Check("cursor-native-discovery", "B", "pass", detail)
 
@@ -130,7 +130,7 @@ def _run_shell_gate(command: str) -> dict[str, Any]:
     return data
 
 
-def policy_check(work_dir: Path) -> Check:
+def policy_check(work_dir: Path) -> Check:  # noqa: C901, PLR0911
     """Level C: allow creates sentinel; deny does not; ask waits without acting."""
     if not SHELL_GATE.is_file():
         return Check("cursor-native-policy", "C", "fail", f"shell_gate missing: {SHELL_GATE}")
@@ -228,7 +228,7 @@ class CursorSubagentAdapter:
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGKILL)
 
-    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:
+    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:  # noqa: C901, PLR0915
         started = time.monotonic()
         run_id = str(uuid.uuid4())
         operation = get_operation(str(task["operation"]))
@@ -271,10 +271,9 @@ class CursorSubagentAdapter:
         if self.force and write:
             # Only force when the task packet already authorizes writes.
             argv.append("--force")
-        else:
-            # Default: ask mode for non-writers; writers use sandbox without yolo.
-            if not write:
-                argv.extend(["--mode", "ask"])
+        # Default: ask mode for non-writers; writers use sandbox without yolo.
+        elif not write:
+            argv.extend(["--mode", "ask"])
         argv.append(prompt)
         process = subprocess.Popen(
             argv,

@@ -3,13 +3,12 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
-
 import argparse
 import json
 import os
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 TOOLS = Path(__file__).resolve().parents[1]
 if str(TOOLS) not in sys.path:
@@ -19,6 +18,7 @@ from execution.ops import OpResult  # noqa: E402
 from execution.registry import get_operation  # noqa: E402
 from harness.cursor import CursorSubagentAdapter  # noqa: E402
 from harness.pi import PiSubagentAdapter  # noqa: E402
+
 from orchestrator.ports import SubagentAdapter  # noqa: E402
 from orchestrator.runner import Verifier, WorktreeAdapter  # noqa: E402
 from orchestrator.scheduler import Scheduler  # noqa: E402

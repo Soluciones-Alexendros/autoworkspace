@@ -22,9 +22,10 @@ if str(TOOLS) not in sys.path:
 
 from execution.ops import OpResult  # noqa: E402
 from execution.registry import get_operation  # noqa: E402
-from harness.base import Check, build_report, report_exit_code  # noqa: E402
 from orchestrator.model import RunContext  # noqa: E402
 from orchestrator.ports import AdapterResult  # noqa: E402
+
+from harness.base import Check, build_report, report_exit_code  # noqa: E402
 
 
 def response_commands(response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -122,7 +123,7 @@ class PiSubagentAdapter:
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGKILL)
 
-    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:
+    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:  # noqa: C901, PLR0915
         started = time.monotonic()
         run_id = str(uuid.uuid4())
         operation = get_operation(str(task["operation"]))

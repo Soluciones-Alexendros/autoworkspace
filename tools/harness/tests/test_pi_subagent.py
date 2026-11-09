@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import stat
 import sys
 import threading
@@ -31,7 +30,15 @@ elif behavior in {'timeout', 'cancel'}:
     time.sleep(10)
 else:
     stop = 'error' if behavior == 'error' else 'stop'
-    print(json.dumps({'type': 'message_end', 'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': behavior}], 'stopReason': stop}}))
+    payload = {
+        'type': 'message_end',
+        'message': {
+            'role': 'assistant',
+            'content': [{'type': 'text', 'text': behavior}],
+            'stopReason': stop,
+        },
+    }
+    print(json.dumps(payload))
 """.replace("__BEHAVIOR__", behavior)
     path.write_text("#!/usr/bin/env python3\n" + body, encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
@@ -81,7 +88,7 @@ def test_timeout_kills_process_and_requires_reconciliation(tmp_path: Path) -> No
     result = _execute(tmp_path, "timeout", timeout=1)
     assert result.outcome == "cancelled"
     assert "reconciliation" in result.detail
-    assert time.monotonic() - started < 4
+    assert time.monotonic() - started < 4  # noqa: PLR2004  # timeout bound
 
 
 def test_cancellation_kills_process_group(tmp_path: Path) -> None:
@@ -93,4 +100,4 @@ def test_cancellation_kills_process_group(tmp_path: Path) -> None:
     result = adapter.execute(_task(), context)
     timer.join()
     assert result.outcome == "cancelled"
-    assert time.monotonic() - started < 4
+    assert time.monotonic() - started < 4  # noqa: PLR2004  # cancel bound

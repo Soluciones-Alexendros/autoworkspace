@@ -132,8 +132,8 @@ def test_scheduler_limits_parallelism_without_lost_update(tmp_path: Path) -> Non
     adapter = ControlledAdapter()
     summary = Scheduler(tmp_path, adapter=adapter, max_parallel=2).run()
     assert summary.outcome == "pass"
-    assert adapter.max_active == 2
-    assert load_status(tmp_path)["state_revision"] == 5
+    assert adapter.max_active == 2  # noqa: PLR2004  # max_parallel fixture
+    assert load_status(tmp_path)["state_revision"] == 5  # noqa: PLR2004  # start/succeed x2 + activate
 
 
 def test_failure_stops_dependents_and_returns_failed(tmp_path: Path) -> None:

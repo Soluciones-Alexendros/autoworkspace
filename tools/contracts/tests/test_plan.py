@@ -58,7 +58,8 @@ def test_valid_fixture_and_digest() -> None:
 def test_current_increment_plan_is_valid_acyclic_dag() -> None:
     document = load_plan(CURRENT_PLAN)
     assert document.plan_id == "autoworkspace-integration-v1"
-    assert len(document.tasks) == 35
+    expected_task_count = 35
+    assert len(document.tasks) == expected_task_count
 
 
 def test_requires_exactly_one_block() -> None:

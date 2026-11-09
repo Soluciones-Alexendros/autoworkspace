@@ -35,7 +35,7 @@ def _overall(checks: list[Check]) -> str:
     return "pass"
 
 
-def build_report(
+def build_report(  # noqa: PLR0913  # report builder: keyword-only harness metadata fields
     harness: str,
     checks: list[Check],
     *,

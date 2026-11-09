@@ -20,7 +20,7 @@ def _member_path(name: str) -> PurePosixPath:
     return path
 
 
-def safe_extract(
+def safe_extract(  # noqa: C901, PLR0912  # zip slip + size gates need explicit branches
     archive_path: Path,
     destination: Path,
     *,
