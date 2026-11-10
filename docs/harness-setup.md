@@ -62,10 +62,10 @@ A full target is the project root, not its skills directory. Full dry-run writes
 | `hooks.json`              | symlink                           | **generated owned file** with `hooks/...` commands (user hooks run from `~/.cursor`) |
 | `hooks/*.py`              | symlink                           | symlink                                                                              |
 
-To apply the execution contract globally, paste the rule body into Customize → Rules (Cursor keeps user rules in Settings and syncs them with the account, so no file can carry them):
+To apply the execution contract globally, paste the whole rule into Customize → Rules (Cursor keeps user rules in Settings and syncs them with the account, so no file can carry them). The pasted text keeps its YAML frontmatter (`description`, `alwaysApply: true`), like any other user rule:
 
 ```bash
-bash scripts/cursor-user-rule.sh --copy   # body without frontmatter, on the clipboard
+bash scripts/cursor-user-rule.sh --copy   # whole rule, frontmatter included
 ```
 
 The JSON result reports `scope`, `omitted`, `notes` and (on upgrades) `pruned`. A pre-existing foreign `~/.cursor/hooks.json` is never overwritten: the install fails closed with a `foreign file conflict`. To get the execution contract globally, paste `rules/autoworkspace.mdc` into Customize → Rules.

@@ -1,25 +1,42 @@
 ---
-description: Contrato de ejecución de autoworkspace en Cursor
+description: Enforce autoworkspace execution contract in Cursor — mutations only through tools/execution and run_registered, evidence-bound gates, and explicit operator consent for host-mutating skills
 alwaysApply: true
 ---
 
-Habla en español con el operador. Los contratos técnicos (ids de skill, rutas,
-comandos, `run_registered`, fases) van en inglés.
+# Contrato de ejecución de autoworkspace
 
-Mutación de producto solo vía `tools/execution` y `run_registered`. No invoques
-scripts mutadores de skill sueltos. `allowed-tools` del frontmatter no autoriza
-nada en Cursor.
+Habla en español con el operador. Los contratos técnicos (ids de skill, rutas, comandos, `run_registered`, fases) van en inglés.
 
-No uses `--bump` en el workspace router (legado rechazado). Ruta de solo lectura:
+## Idioma y alcance
 
-`python tools/workspace-router/run.py --phase DEFINE --repo . --json`
+- Respuesta y explicaciones en español; ids de skill, rutas, comandos, nombres de fase y campos de contrato en inglés.
+- `allowed-tools` del frontmatter de una skill no autoriza nada en Cursor: la autorización vive en `tools/execution`.
 
-No dispares `local-maintenance`, `local-security`, `local-email` ni
-`project-publish` sin petición explícita del operador; si hace falta, `/nombre`.
+## Mutación de producto
 
-`role-front` y `role-design` solo con superficie UI/visual real.
+- Toda mutación pasa por `tools/execution` y `run_registered(operation_id, params)`. No invoques scripts mutadores de skill sueltos ni `run_operation(..., argv=..., effect=...)` (rechazado por diseño).
+- No uses `--bump` en el workspace router: es legado rechazado. Consulta de solo lectura:
 
-En puertas y aceptación: no afirmes PASS si la evidencia es skip, dependencia
-ausente o `not_run`; usa `blocked` / `not_applicable` / `not_run` con motivo.
+```bash
+python tools/workspace-router/run.py --phase DEFINE --repo . --json
+```
 
-Antes de cada tarea, reevalúa `role-*` según Lifecycle en `AGENTS.md`.
+- Respeta `write_scope` del task packet: no amplíes permisos, no toques rutas fuera del scope y no ejecutes dos tareas en paralelo sobre el mismo artefacto.
+
+## Skill routing
+
+- Reevalúa `role-*` antes de cada tarea según el ciclo de vida descrito en `AGENTS.md`; no arrastres el rol de la tarea anterior.
+- `role-front` y `role-design` solo con superficie UI/visual real.
+- No dispares `local-maintenance`, `local-security`, `local-email` ni `project-publish` sin petición explícita del operador; si hace falta, `/nombre`.
+- Para trabajo de producto, las skills `plan-*` preceden a cualquier implementación; `project-publish` nunca se invoca como paso implícito de una tarea.
+
+## Evidencia y puertas
+
+- No afirmes PASS si la evidencia es `skip`, dependencia ausente o `not_run`. Usa `blocked`, `not_applicable` o `not_run` con motivo explícito.
+- Cada `complete_task` exige evidencia ligada por digest (SHA-256), `run_id` y fase/skill/target; la evidencia stale se rechaza.
+- Un PASS solo es válido si el comando del repo lo confirma en esta sesión. "Debería funcionar" no es evidencia.
+
+## Excepciones
+
+- Lecturas de solo lectura (leer ficheros, `git status`, tests) no requieren `run_registered`; las mutaciones sí.
+- Si el operador pide explícitamente saltarse una puerta, dilo en la respuesta y deja constancia del motivo; no lo hagas en silencio.
