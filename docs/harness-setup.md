@@ -77,6 +77,17 @@ git clone --depth 1 --branch v7.1.0 https://github.com/Soluciones-Alexendros/aut
 
 Use `--harness pi` for the bootstrap flow, or the simpler native `pi install git:…@vX.Y.Z` command above. `--dry-run` performs no writes. A checksum, attestation, extraction or doctor failure prevents installation or triggers owned-resource rollback. No `curl | bash` is used.
 
+## Release readiness vs publication
+
+Local readiness aggregates deterministic and native gates; it does **not** create tags or releases:
+
+```bash
+make readiness
+# requires AW_NATIVE_OPT_IN=1 for model e2e lanes; exit 3 (blocked/not_run) fails readiness
+```
+
+Publication remains a separate, operator-authorized step (`project-publish`). The GitHub `release` workflow uploads attested assets and runs a post-release smoke (download → checksum → attestation → bootstrap Pi/Cursor without models). A green smoke after an unauthorized local readiness run is not closure GO.
+
 ## Execution and privileges
 
 Harnesses only need `SKILL.md` (plus `references/` / `scripts/` as linked). Mutating product operations are declared in `tools/execution/registry.yaml` and invoked via `run_registered` with approval — not via per-skill `execution.yaml` (forbidden under `skills/`). Skills may set `metadata.execution: <tool_id>`. `allowed-tools` is a catalog privilege ceiling by `metadata.type` (see ADR-0017); it does not authorize Cursor tools by itself.

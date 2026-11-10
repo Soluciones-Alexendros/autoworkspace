@@ -363,7 +363,7 @@ def verify_and_store(  # noqa: PLR0913  # API pública: evidencia de una ejecuci
     spec = get_operation(result.operation_id)
     if spec.skill != skill:
         raise ValueError(f"skill {skill!r} does not match operation skill {spec.skill!r}")
-    from execution.evidence import store_result, work_digest  # noqa: PLC0415
+    from execution.evidence import artifacts_digest, store_result  # noqa: PLC0415
 
     verifications: list[dict[str, Any]] = []
     if result.outcome == "succeeded":
@@ -380,7 +380,9 @@ def verify_and_store(  # noqa: PLR0913  # API pública: evidencia de una ejecuci
                 result = _failed_verification(result, f"missing required verifications: {missing}")
         except Exception as exc:
             result = _failed_verification(result, f"verifier error: {type(exc).__name__}: {exc}")
-    output_digest = work_digest(root)
+    # Digest only declared artifacts so parallel sibling writers do not race complete_task.
+    output_digest = artifacts_digest(root, artifacts)
+
     run_id = result.run_id
     if result.outcome in {"succeeded", "failed"}:
         run_id = store_result(

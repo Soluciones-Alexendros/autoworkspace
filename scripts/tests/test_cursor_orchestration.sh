@@ -5,6 +5,14 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
 export PATH="${HOME}/.local/bin:${PATH}"
 
+if [[ "${AW_NATIVE_OPT_IN:-}" != "1" ]]; then
+  echo "not_run: set AW_NATIVE_OPT_IN=1 to authorize Cursor model orchestration" >&2
+  exit 3
+fi
+if [[ "${AW_CURSOR_FORCE:-0}" == "1" ]]; then
+  echo "blocked: AW_CURSOR_FORCE is forbidden for acceptance" >&2
+  exit 3
+fi
 if ! command -v agent >/dev/null 2>&1; then
   echo "blocked: agent binary not on PATH" >&2
   exit 3
@@ -27,7 +35,7 @@ git -C "$REPO" config commit.gpgsign false
 rm -rf "$REPO/.cursor"
 bash "$ROOT/scripts/install.sh" --harness cursor --components full --target "$REPO" --yes >/dev/null
 
-export AW_CURSOR_FORCE=1
+# Auto-approval is forbidden; writers rely on --print without --force/--yolo.
 uv run --project tools --frozen python - "$REPO" "$ROOT" "$VERSION" <<'PY'
 import hashlib
 import subprocess
@@ -86,7 +94,7 @@ def verifier_for(task):
 
 adapter = WorktreeAdapter(
     repo,
-    CursorSubagentAdapter(force=True, timeout=240),
+    CursorSubagentAdapter(force=False, timeout=240),
     verifier_for,
 )
 summary = Scheduler(repo, adapter=adapter, max_parallel=1).run()

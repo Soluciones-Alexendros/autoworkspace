@@ -193,6 +193,15 @@ def work_digest(root: Path) -> str:
     return str(content_manifest(root)["digest"])
 
 
+def artifacts_digest(root: Path, artifacts: list[str | dict[str, Any]]) -> str:
+    """Stable digest of declared artifacts only (parallel-safe across sibling writes)."""
+    if not artifacts:
+        raise ValueError("artifacts required for artifacts_digest")
+    records = [_artifact_record(root, art) for art in artifacts]
+    payload = json.dumps(records, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def evidence_dir(repo: Path) -> Path:
     return Path(repo).resolve() / ".autoworkspace" / "evidence"
 
@@ -467,7 +476,14 @@ def store_result(  # noqa: PLR0913  # API pública de evidencia: keyword-only, e
         raise ValueError("evidence store must not be a symlink")
 
     root = Path(repo).resolve()
-    out_digest = output_digest if output_digest is not None else work_digest(root)
+    # When artifacts are declared, the authoritative output digest is artifact-scoped
+    # (parallel-safe). Explicit output_digest is only honored for workspace-wide evidence.
+    if artifacts:
+        out_digest = artifacts_digest(root, artifacts)
+    elif output_digest is not None:
+        out_digest = output_digest
+    else:
+        out_digest = work_digest(root)
     in_digest = input_digest if input_digest is not None else out_digest
 
     bindings: dict[str, Any] = {
@@ -534,14 +550,30 @@ def _check_artifacts(root: Path, data: dict[str, Any]) -> None:
 
 
 def _check_output_digest(root: Path, data: dict[str, Any]) -> None:
-    current = work_digest(root)
     stored = data.get("output_digest") or ""
     if not stored:
         raise ValueError("evidence missing output_digest")
+    arts = data.get("artifacts") or []
+    if isinstance(arts, list) and arts:
+        # Task-scoped evidence: only declared artifact paths participate so
+        # concurrent sibling writers cannot falsely invalidate an unrelated task.
+        # Use paths only here; _check_artifacts already enforces stored sha256.
+        paths: list[str | dict[str, Any]] = []
+        for art in arts:
+            if isinstance(art, dict):
+                path = str(art.get("path") or "")
+                if path:
+                    paths.append(path)
+            else:
+                paths.append(art)
+        current = artifacts_digest(root, paths)
+        label = "artifact content digest"
+    else:
+        current = work_digest(root)
+        label = "workspace content digest"
     if current != stored:
         raise ValueError(
-            "evidence stale: workspace content digest changed since verification "
-            f"(stored={stored[:12]}… current={current[:12]}…)"
+            f"evidence stale: {label} changed since verification (stored={stored[:12]}… current={current[:12]}…)"
         )
 
 

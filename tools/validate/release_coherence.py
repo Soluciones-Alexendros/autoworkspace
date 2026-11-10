@@ -256,7 +256,7 @@ def _check_action_pins(rel: str, text: str) -> None:
             err(f"{rel}: uses sin SHA de 40 hex: {action}")
 
 
-def release_asset_errors(root: Path) -> list[str]:  # noqa: C901  # ordered release asset gate
+def release_asset_errors(root: Path) -> list[str]:  # noqa: C901, PLR0912, PLR0915  # ordered release asset gate
     """Require archive → checksum → attestation → upload in the release workflow."""
     path = root / ".github" / "workflows" / "release.yml"
     if not path.is_file():
@@ -291,6 +291,33 @@ def release_asset_errors(root: Path) -> list[str]:  # noqa: C901  # ordered rele
             errors.append("release upload must not clobber existing assets")
         if "GH_TOKEN" not in str(steps[upload].get("env", {})):
             errors.append("release upload requires GH_TOKEN")
+        # Guard the historical v7.1.0 failure mode: upload resolving VERSION from branch name.
+        compact = "".join(upload_run.split()).replace('"', "").replace("'", "")
+        if "VERSION=${VERSION:-${GITHUB_REF_NAME#v}}" in compact:
+            errors.append("release upload must not fall back VERSION to GITHUB_REF_NAME alone")
+        workflow_text = path.read_text(encoding="utf-8")
+        if "needs.publish.outputs.version" not in workflow_text:
+            errors.append("release provenance must consume needs.publish.outputs.version")
+        if "gh release view" not in upload_run:
+            errors.append("release upload must verify the release exists before uploading assets")
+    jobs = data.get("jobs") or {}
+    smoke = jobs.get("post-release-smoke")
+    if not isinstance(smoke, dict):
+        errors.append("release workflow missing post-release-smoke job")
+    else:
+        smoke_runs = [str(step.get("run", "")) for step in (smoke.get("steps") or []) if isinstance(step, dict)]
+        smoke_text = "\n".join(smoke_runs)
+        if "gh release download" not in smoke_text:
+            errors.append("post-release-smoke must download public release assets")
+        if "sha256sum -c" not in smoke_text:
+            errors.append("post-release-smoke must verify SHA256SUMS")
+        if "gh attestation verify" not in smoke_text:
+            errors.append("post-release-smoke must verify attestation")
+        if "bootstrap.sh" not in smoke_text:
+            errors.append("post-release-smoke must run bootstrap without models")
+        smoke_compact = "".join(smoke_text.split()).replace('"', "").replace("'", "")
+        if "VERSION=${VERSION:-${GITHUB_REF_NAME#v}}" in smoke_compact:
+            errors.append("post-release-smoke must not fall back VERSION to GITHUB_REF_NAME alone")
     return errors
 
 

@@ -6,6 +6,20 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.1.1] - 2026-11-10
+
+### Fixed
+
+- Release provenance resolves `VERSION` from `needs.publish.outputs.version` (or a `v*` tag), never from a bare branch name — closes the `vmain` / empty-assets failure mode of `v7.1.0`.
+- Post-release smoke downloads assets, verifies checksum + attestation, and bootstraps Pi/Cursor without models.
+- Harness isolation: deny-by-default `ExecutionPolicy`; Cursor acceptance rejects `--force`/`--yolo`; shared `RunWorkspace` staging with independent verifiers.
+- Cursor native policy (C): `beforeShellExecution` allow/deny/ask observed via headless Cursor without `--force`/`--yolo`.
+- Task evidence digests are artifact-scoped so parallel sibling writers do not falsely invalidate `complete_task`.
+
+### Added
+
+- `make readiness` aggregates validate/test/smoke/typecheck/lint/native/e2e; exit 3 from native lanes blocks readiness (not PASS).
+
 ## [7.1.0] - 2026-11-09
 
 - `local-email` 7.0.0 -> 7.1.0 (minor)
