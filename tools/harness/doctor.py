@@ -8,6 +8,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 TOOLS = Path(__file__).resolve().parents[1]
 if str(TOOLS) not in sys.path:
@@ -15,7 +16,9 @@ if str(TOOLS) not in sys.path:
 
 from harness.base import Check, build_report, report_exit_code  # noqa: E402
 
-_INSTALLER_VERSION_RE = re.compile(r'^VERSION="([^"]+)"', re.MULTILINE)
+_VERSION_ASSIGN_RE = re.compile(r"^VERSION=(.+)$", re.MULTILINE)
+_LITERAL_VERSION_RE = re.compile(r'^"([0-9][^"$`]*)"$')
+_PACKAGE_JSON_REF = "package.json"
 
 
 def _json_version(path: Path) -> str | None:
@@ -25,6 +28,46 @@ def _json_version(path: Path) -> str | None:
         return None
     value = data.get("version")
     return str(value) if value is not None else None
+
+
+def _version_assignment(text: str) -> str | None:
+    match = _VERSION_ASSIGN_RE.search(text)
+    return match.group(1).strip() if match else None
+
+
+def installer_version_check(root: Path, expected: str | None) -> Check:
+    """Drift guard: the skills installer may derive the version, never lag behind it."""
+    try:
+        text = (root / "scripts" / "lib" / "link-skills.sh").read_text(encoding="utf-8")
+    except OSError:
+        return Check("installer-version", "contract", "fail", "installer missing")
+    assignment = _version_assignment(text)
+    if assignment is None:
+        return Check("installer-version", "contract", "fail", "installer VERSION assignment missing")
+    literal = _LITERAL_VERSION_RE.match(assignment)
+    if literal is not None:
+        value = literal.group(1)
+        matches = bool(expected) and value == expected
+        return Check(
+            "installer-version",
+            "contract",
+            "pass" if matches else "fail",
+            f"installer={value} expected={expected or 'unknown'}",
+        )
+    if _PACKAGE_JSON_REF in assignment:
+        # Derived form keeps package.json as the only source of truth, so it cannot drift.
+        return Check(
+            "installer-version",
+            "contract",
+            "pass" if expected else "fail",
+            f"installer=derived from package.json expected={expected or 'unknown'}",
+        )
+    return Check(
+        "installer-version",
+        "contract",
+        "fail",
+        f"installer VERSION is neither literal nor package.json-derived: {assignment}",
+    )
 
 
 def version_coherence_checks(root: Path, expected_version: str | None = None) -> list[Check]:
@@ -48,20 +91,7 @@ def version_coherence_checks(root: Path, expected_version: str | None = None) ->
             f"cursor-plugin={plugin or 'missing'} expected={expected or 'unknown'}",
         )
     )
-    installer_path = root / "scripts" / "lib" / "link-skills.sh"
-    try:
-        match = _INSTALLER_VERSION_RE.search(installer_path.read_text(encoding="utf-8"))
-        installer = match.group(1) if match else None
-    except OSError:
-        installer = None
-    checks.append(
-        Check(
-            "installer-version",
-            "contract",
-            "pass" if installer and expected and installer == expected else "fail",
-            f"installer={installer or 'missing'} expected={expected or 'unknown'}",
-        )
-    )
+    checks.append(installer_version_check(root, expected))
     return checks
 
 
@@ -92,18 +122,43 @@ def cursor_full_check(root: Path) -> Check:
     manifest = root.resolve() / ".cursor" / ".autoworkspace-full-manifest.json"
     try:
         data = json.loads(manifest.read_text(encoding="utf-8"))
-        resources = data["resources"]
-        assert isinstance(resources, list)
-    except (OSError, json.JSONDecodeError, KeyError, AssertionError):
+        entries = _full_manifest_entries(data)
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
         return Check("cursor-full-components", "A", "fail", "full component manifest missing or invalid")
-    for relative in resources:
+    user_scope = data.get("scope") == "user"
+    for relative, kind in entries:
         path = manifest.parent / relative
+        if kind == "generated":
+            # Owned generated file (user-scope hooks.json): must not be a symlink.
+            if path.is_symlink() or not path.is_file():
+                return Check("cursor-full-components", "A", "fail", f"invalid generated component: {relative}")
+            continue
         if not path.is_symlink() or not path.exists() or not Path(path.readlink()).is_absolute():
             return Check("cursor-full-components", "A", "fail", f"invalid full component: {relative}")
-    required = {"rules/autoworkspace.mdc", "agents/aw-verifier.md", "hooks.json", "hooks/shell_gate.py"}
-    if not required <= set(resources):
+    required = {"agents/aw-verifier.md", "hooks.json", "hooks/shell_gate.py"}
+    if not user_scope:
+        # User rules live in Cursor Settings, so the project rule is project-scope only.
+        required.add("rules/autoworkspace.mdc")
+    if not required <= {relative for relative, _kind in entries}:
         return Check("cursor-full-components", "A", "fail", "full component manifest is incomplete")
-    return Check("cursor-full-components", "A", "pass", f"{len(resources)} full components verified")
+    scope = "user" if user_scope else "project"
+    return Check("cursor-full-components", "A", "pass", f"{len(entries)} full components verified ({scope} scope)")
+
+
+def _full_manifest_entries(data: dict[str, Any]) -> list[tuple[str, str]]:
+    """Accept schema v1 (paths) and v2 ({path, kind}); generated files are owned, not linked."""
+    raw = data["resources"]
+    if not isinstance(raw, list):
+        raise TypeError("resources must be a list")
+    entries: list[tuple[str, str]] = []
+    for item in raw:
+        if isinstance(item, str):
+            entries.append((item, "symlink"))
+        elif isinstance(item, dict):
+            entries.append((str(item["path"]), str(item.get("kind", "symlink"))))
+        else:
+            raise TypeError(f"invalid manifest resource: {item!r}")
+    return entries
 
 
 def collect_checks(  # noqa: PLR0913  # doctor entry: keyword-only harness/native/full options

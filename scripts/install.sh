@@ -164,6 +164,7 @@ if [[ "$COMPONENTS" == "full" ]]; then
     FULL_TARGET="$(resolve_project_root "$TARGET")" || exit $?
   fi
   FULL_ARGS=(--source "$ROOT" --target "$FULL_TARGET")
+  if [[ "$USER_MODE" == true ]]; then FULL_ARGS+=(--user); fi
   if [[ "$YES" == true ]]; then FULL_ARGS+=(--yes); fi
   if [[ "$JSON_OUT" == true ]]; then FULL_ARGS+=(--json); fi
   if [[ "$DRY_RUN" == true ]]; then FULL_ARGS+=(--dry-run); fi
