@@ -90,9 +90,7 @@ def test_install_full_cli_json_includes_failures(tmp_path: Path, monkeypatch: py
     assert caught.value.function in {"install_full", "require_runtime"}
 
 
-def test_install_full_post_link_validation_names_component(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_install_full_post_link_validation_names_component(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     home = tmp_path / "home"
     home.mkdir()
     sync_payload(ROOT, home / ".autoworkspace", origin="sync")
