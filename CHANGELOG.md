@@ -13,7 +13,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ### Added
 
-- `scripts/cursor-user-rule.sh` prints (or `--copy`s) the rule body for Cursor Customize -> Rules, since user rules live in the account and not on disk.
+- `scripts/cursor-user-rule.sh` prints (or `--copy`s) the whole rule, frontmatter included, for Cursor Customize -> Rules, since user rules live in the account and not on disk. `autoworkspace.mdc` now carries a descriptive `description` and a structured Markdown body.
 
 ### Changed
 

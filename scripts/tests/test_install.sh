@@ -299,12 +299,14 @@ if bash "$ROOT/scripts/install.sh" --harness pi --components full --target "$TMP
   echo "FAIL: Pi full mode should be rejected"; exit 1
 fi
 
-# Cursor user rule helper: body without frontmatter, rejects unknown args.
-RULE_BODY=$(bash "$ROOT/scripts/cursor-user-rule.sh")
-case "$RULE_BODY" in
-  ---*) echo "FAIL: frontmatter leaked into the user rule body"; exit 1 ;;
-esac
-echo "$RULE_BODY" | grep -q "run_registered"
+# Cursor user rule helper: whole rule with frontmatter (Customize -> Rules format).
+RULE_OUT=$(bash "$ROOT/scripts/cursor-user-rule.sh")
+test "$(echo "$RULE_OUT" | head -1)" = "---"
+echo "$RULE_OUT" | grep -q "^alwaysApply: true$"
+echo "$RULE_OUT" | grep -q "^description: ."
+echo "$RULE_OUT" | grep -q "^# Contrato de ejecución de autoworkspace$"
+echo "$RULE_OUT" | grep -q "run_registered"
+test "$(echo "$RULE_OUT" | grep -c '^---$')" = "2"
 if bash "$ROOT/scripts/cursor-user-rule.sh" --bogus 2>/dev/null; then
   echo "FAIL: unknown arg accepted by cursor-user-rule.sh"; exit 1
 fi
