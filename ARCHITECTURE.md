@@ -2,13 +2,13 @@
 
 ### Propósito de este documento
 
-- **Objetivos:** Describir el producto autoworkspace (pipeline agéntico), el árbol de skills y tools, las capas del canon/CI de flota, y cómo se valida.
+- **Objetivos:** Describir el producto machineroom (pipeline agéntico), el árbol de skills y tools, las capas del canon/CI de flota, y cómo se valida.
 - **Estructura:** Esta meta-sección → producto → árbol → pipeline → capas canon/CI → CI → supply chain.
-- **Contenido a integrar según contexto:** Contratos de fase en `.autoworkspace/`; canon de flota en `docs/architecture/`, `stacks/` y `templates/product/`.
+- **Contenido a integrar según contexto:** Contratos de fase en `.autoworkspace/` (legacy; destino `.machineroom/`); canon de flota en `docs/architecture/`, `stacks/` y `templates/product/`.
 
 ## Producto
 
-**autoworkspace** is an agentic pipeline for Soluciones-Alexendros, not a skill showcase. Operators route work through skills under `skills/` and declarative project status under `.autoworkspace/`. There is no production web deploy: the deliverable is the skill catalog, validators, routers, and (from P11) the **fleet canon** previously hosted in `repo-standard`.
+**Machineroom** is an agentic pipeline for Soluciones-Alexendros, not a skill showcase. Operators route work through skills under `skills/` and declarative project status under `.autoworkspace/` (migrating to `.machineroom/`). There is no production web deploy: the deliverable is the skill catalog, validators, routers, and (from P11) the **fleet canon** previously hosted in `repo-standard`.
 
 ## Tree
 
@@ -25,7 +25,7 @@
 | `templates/product/`            | Product P0/P1 skeleton (copy into a new repo)                          |
 | `templates/harness/`            | Scaffolding for `.autoworkspace/`                                      |
 
-Sixteen skills in five domains: `plan`, `local`, `project`, `web`, `role`.
+Seventeen skills in five domains: `plan`, `local`, `project`, `web`, `role`.
 
 ## Pipeline
 

@@ -26,6 +26,6 @@ We acknowledge reports and, when a fix ships, credit the reporter in the changel
 
 ## Scope
 
-- Skills, `tools/`, install scripts, and CI/validators of autoworkspace.
+- Skills, `tools/`, install scripts, and CI/validators of machineroom.
 - Fleet contracts: docs, reusable workflows, `templates/product/`, Renovate and `main` protection conventions.
 - Not covered: production secrets, customer credentials, or third-party product runtimes (report in those repos).

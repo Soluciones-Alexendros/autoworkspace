@@ -1,5 +1,10 @@
 # Spec: taxonomía v5 con role-clean-code
 
+> **OBSOLETA (machineroom rename).** Esta SPEC describe el catálogo histórico
+> de 16 skills (v5). El catálogo vivo son **17** skills; la fuente de verdad
+> del incremento actual es `tasks/plan-machineroom-rename-harness.md`. No usar
+> este documento para aceptar trabajo nuevo.
+
 ## Objective
 
 Dejar el catálogo canónico en **16 skills** y 5 dominios (`plan`, `local`,
