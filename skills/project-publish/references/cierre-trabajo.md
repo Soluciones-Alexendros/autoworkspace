@@ -11,7 +11,9 @@ Pedir este cierre autoriza, en el repo del plan:
 1. Ejecutar el gate local (Husky, typecheck, tests, e2e).
 2. Una ronda crítica de revisión contra el resultado esperado del plan y los commits de corrección.
 3. Abrir o actualizar PRs contra `main` (draft → ready).
-4. Auto-merge con **merge commit** (`--auto --merge`) y suscripción a CI/PR (escuchar avisos; no squash ni bypass).
+4. Auto-merge con **squash** (`--auto --squash`) y suscripción a CI/PR
+   (escuchar avisos; no `--merge` / `--rebase` / `--admin`). Norma de flota:
+   [ADR-0012](../../../docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md).
 5. Borrar ramas ya mergeadas y temporales locales del plan.
 
 Sigue exigiendo sí aparte: tag anotado, `gh release create`, borrar el repositorio remoto, tocar repos archivados o `voicebox`. Nunca force-push a `main`/`master`.
@@ -58,7 +60,7 @@ Si `/execute-plan` ya abrió PRs (Graphite stack o `gh pr create`): reutilizarlo
 gh pr create --base main --head <rama> --fill --draft
 ```
 
-Un PR por incremento lineal; en stack, base = padre del stack, el fondo contra `main`. Título y cuerpo en el idioma del plan. Merge commit (`--merge`) es la política; nunca squash ni `--admin`.
+Un PR por incremento lineal; en stack, base = padre del stack, el fondo contra `main`. Título y cuerpo en el idioma del plan. Squash (`--squash`) es la política de flota; nunca `--merge`, `--rebase` ni `--admin`.
 
 Tags y changelog: solo si el plan incluye bump de versión. Entonces Fases B y F de `SKILL.md` **antes** del tag. Un sí a este cierre no publica una release.
 
@@ -67,7 +69,7 @@ Tags y changelog: solo si el plan incluye bump de versión. Entonces Fases B y F
 Seguir `merge-watch.md`:
 
 ```bash
-gh pr merge <n> --auto --merge --delete-branch
+gh pr merge <n> --auto --squash --delete-branch
 ```
 
 Luego `subscribe_github_ci` (rama head) + `subscribe_github_pr` (scope pr), declarar qué se espera y **terminar el turno**. No polling. Ante notificación de fallo → corregir y re-suscribir; ante merged → paso 6.
@@ -97,7 +99,7 @@ Borrar worktrees del plan (`grok worktree rm --force` si el aislamiento los cre�
 | Husky            | OK / FAIL       |                    |
 | e2e              | OK / N/A / FAIL |                    |
 | Revisión vs plan | OK              | bugs corregidos: N |
-| PR               | #N MERGED       | merge commit, SHA  |
+| PR               | #N MERGED       | squash, SHA        |
 | Limpieza         | OK              | ramas y worktrees  |
 ```
 

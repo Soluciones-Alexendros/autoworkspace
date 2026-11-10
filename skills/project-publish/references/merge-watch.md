@@ -16,18 +16,21 @@ Un sí a «aplica remediación», «abre el PR» o cierre BUILD autoriza:
 
 1. Commits en rama de trabajo (`chore/project-publish-*`, `cursor/*`, etc.).
 2. Push + PR (draft si el plan lo pide) a `main`.
-3. **Auto-merge con merge commit** + suscripción a eventos (ver abajo).
+3. **Auto-merge con squash** + suscripción a eventos (ver abajo).
 
 Sigue exigiendo sí aparte: borrar labels legacy, tags, `gh release create`, rulesets, rotar secretos.
 
-## Política de merge (normativa)
+## Política de merge (normativa de flota)
 
-| Permitido                                      | Prohibido                                      |
-| ---------------------------------------------- | ---------------------------------------------- |
-| `gh pr merge <n> --auto --merge --delete-branch` | `--squash`, `--rebase`                         |
-| Esperar checks required vía auto-merge         | `--admin` / bypass de protección o merge queue |
+| Permitido                                         | Prohibido                                      |
+| ------------------------------------------------- | ---------------------------------------------- |
+| `gh pr merge <n> --auto --squash --delete-branch` | `--merge`, `--rebase`                          |
+| Esperar checks required vía auto-merge            | `--admin` / bypass de protección o merge queue |
 
-Si el repo exige otro método en branch protection, documentarlo en el informe y **no** inventar squash.
+Canon: [ADR-0012](../../../docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md),
+`templates/product/AGENTS.md` §5, `AGENTS.md` del host. Si el ruleset del
+repo no admite squash, documentarlo en el informe y **parar** (no inventar
+`--merge`).
 
 ## Flujo: publicar y escuchar
 
@@ -36,7 +39,7 @@ Tras abrir el PR (y `gh pr ready` si deja de ser draft):
 1. Activar auto-merge:
 
 ```bash
-gh pr merge <n> --auto --merge --delete-branch
+gh pr merge <n> --auto --squash --delete-branch
 ```
 
 2. Suscribir la conversación del agente (Cursor):
@@ -47,18 +50,17 @@ gh pr merge <n> --auto --merge --delete-branch
 3. Declarar en una frase qué se espera (CI terminal o PR merged) y **terminar el turno**.
    No hacer `gh pr checks --watch` ni bucles de polling: el aviso llega como notificación.
 
-   En Cursor (usuario): `~/.cursor/hooks.json` refuerza esto —
-   `beforeShellExecution` (`pr_policy.py`, `failClosed`) deniega `--squash`/
-   `--rebase`/`--admin` y exige `--merge` en invocaciones reales de `gh pr merge`
-   (ignora texto en comillas/heredocs para evitar falsos positivos);
-   `afterShellExecution` (`pr_listen.py`) inyecta el recordatorio de suscribir
-   solo si la salida parece éxito, sin reinyectar el output crudo (anti-fuga).
-   El aviso de fallo/éxito **no** lo emite el hook local: lo emiten
-   `subscribe_github_ci` / `subscribe_github_pr` como notificación de la conversación.
+   En Cursor (usuario): `~/.cursor/hooks.json` → `beforeShellExecution`
+   (`shell_gate.py`, `failClosed`) cubre mutación de host y red; **no** impone
+   el método de merge de `gh pr merge`. La norma de squash vive en esta skill,
+   en el canon de flota y en la regla de usuario «Flota GitHub: auto-squash».
+   Si se añade un hook de política de PR, debe exigir `--squash` y denegar
+   `--merge` / `--rebase` / `--admin` (no al revés). El aviso de fallo/éxito
+   lo emiten `subscribe_github_ci` / `subscribe_github_pr`.
 
 4. Cuando llegue el evento:
 
-- **CI failure** → corregir en alcance del PR, push (`--force-with-lease` solo si rebase local lo exige; nunca `--force`), reactivar `--auto --merge` si hace falta, volver a suscribir si la suscripción se cerró, terminar turno otra vez.
+- **CI failure** → corregir en alcance del PR, push (`--force-with-lease` solo si rebase local lo exige; nunca `--force`), reactivar `--auto --squash` si hace falta, volver a suscribir si la suscripción se cerró, terminar turno otra vez.
 - **PR merged** → limpieza de ramas/worktrees (`cierre-trabajo.md` paso 6); actualizar informe.
 - **PR closed without merge** → informar bloqueo; no reabrir sin instrucción.
 
