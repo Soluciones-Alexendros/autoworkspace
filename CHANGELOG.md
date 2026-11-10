@@ -6,6 +6,8 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.1.3] - 2026-11-10
+
 ### Fixed
 
 - `scripts/lib/link-skills.sh` derives `VERSION` from `package.json` instead of pinning `7.1.0`, and `doctor.py` accepts that derivation while still failing a stale literal (regression test added).
@@ -22,6 +24,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 - Full Cursor manifest moves to schema v2 (`{path, kind}` entries, `scope`, `omitted`); v1 manifests remain readable and uninstall honors both.
 - User-scope `hooks.json` is a relative symlink into the runtime (user-scoped commands written there) instead of a generated file under `~/.cursor`.
+- Docs drop leftover Alignux project references (`local-security` 7.1.0 -> 7.1.1).
 
 ## [7.1.2] - 2026-11-10
 
@@ -380,7 +383,8 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 - Estructura `skills/<nombre>/` con frontmatter normalizado (`license: MIT`, `metadata` con autor, versión, dominio e idioma).
 - Validadores `tools/validate/` (spec + enlaces), CI en `.github/workflows/` y `run-validation.sh` agregado.
 
-[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.2...HEAD
+[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.3...HEAD
+[7.1.3]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.2...v7.1.3
 [7.1.2]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.1...v7.1.2
 [7.1.1]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.0...v7.1.1
 [7.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.0.3...v7.1.0
