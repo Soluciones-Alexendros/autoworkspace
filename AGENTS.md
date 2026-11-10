@@ -1,4 +1,4 @@
-# Soluciones-Alexendros Autoworkspace — Routing Contract
+# Soluciones-Alexendros Machineroom — Routing Contract
 
 ## Discovery
 
@@ -88,7 +88,7 @@ SKILL.md body should stay focused (repo gate: ≤500 lines / token budget in `to
 ## Learned Workspace Facts
 
 - El catálogo canónico son 17 skills en 5 dominios: `plan`, `local`, `project`, `web`, `role` (prefijo del nombre = dominio).
-- Producto: **autoworkspace** — pipeline agéntico, no vitrina de skills.
+- Producto: **machineroom** — pipeline agéntico, no vitrina de skills.
 - Fuente canónica de skills en el checkout: `skills/<nombre>/SKILL.md`; no asumir que `.agents/skills/` existe o apunta al destino correcto sin resolver el enlace.
 - Actualización de dependencias: Renovate (no Dependabot).
 - Copia desechable, venv o HOME temporal no es sandbox de seguridad para scripts `local-*` (pueden tocar rutas absolutas, credenciales del proceso o red); inspeccionar antes de ejecutar y preferir deny-by-default en entrypoints mutadores.
