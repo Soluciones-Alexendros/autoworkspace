@@ -23,6 +23,8 @@ def test_full_install_idempotence_and_manifest(tmp_path: Path) -> None:
     assert first["installed"] == expected
     assert first["changed"] == expected
     assert first["components"] == "full"
+    assert first["scope"] == "project"
+    assert first["omitted"] == []
     for relative in (
         ".cursor/skills/plan-continue",
         ".cursor/rules/autoworkspace.mdc",
@@ -42,6 +44,68 @@ def test_full_install_idempotence_and_manifest(tmp_path: Path) -> None:
     assert second["skipped"] == expected
     manifest = json.loads((target / ".cursor" / ".autoworkspace-full-manifest.json").read_text())
     assert len(manifest["resources"]) == expected
+
+
+USER_SCOPE_COMPONENTS = 23  # 17 skills + 3 agents + hooks.json + 2 hook scripts
+
+
+def test_user_scope_generates_hooks_and_omits_project_rule(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    target = home / ".cursor"
+    result = install_full(ROOT, target, user_scope=True)
+    assert result["scope"] == "user"
+    assert result["installed"] == USER_SCOPE_COMPONENTS
+    assert result["omitted"] == ["rules/autoworkspace.mdc"]
+    assert result["notes"]
+    hooks = target / "hooks.json"
+    # User hooks run from ~/.cursor, so commands must not carry the .cursor/ prefix.
+    data = json.loads(hooks.read_text())
+    commands = [entry["command"] for entries in data["hooks"].values() for entry in entries]
+    assert commands and not any(".cursor/hooks/" in command for command in commands), commands
+    assert not hooks.is_symlink()
+    assert not (target / "rules").exists()
+    assert (target / "skills" / "plan-continue").is_symlink()
+    assert (target / "agents" / "aw-verifier.md").is_symlink()
+    second = install_full(ROOT, target, user_scope=True)
+    assert second["changed"] == 0
+    assert second["skipped"] == USER_SCOPE_COMPONENTS
+    manifest = json.loads((target / ".autoworkspace-full-manifest.json").read_text())
+    assert manifest["scope"] == "user"
+    assert {"path": "hooks.json", "kind": "generated"} in manifest["resources"]
+    uninstalled = uninstall_full(ROOT, target)
+    assert uninstalled["retained"] == []
+    assert not hooks.exists()
+
+
+def test_user_scope_prunes_project_only_rule_from_previous_manifest(tmp_path: Path) -> None:
+    target = tmp_path / "home" / ".cursor"
+    install_full(ROOT, target)
+    stale_rule = target / "rules" / "autoworkspace.mdc"
+    assert stale_rule.is_symlink()
+    result = install_full(ROOT, target, user_scope=True)
+    assert result["pruned"] == ["rules/autoworkspace.mdc"]
+    assert not stale_rule.exists()
+    assert not (target / "rules").exists()
+    assert (target / "hooks.json").is_file() and not (target / "hooks.json").is_symlink()
+
+
+def test_user_scope_preserves_foreign_hooks_file(tmp_path: Path) -> None:
+    target = tmp_path / "home" / ".cursor"
+    target.mkdir(parents=True)
+    (target / "hooks.json").write_text('{"version": 1, "hooks": {}}', encoding="utf-8")
+    with pytest.raises(ConflictError, match="foreign file conflict"):
+        install_full(ROOT, target, user_scope=True)
+    assert (target / "hooks.json").read_text(encoding="utf-8") == '{"version": 1, "hooks": {}}'
+
+
+def test_user_scope_retains_edited_generated_hooks(tmp_path: Path) -> None:
+    target = tmp_path / "home" / ".cursor"
+    install_full(ROOT, target, user_scope=True)
+    hooks = target / "hooks.json"
+    hooks.write_text(hooks.read_text(encoding="utf-8").replace("hooks/", "./hooks/"), encoding="utf-8")
+    result = uninstall_full(ROOT, target)
+    assert result["retained"] == ["hooks.json"]
+    assert hooks.exists()
 
 
 def test_full_dry_run_creates_nothing(tmp_path: Path) -> None:

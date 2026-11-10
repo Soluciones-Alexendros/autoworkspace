@@ -278,8 +278,35 @@ FULL_JSON2=$(bash "$ROOT/scripts/install.sh" --harness cursor --components full 
 echo "$FULL_JSON2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["changed"]==0 and d["skipped"]==24, d'
 bash "$ROOT/scripts/install.sh" --harness cursor --components full --target "$FULL" --uninstall --yes --json >/dev/null
 test ! -e "$FULL/.cursor/skills/plan-continue"
+# User-scope full install: skills + agents + generated hooks.json, no project rule.
+FULL_USER_HOME="$TMP/home-full"
+FULL_USER=$(HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --yes --json)
+echo "$FULL_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["scope"]=="user", d; assert d["installed"]==23, d; assert d["omitted"]==["rules/autoworkspace.mdc"], d; assert d["notes"], d'
+USER_CURSOR="$FULL_USER_HOME/.cursor"
+test -L "$USER_CURSOR/skills/plan-continue"
+test -L "$USER_CURSOR/agents/aw-verifier.md"
+test -f "$USER_CURSOR/hooks.json"
+test ! -L "$USER_CURSOR/hooks.json"
+test ! -e "$USER_CURSOR/rules"
+python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); cmds=[e["command"] for v in data["hooks"].values() for e in v]; assert cmds, data; assert not any(".cursor/hooks/" in c for c in cmds), cmds; assert all(c.startswith("python3 hooks/") for c in cmds), cmds' "$USER_CURSOR/hooks.json"
+FULL_USER2=$(HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --yes --json)
+echo "$FULL_USER2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["changed"]==0 and d["skipped"]==23, d'
+HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --uninstall --yes --json >/dev/null
+test ! -e "$USER_CURSOR/hooks.json"
+test ! -e "$USER_CURSOR/agents/aw-verifier.md"
+
 if bash "$ROOT/scripts/install.sh" --harness pi --components full --target "$TMP/invalid-full" --yes --json 2>/dev/null; then
   echo "FAIL: Pi full mode should be rejected"; exit 1
+fi
+
+# Cursor user rule helper: body without frontmatter, rejects unknown args.
+RULE_BODY=$(bash "$ROOT/scripts/cursor-user-rule.sh")
+case "$RULE_BODY" in
+  ---*) echo "FAIL: frontmatter leaked into the user rule body"; exit 1 ;;
+esac
+echo "$RULE_BODY" | grep -q "run_registered"
+if bash "$ROOT/scripts/cursor-user-rule.sh" --bogus 2>/dev/null; then
+  echo "FAIL: unknown arg accepted by cursor-user-rule.sh"; exit 1
 fi
 
 echo "install tests OK"

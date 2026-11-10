@@ -17,7 +17,8 @@ MANIFEST_NAME=".autoworkspace-install-manifest.json"
 YES=0
 JSON_OUT=0
 HARNESS="cursor"
-VERSION="7.1.0"
+# Single source of truth for the release version (avoids drift with package.json).
+VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$ROOT/package.json")"
 INSTALLED=0
 CHANGED=0
 SKIPPED=0

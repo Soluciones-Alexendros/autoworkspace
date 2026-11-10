@@ -23,6 +23,8 @@ Versioned under `.cursor/` (skills symlinks are **not** committed; run `install-
 - `.cursor/agents/aw-verifier.md`
 - `tools/validate/tests/test_shell_gate.py`
 
+Surfaces are scope-aware under `--user`: skills and agents load from `~/.cursor/skills` and `~/.cursor/agents`, the rule is omitted because Cursor keeps user rules in Settings, and `hooks.json` is generated with `hooks/...` commands because user hooks run from `~/.cursor`. Installation of the contract surfaces therefore stays a project-level concern; `doctor.py --full` accepts both scopes.
+
 Levels beyond A:
 
 - **B (native discovery/load):** Customize → Skills lists all 16; `/plan-continue` routes. Human IDE only → **`not_run` in CI**.

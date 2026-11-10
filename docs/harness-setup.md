@@ -50,7 +50,25 @@ The default `--components skills` is explicitly a partial installation. To insta
 bash scripts/install.sh --harness cursor --components full --target /tmp/ai-cursor --yes --json
 ```
 
-A full target is the project root, not its skills directory. `--user --components full` targets `~/.cursor`. Full dry-run writes nothing; uninstall uses the full manifest and retains foreign or changed resources. The Cursor plugin remains the native distribution for the complete harness.
+A full target is the project root, not its skills directory. Full dry-run writes nothing; uninstall uses the full manifest and retains foreign or changed resources. The Cursor plugin remains the native distribution for the complete harness.
+
+`--user --components full` targets `~/.cursor` and is scope-aware, because Cursor reads different surfaces per scope:
+
+| Component                 | Project scope `<project>/.cursor` | User scope `~/.cursor`                                                               |
+| ------------------------- | --------------------------------- | ------------------------------------------------------------------------------------ |
+| `skills/*`                | symlink                           | symlink (Cursor reads `~/.cursor/skills`)                                            |
+| `agents/*.md`             | symlink                           | symlink (Cursor reads `~/.cursor/agents`)                                            |
+| `rules/autoworkspace.mdc` | symlink                           | **omitted** — user rules live in Customize → Rules                                   |
+| `hooks.json`              | symlink                           | **generated owned file** with `hooks/...` commands (user hooks run from `~/.cursor`) |
+| `hooks/*.py`              | symlink                           | symlink                                                                              |
+
+To apply the execution contract globally, paste the rule body into Customize → Rules (Cursor keeps user rules in Settings and syncs them with the account, so no file can carry them):
+
+```bash
+bash scripts/cursor-user-rule.sh --copy   # body without frontmatter, on the clipboard
+```
+
+The JSON result reports `scope`, `omitted`, `notes` and (on upgrades) `pruned`. A pre-existing foreign `~/.cursor/hooks.json` is never overwritten: the install fails closed with a `foreign file conflict`. To get the execution contract globally, paste `rules/autoworkspace.mdc` into Customize → Rules.
 
 ## Pi notes
 
