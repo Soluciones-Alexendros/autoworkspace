@@ -90,7 +90,9 @@ export default function autoworkspace(pi: ExtensionAPI) {
       if (params.write) tools.push("write", "edit");
       if (params.allow_bash) tools.push("bash");
       // Follow symlink when installed as ~/.pi/agent/extensions/autoworkspace.ts
-      const extensionDir = path.dirname(fs.realpathSync(fileURLToPath(import.meta.url)));
+      const extensionDir = path.dirname(
+        fs.realpathSync(fileURLToPath(import.meta.url))
+      );
       const worker = path.join(extensionDir, "agents", "worker.md");
       const args = [
         "--mode",

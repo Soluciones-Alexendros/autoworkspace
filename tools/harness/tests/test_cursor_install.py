@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import pytest  # noqa: I001 — keep pytest with stdlib for local style
+import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))

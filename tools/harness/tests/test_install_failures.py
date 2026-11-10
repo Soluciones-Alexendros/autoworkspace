@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,7 +13,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from harness.cursor_install import ConflictError, install_full, main as cursor_main  # noqa: E402
+from harness import cursor_install  # noqa: E402
+from harness.cursor_install import install_full  # noqa: E402
 from harness.runtime import (  # noqa: E402
     InstallFailure,
     require_runtime,
@@ -80,7 +80,7 @@ def test_install_full_cli_json_includes_failures(tmp_path: Path, monkeypatch: py
     target = home / ".cursor"
     target.mkdir()
     monkeypatch.setattr(sys, "argv", ["cursor_install", "--target", str(target), "--user", "--json"])
-    code = cursor_main(["--target", str(target), "--user", "--json"])
+    code = cursor_install.main(["--target", str(target), "--user", "--json"])
     assert code != 0
     # main prints JSON on stdout; capture via rerun with redirected print is awkward —
     # call install_full and mirror the CLI contract instead.
@@ -97,8 +97,6 @@ def test_install_full_post_link_validation_names_component(
     home.mkdir()
     sync_payload(ROOT, home / ".autoworkspace", origin="sync")
     target = home / ".cursor"
-
-    import harness.cursor_install as cursor_install
 
     def absolute_instead(source: Path, destination: Path) -> None:
         if destination.is_symlink() or destination.is_file():
@@ -121,7 +119,7 @@ def test_install_full_conflict_json_lists_failures(tmp_path: Path, capsys: pytes
     target = home / ".cursor"
     target.mkdir()
     (target / "hooks.json").write_text('{"version": 1, "hooks": {}}', encoding="utf-8")
-    code = cursor_main(["--source", str(ROOT), "--target", str(target), "--user", "--json"])
+    code = cursor_install.main(["--source", str(ROOT), "--target", str(target), "--user", "--json"])
     assert code == 1
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "conflict"

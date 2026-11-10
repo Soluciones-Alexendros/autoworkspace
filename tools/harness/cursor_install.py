@@ -282,7 +282,7 @@ def _apply(resource: Resource, destination: Path, action: str, *, relative: bool
         os.symlink(str(source.resolve()), destination)
 
 
-def _prune(
+def _prune(  # noqa: PLR0913, PLR0917  # prune needs prior entries + journal/manifest context
     previous: list[dict[str, str]],
     config: Path,
     source_root: Path,
@@ -317,7 +317,7 @@ def _prune(
     return pruned
 
 
-def install_full(
+def install_full(  # noqa: C901  # user/project scope + link/verify branches
     source_root: Path,
     target: Path,
     *,
@@ -327,7 +327,11 @@ def install_full(
     target = target.resolve()
     if user_scope:
         if target.name != ".cursor":
-            raise InstallFailure("runtime", "install_full", f"user scope target must be a .cursor directory, got: {target}")
+            raise InstallFailure(
+                "runtime",
+                "install_full",
+                f"user scope target must be a .cursor directory, got: {target}",
+            )
         sibling = target.parent / ".autoworkspace"
         if sibling.is_symlink() or not sibling.is_dir():
             raise InstallFailure(
@@ -427,7 +431,12 @@ def _validated_manifest(source_root: Path, target: Path) -> tuple[Path, dict[str
     return config, data
 
 
-def uninstall_full(source_root: Path, target: Path, *, dry_run: bool = False) -> dict[str, Any]:
+def uninstall_full(  # noqa: C901  # owned/foreign/generated cleanup branches
+    source_root: Path,
+    target: Path,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
     if target.name == ".cursor":
         sibling = target.resolve().parent / ".autoworkspace"
         if sibling.is_dir() and (target / MANIFEST_NAME).is_file():

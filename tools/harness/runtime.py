@@ -16,7 +16,7 @@ PAYLOAD_CURSOR = (".cursor/agents", ".cursor/hooks", ".cursor/rules")
 PAYLOAD_FILES = ("package.json", ".cursor/hooks.json")
 
 
-class InstallFailure(ValueError):
+class InstallFailure(ValueError):  # noqa: N818  # plan contract name (component/function/detail)
     """Structured install/update failure: component + function + detail."""
 
     def __init__(self, component: str, function: str, detail: str) -> None:
@@ -100,7 +100,12 @@ def _verify_payload_tree(root: Path, *, function: str) -> None:
             raise InstallFailure(relative, function, f"payload missing file: {path}")
 
 
-def sync_payload(source: Path, destination: Path, *, origin: str) -> dict[str, Any]:
+def sync_payload(  # noqa: C901, PLR0912, PLR0915  # staging/backup/verify branches for atomic sync
+    source: Path,
+    destination: Path,
+    *,
+    origin: str,
+) -> dict[str, Any]:
     """Copy the harness payload into a real ``~/.autoworkspace`` directory."""
     source = source.resolve()
     if destination.is_symlink():
