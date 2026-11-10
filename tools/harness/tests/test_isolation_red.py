@@ -1,7 +1,7 @@
 """RED: reproduce isolation defects (inherited env, writer shell, --force).
 
 These assertions encode the desired least-privilege contract. They must fail on
-the audited baseline for the documented cause; GREEN comes in T04–T06.
+the audited baseline for the documented cause; GREEN comes in T04-T06.
 """
 
 from __future__ import annotations
@@ -21,7 +21,6 @@ sys.path.insert(0, str(ROOT / "tools"))
 from harness.cursor import CursorSubagentAdapter  # noqa: E402
 from harness.pi import PiSubagentAdapter  # noqa: E402
 from orchestrator.model import RunContext  # noqa: E402
-
 
 FIXTURE_SECRET = "AW_FIXTURE_SECRET_NOT_REAL"
 FIXTURE_SECRET_VALUE = "red-secret-value-not-real"
@@ -107,7 +106,7 @@ def test_pi_child_env_denies_unauthorized_parent_secrets(tmp_path: Path, monkeyp
 
 def test_cursor_writer_argv_never_includes_force_or_yolo(tmp_path: Path) -> None:
     """Acceptance must reject auto-approval; argv never carries --force/--yolo."""
-    with pytest.raises(ValueError, match="force|yolo|auto-approval"):
+    with pytest.raises(ValueError, match=r"force|yolo|auto-approval"):
         CursorSubagentAdapter(
             binary=str(_capture_binary(tmp_path, "agent-red", pi_jsonl=False)),
             force=True,

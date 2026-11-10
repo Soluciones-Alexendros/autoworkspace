@@ -256,7 +256,7 @@ def _check_action_pins(rel: str, text: str) -> None:
             err(f"{rel}: uses sin SHA de 40 hex: {action}")
 
 
-def release_asset_errors(root: Path) -> list[str]:  # noqa: C901  # ordered release asset gate
+def release_asset_errors(root: Path) -> list[str]:  # noqa: C901, PLR0912, PLR0915  # ordered release asset gate
     """Require archive → checksum → attestation → upload in the release workflow."""
     path = root / ".github" / "workflows" / "release.yml"
     if not path.is_file():

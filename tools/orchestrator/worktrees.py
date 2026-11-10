@@ -111,9 +111,7 @@ class WorktreeManager:
             raise ValueError(f"changed files outside write_scope: {outside}")
         patches = [self._git(worktree, ["diff", "--binary", "--full-index", "HEAD", "--", "."])]
         hashes: dict[str, str] = {}
-        untracked = set(
-            self._git(worktree, ["ls-files", "--others", "--exclude-standard"]).decode().splitlines()
-        )
+        untracked = set(self._git(worktree, ["ls-files", "--others", "--exclude-standard"]).decode().splitlines())
         for relative in files:
             path = worktree / relative
             if path.is_symlink():
@@ -246,9 +244,7 @@ class RunWorkspace:
             self.manager.apply_patch(self.staging, Path(item["patch"]))
         restored = tree_digest(self.staging)
         if restored != expected_digest:
-            raise ValueError(
-                f"staging rollback digest mismatch: expected={expected_digest} actual={restored}"
-            )
+            raise ValueError(f"staging rollback digest mismatch: expected={expected_digest} actual={restored}")
         self._digest = restored
 
     def integrate(self, task_id: str, patch: Path, manifest: dict[str, Any]) -> str:

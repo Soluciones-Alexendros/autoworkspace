@@ -1,7 +1,7 @@
 """RED: reproduce orchestration defects (per-task staging, existence verifier, read-only).
 
 Desired contracts from the remediation SDD. Failures on baseline confirm the
-audited cause before T07–T10 turn them GREEN.
+audited cause before T07-T10 turn them GREEN.
 """
 
 from __future__ import annotations
@@ -43,9 +43,10 @@ from execution.evidence import load_evidence  # noqa: E402
 from execution.ops import OpResult  # noqa: E402
 from orchestrator.model import RunContext  # noqa: E402
 from orchestrator.ports import AdapterResult  # noqa: E402
-from orchestrator.runner import WorktreeAdapter  # noqa: E402
 from orchestrator.run import _default_verifier  # noqa: E402
+from orchestrator.runner import WorktreeAdapter  # noqa: E402
 from orchestrator.scheduler import Scheduler  # noqa: E402
+from orchestrator.worktrees import WorktreeManager  # noqa: E402
 from status_bump import activate_plan, load_status  # noqa: E402
 
 
@@ -151,7 +152,6 @@ def _content_verifier(task: dict[str, Any]) -> Any:
     return verify
 
 
-
 def test_dependent_receives_prior_artifact_in_shared_staging(tmp_path: Path) -> None:
     """Shared run staging must expose prior patches to dependents; baseline uses per-task staging."""
     repo = _fixture_repo(tmp_path)
@@ -208,7 +208,6 @@ def _activate_readonly_plan(repo: Path) -> None:
     activate_plan(repo, path)
 
 
-
 def test_readonly_task_stores_real_evidence(tmp_path: Path) -> None:
     """Read-only tasks must pass verify_and_store; baseline skips it and closes without evidence."""
     repo = _fixture_repo(tmp_path)
@@ -217,9 +216,7 @@ def test_readonly_task_stores_real_evidence(tmp_path: Path) -> None:
         wrapper = WorktreeAdapter(
             repo,
             ReadOnlyAdapter(),
-            lambda task: (
-                lambda result, staging: [{"kind": "gate_result", "ok": True, "detail": result.detail}]
-            ),
+            lambda task: lambda result, staging: [{"kind": "gate_result", "ok": True, "detail": result.detail}],
         )
         summary = Scheduler(repo, adapter=wrapper).run()
         status = load_status(repo)
@@ -239,7 +236,6 @@ def test_readonly_task_stores_real_evidence(tmp_path: Path) -> None:
         assert evidence["task_id"] == "read-only"
     finally:
         _cleanup(repo)
-
 
 
 def test_default_verifier_rejects_empty_or_wrong_content(tmp_path: Path) -> None:
@@ -267,7 +263,6 @@ def test_default_verifier_rejects_empty_or_wrong_content(tmp_path: Path) -> None
     checks = _default_verifier(task)(result, staging)
     assert checks
     assert all(not item["ok"] for item in checks), checks
-
 
 
 def test_resume_rejects_stale_patch_digest(tmp_path: Path) -> None:
@@ -298,8 +293,6 @@ def test_resume_rejects_stale_patch_digest(tmp_path: Path) -> None:
             encoding="utf-8",
         )
         # Desired API: reconstructing staging from this pair must raise / fail digest check.
-        from orchestrator.worktrees import WorktreeManager  # noqa: E402
-
         manager = WorktreeManager(repo, revision)
         try:
             staging = manager.create("resume-staging")
@@ -319,7 +312,12 @@ def test_resume_rejects_stale_patch_digest(tmp_path: Path) -> None:
             if "must expose" in str(exc) or "must be rejected" in str(exc):
                 raise
             # ValueError from validation is the desired GREEN outcome.
-            assert "stale" in str(exc).lower() or "digest" in str(exc).lower() or "hash" in str(exc).lower() or "manifest" in str(exc).lower()
+            assert (
+                "stale" in str(exc).lower()
+                or "digest" in str(exc).lower()
+                or "hash" in str(exc).lower()
+                or "manifest" in str(exc).lower()
+            )
         finally:
             manager.cleanup()
         # Silence unused under RED when API missing — assertion above already fails.

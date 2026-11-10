@@ -77,7 +77,9 @@ def _resolve_plan(repo: Path, plan_path: Path | None, *, dry_run: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Autoworkspace DAG orchestrator")
     parser.add_argument("--repo", type=Path, default=Path("."))
-    parser.add_argument("--plan", type=Path, help="Plan document with aw-plan block (validated; activates when not dry-run)")
+    parser.add_argument(
+        "--plan", type=Path, help="Plan document with aw-plan block (validated; activates when not dry-run)"
+    )
     parser.add_argument("--adapter", choices=("pi", "cursor"), required=True)
     parser.add_argument("--max-parallel", type=int, default=4)
     parser.add_argument("--dry-run", action="store_true")
@@ -102,11 +104,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(payload, ensure_ascii=False, indent=2) if args.json else "simulated")
             return 0
         inner = _build_adapter(args.adapter)
-        adapter: SubagentAdapter
-        if args.dry_run or args.no_worktree:
-            adapter = inner
-        else:
-            adapter = WorktreeAdapter(repo, inner, _default_verifier)
+        adapter: SubagentAdapter = (
+            inner if args.dry_run or args.no_worktree else WorktreeAdapter(repo, inner, _default_verifier)
+        )
         scheduler = Scheduler(
             repo,
             adapter=adapter,

@@ -5,8 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 FORBIDDEN_FLAGS = frozenset({"--force", "--yolo", "-f"})
 SENSITIVE_ENV_PREFIXES = (
@@ -152,7 +153,7 @@ def assert_argv_policy(argv: list[str]) -> None:
             raise ValueError(f"forbidden auto-approval flag in argv: {flag}")
 
 
-def build_policy(
+def build_policy(  # noqa: PLR0913  # keyword-only policy builder: harness/task/timeout/shell/creds/env
     *,
     harness: str,
     task: Mapping[str, Any],

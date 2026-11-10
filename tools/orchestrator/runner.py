@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import threading
 from collections.abc import Callable
@@ -99,10 +100,8 @@ class WorktreeAdapter:
             return AdapterResult("failed", detail=f"worktree integration failed: {type(exc).__name__}: {exc}")
         finally:
             if writer is not None:
-                try:
+                with contextlib.suppress(Exception):
                     workspace.drop_writer(writer)
-                except Exception:
-                    pass
 
     def _execute_readonly(
         self,

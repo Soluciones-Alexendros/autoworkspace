@@ -573,8 +573,7 @@ def _check_output_digest(root: Path, data: dict[str, Any]) -> None:
         label = "workspace content digest"
     if current != stored:
         raise ValueError(
-            f"evidence stale: {label} changed since verification "
-            f"(stored={stored[:12]}… current={current[:12]}…)"
+            f"evidence stale: {label} changed since verification (stored={stored[:12]}… current={current[:12]}…)"
         )
 
 

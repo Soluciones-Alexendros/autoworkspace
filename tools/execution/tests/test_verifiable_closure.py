@@ -316,7 +316,7 @@ def test_a24_stale_content_blocks_complete(tmp_path: Path) -> None:
     rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", skill="project-publish")
     # Stale means the declared artifact bytes changed, not an unrelated sibling file.
     (tmp_path / "artifact.txt").write_text("mutated")
-    with pytest.raises(ValueError, match="stale|mismatch"):
+    with pytest.raises(ValueError, match=r"stale|mismatch"):
         advance_status(
             tmp_path,
             phase="VALIDATE",

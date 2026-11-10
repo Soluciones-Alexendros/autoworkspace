@@ -182,7 +182,7 @@ def discovery_check(target: Path, expected_skills: set[str]) -> Check:
     return Check("cursor-native-discovery", "B", "pass", detail)
 
 
-def policy_check(target: Path, work_dir: Path | None = None) -> Check:  # noqa: C901, PLR0911, PLR0915
+def policy_check(target: Path, work_dir: Path | None = None) -> Check:  # noqa: C901, PLR0911, PLR0912, PLR0915
     """Level C: Cursor must invoke beforeShellExecution; observe allow/deny/ask without --force/--yolo.
 
     The harness never calls shell_gate.py / the probe directly for proof, and never
