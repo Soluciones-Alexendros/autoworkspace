@@ -9,15 +9,19 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 ### Fixed
 
 - `scripts/lib/link-skills.sh` derives `VERSION` from `package.json` instead of pinning `7.1.0`, and `doctor.py` accepts that derivation while still failing a stale literal (regression test added).
-- Cursor user-scope full install (`--user --components full`) is now scope-aware: `hooks.json` is generated with `hooks/...` commands (user hooks run from `~/.cursor`), the project rule is omitted and reported because Cursor keeps user rules in Settings, and owned components dropped by a scope change are pruned. A foreign `~/.cursor/hooks.json` is never overwritten.
+- The Cursor `beforeShellExecution` matcher is whole-word, so ordinary `git`/`python` text that merely contains substrings such as `chapter`, `adapter` or `curly` no longer enters the shell gate. `sshd` stays gated. `docs/harness-integration.md` now says 17 skills.
+- Cursor user-scope full install (`--user --components full`) is now scope-aware: the project rule is omitted and reported because Cursor keeps user rules in Settings, and owned components dropped by a scope change are pruned. A foreign `~/.cursor/hooks.json` is never overwritten.
 
 ### Added
 
 - `scripts/cursor-user-rule.sh` prints (or `--copy`s) the whole rule, frontmatter included, for Cursor Customize -> Rules, since user rules live in the account and not on disk. `autoworkspace.mdc` now carries a descriptive `description` and a structured Markdown body.
+- Machine runtime at `~/.autoworkspace` via `scripts/runtime-sync.sh` (`sync` from a checkout, or `install --version` from a verified release). User-scope Cursor/Pi installs link relatively into that tree (skills, agents, hooks, `hooks.json`, Pi `extensions/autoworkspace.ts`) and refuse to link a development checkout.
+- Install/update failures report `component`, `function` and `detail` (`FAIL …` on stderr; `failures[]` with `--json`) after validating each payload path and each created link.
 
 ### Changed
 
 - Full Cursor manifest moves to schema v2 (`{path, kind}` entries, `scope`, `omitted`); v1 manifests remain readable and uninstall honors both.
+- User-scope `hooks.json` is a relative symlink into the runtime (user-scoped commands written there) instead of a generated file under `~/.cursor`.
 
 ## [7.1.2] - 2026-11-10
 

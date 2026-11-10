@@ -20,6 +20,7 @@ from harness.doctor import (  # noqa: E402
     skill_link_check,
     version_coherence_checks,
 )
+from harness.runtime import make_relative_symlink, sync_payload  # noqa: E402
 
 
 def _schema() -> dict[str, Any]:
@@ -112,6 +113,8 @@ def test_cursor_full_check_accepts_project_and_user_scope(tmp_path: Path) -> Non
     install_full(ROOT, project)
     assert cursor_full_check(project).outcome == "pass"
     user_home = tmp_path / "home"
+    user_home.mkdir()
+    sync_payload(ROOT, user_home / ".autoworkspace", origin="sync")
     install_full(ROOT, user_home / ".cursor", user_scope=True)
     check = cursor_full_check(user_home)
     assert check.outcome == "pass", check.detail
@@ -120,6 +123,8 @@ def test_cursor_full_check_accepts_project_and_user_scope(tmp_path: Path) -> Non
 
 def test_cursor_full_check_rejects_missing_generated_hooks(tmp_path: Path) -> None:
     user_home = tmp_path / "home"
+    user_home.mkdir()
+    sync_payload(ROOT, user_home / ".autoworkspace", origin="sync")
     install_full(ROOT, user_home / ".cursor", user_scope=True)
     (user_home / ".cursor" / "hooks.json").unlink()
     assert cursor_full_check(user_home).outcome == "fail"
@@ -131,13 +136,18 @@ def test_real_checkout_version_coherence_passes() -> None:
     assert [check.outcome for check in checks] == ["pass"] * 3, [check.detail for check in checks]
 
 
-def test_skill_links_must_be_absolute_and_resolve_to_catalog(tmp_path: Path) -> None:
+def test_skill_links_must_resolve_to_catalog(tmp_path: Path) -> None:
     _versioned_repo(tmp_path)
     destination = tmp_path / ".pi" / "skills"
     destination.mkdir(parents=True)
     (destination / "fixture-skill").symlink_to(tmp_path / "skills" / "fixture-skill")
     check = skill_link_check(tmp_path, "pi")
     assert check.outcome == "pass"
+    (destination / "fixture-skill").unlink()
+    make_relative_symlink(tmp_path / "skills" / "fixture-skill", destination / "fixture-skill")
+    check = skill_link_check(tmp_path, "pi")
+    assert check.outcome == "pass"
+    assert "relative" in check.detail
     (destination / "fixture-skill").unlink()
     (destination / "fixture-skill").symlink_to("relative-target")
     check = skill_link_check(tmp_path, "pi")

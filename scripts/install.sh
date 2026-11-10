@@ -163,8 +163,16 @@ if [[ "$COMPONENTS" == "full" ]]; then
     fi
     FULL_TARGET="$(resolve_project_root "$TARGET")" || exit $?
   fi
-  FULL_ARGS=(--source "$ROOT" --target "$FULL_TARGET")
-  if [[ "$USER_MODE" == true ]]; then FULL_ARGS+=(--user); fi
+  if [[ "$USER_MODE" == true ]]; then
+    RUNTIME_SOURCE="${HOME}/.autoworkspace"
+    if [[ ! -d "$RUNTIME_SOURCE/skills" ]]; then
+      echo "ERROR: runtime missing: $RUNTIME_SOURCE (run scripts/runtime-sync.sh sync first)" >&2
+      exit 1
+    fi
+    FULL_ARGS=(--source "$RUNTIME_SOURCE" --target "$FULL_TARGET" --user)
+  else
+    FULL_ARGS=(--source "$ROOT" --target "$FULL_TARGET")
+  fi
   if [[ "$YES" == true ]]; then FULL_ARGS+=(--yes); fi
   if [[ "$JSON_OUT" == true ]]; then FULL_ARGS+=(--json); fi
   if [[ "$DRY_RUN" == true ]]; then FULL_ARGS+=(--dry-run); fi

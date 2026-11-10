@@ -106,16 +106,19 @@ def skill_link_check(root: Path, harness: str, *, source_root: Path | None = Non
     )
     if not expected or not destination.is_dir():
         return Check(f"{harness}-skill-links", "A", "fail", "catalog or destination missing")
+    relative_count = 0
     for skill in expected:
         link = destination / skill.name
         if not link.is_symlink():
             return Check(f"{harness}-skill-links", "A", "fail", f"not a symlink: {link}")
-        target = Path(link.readlink())
-        if not target.is_absolute():
-            return Check(f"{harness}-skill-links", "A", "fail", f"relative symlink: {link}")
+        if not Path(link.readlink()).is_absolute():
+            relative_count += 1
         if not link.exists() or link.resolve() != skill.resolve():
             return Check(f"{harness}-skill-links", "A", "fail", f"wrong or broken target: {link}")
-    return Check(f"{harness}-skill-links", "A", "pass", f"{len(expected)} absolute links resolve to catalog")
+    detail = f"{len(expected)} links resolve to catalog"
+    if relative_count:
+        detail += f" ({relative_count} relative)"
+    return Check(f"{harness}-skill-links", "A", "pass", detail)
 
 
 def cursor_full_check(root: Path) -> Check:
@@ -126,15 +129,24 @@ def cursor_full_check(root: Path) -> Check:
     except (OSError, json.JSONDecodeError, KeyError, TypeError):
         return Check("cursor-full-components", "A", "fail", "full component manifest missing or invalid")
     user_scope = data.get("scope") == "user"
+    source_root = Path(str(data.get("source_root", "")))
     for relative, kind in entries:
         path = manifest.parent / relative
         if kind == "generated":
-            # Owned generated file (user-scope hooks.json): must not be a symlink.
+            # Legacy user-scope hooks.json written as a real file.
             if path.is_symlink() or not path.is_file():
                 return Check("cursor-full-components", "A", "fail", f"invalid generated component: {relative}")
             continue
-        if not path.is_symlink() or not path.exists() or not Path(path.readlink()).is_absolute():
+        if not path.is_symlink() or not path.exists():
             return Check("cursor-full-components", "A", "fail", f"invalid full component: {relative}")
+        link_text = Path(path.readlink())
+        if user_scope:
+            if link_text.is_absolute():
+                return Check("cursor-full-components", "A", "fail", f"user link must be relative: {relative}")
+            if source_root.parts and not _resolves_under(path, source_root):
+                return Check("cursor-full-components", "A", "fail", f"user link escapes runtime: {relative}")
+        elif not link_text.is_absolute():
+            return Check("cursor-full-components", "A", "fail", f"project link must be absolute: {relative}")
     required = {"agents/aw-verifier.md", "hooks.json", "hooks/shell_gate.py"}
     if not user_scope:
         # User rules live in Cursor Settings, so the project rule is project-scope only.
@@ -143,6 +155,14 @@ def cursor_full_check(root: Path) -> Check:
         return Check("cursor-full-components", "A", "fail", "full component manifest is incomplete")
     scope = "user" if user_scope else "project"
     return Check("cursor-full-components", "A", "pass", f"{len(entries)} full components verified ({scope} scope)")
+
+
+def _resolves_under(link: Path, root: Path) -> bool:
+    try:
+        link.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
 
 
 def _full_manifest_entries(data: dict[str, Any]) -> list[tuple[str, str]]:
@@ -171,7 +191,19 @@ def collect_checks(  # noqa: PLR0913  # doctor entry: keyword-only harness/nativ
     full: bool = False,
 ) -> list[Check]:
     source = (source_root or root).resolve()
-    checks = version_coherence_checks(source, expected_version)
+    if (source / ".runtime-manifest.json").is_file():
+        # Machine runtime payload: package.json only (no plugin / installer scripts).
+        package = _json_version(source / "package.json")
+        checks = [
+            Check(
+                "package-version",
+                "contract",
+                "pass" if package and (expected_version is None or package == expected_version) else "fail",
+                f"package={package or 'missing'} expected={expected_version or package or 'unknown'} (runtime)",
+            )
+        ]
+    else:
+        checks = version_coherence_checks(source, expected_version)
     expected_skills = {
         path.name for path in (source / "skills").iterdir() if path.is_dir() and (path / "SKILL.md").is_file()
     }
