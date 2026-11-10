@@ -7,35 +7,31 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 TOOLS = Path(__file__).resolve().parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
-from execution.ops import OpResult  # noqa: E402
-from execution.registry import get_operation  # noqa: E402
+WORKSPACE_ROUTER = TOOLS / "workspace-router"
+if str(WORKSPACE_ROUTER) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROUTER))
+
+from contracts.plan import load_plan  # noqa: E402
 from harness.cursor import CursorSubagentAdapter  # noqa: E402
 from harness.pi import PiSubagentAdapter  # noqa: E402
+from status_bump import activate_plan, load_status  # noqa: E402
 
 from orchestrator.ports import SubagentAdapter  # noqa: E402
 from orchestrator.runner import Verifier, WorktreeAdapter  # noqa: E402
 from orchestrator.scheduler import Scheduler  # noqa: E402
+from orchestrator.verifiers import resolve as resolve_verifier  # noqa: E402
 
 
-def _default_verifier(task: dict[str, Any]) -> Verifier:
-    operation = get_operation(str(task["operation"]))
-    kinds = operation.required_verifications or ("staged_paths",)
-
-    def verify(result: OpResult, staging: Path) -> list[dict[str, Any]]:
-        write_scope = cast(list[str], task.get("write_scope") or [])
-        missing = [path for path in write_scope if not (staging / path).exists()]
-        ok = result.outcome == "succeeded" and not missing
-        detail = "missing=" + ",".join(missing) if missing else (result.detail or "verified")
-        return [{"kind": kind, "ok": ok, "detail": detail} for kind in kinds]
-
-    return verify
+def _default_verifier(task: Mapping[str, Any]) -> Verifier:
+    return resolve_verifier(dict(task))
 
 
 def _build_adapter(name: str) -> SubagentAdapter:
@@ -43,16 +39,45 @@ def _build_adapter(name: str) -> SubagentAdapter:
         model = os.environ.get("AW_PI_MODEL", "kimi-coding/k3.1-pro")
         inner: SubagentAdapter = PiSubagentAdapter(model=model)
     else:
+        if os.environ.get("AW_CURSOR_FORCE", "0") == "1":
+            raise ValueError("AW_CURSOR_FORCE is forbidden; auto-approval cannot produce PASS")
         cursor_model = os.environ.get("AW_CURSOR_MODEL")
-        force = os.environ.get("AW_CURSOR_FORCE", "0") == "1"
-        inner = CursorSubagentAdapter(model=cursor_model, force=force)
+        inner = CursorSubagentAdapter(model=cursor_model)
     return inner
+
+
+def _resolve_plan(repo: Path, plan_path: Path | None, *, dry_run: bool) -> None:
+    if plan_path is None:
+        status = load_status(repo)
+        if not status.get("active_plan"):
+            raise ValueError("no active plan; pass --plan PATH")
+        return
+    document = load_plan(plan_path if plan_path.is_absolute() else (repo / plan_path))
+    status = load_status(repo)
+    active = status.get("active_plan")
+    relative = (
+        plan_path.resolve().relative_to(repo.resolve()).as_posix()
+        if plan_path.is_absolute()
+        else Path(plan_path).as_posix()
+    )
+    if dry_run:
+        # Validate only; do not write status.
+        _ = document
+        return
+    if active:
+        if active.get("path") == relative and active.get("digest") == document.digest:
+            return
+        raise ValueError(
+            "active plan conflict: pass an explicit reset before switching plans "
+            f"(active={active.get('path')} digest={active.get('digest')})"
+        )
+    activate_plan(repo, plan_path if plan_path.is_absolute() else (repo / plan_path))
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Autoworkspace DAG orchestrator")
     parser.add_argument("--repo", type=Path, default=Path("."))
-    parser.add_argument("--plan", type=Path, help="Unused; active plan is loaded from the repo status")
+    parser.add_argument("--plan", type=Path, help="Plan document with aw-plan block (validated; activates when not dry-run)")
     parser.add_argument("--adapter", choices=("pi", "cursor"), required=True)
     parser.add_argument("--max-parallel", type=int, default=4)
     parser.add_argument("--dry-run", action="store_true")
@@ -60,15 +85,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-worktree", action="store_true", help="Call the harness adapter without WorktreeAdapter")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    repo = args.repo.resolve()
     try:
+        _resolve_plan(repo, args.plan, dry_run=args.dry_run)
+        if args.dry_run and args.plan is not None:
+            document = load_plan(args.plan if args.plan.is_absolute() else (repo / args.plan))
+            from orchestrator.scheduler import plan_schedule  # noqa: PLC0415
+
+            waves = plan_schedule(document)
+            payload = {
+                "outcome": "simulated",
+                "plan_id": document.plan_id,
+                "digest": document.digest,
+                "waves": waves,
+            }
+            print(json.dumps(payload, ensure_ascii=False, indent=2) if args.json else "simulated")
+            return 0
         inner = _build_adapter(args.adapter)
         adapter: SubagentAdapter
         if args.dry_run or args.no_worktree:
             adapter = inner
         else:
-            adapter = WorktreeAdapter(args.repo.resolve(), inner, _default_verifier)
+            adapter = WorktreeAdapter(repo, inner, _default_verifier)
         scheduler = Scheduler(
-            args.repo,
+            repo,
             adapter=adapter,
             max_parallel=args.max_parallel,
             resume=args.resume,

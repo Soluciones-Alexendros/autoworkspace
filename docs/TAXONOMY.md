@@ -1,6 +1,6 @@
 # Skill taxonomy
 
-16 skills in 5 domains. The `metadata.domain` frontmatter field reflects this table, and the name prefix is the domain (normative, not advisory). The taxonomy is closed: every new skill must fit an existing domain or propose a new one in the PR (see CONTRIBUTING.md).
+17 skills in 5 domains. The `metadata.domain` frontmatter field reflects this table, and the name prefix is the domain (normative, not advisory). The taxonomy is closed: every new skill must fit an existing domain or propose a new one in the PR (see CONTRIBUTING.md).
 
 <!-- SKILL-INDEX:START -->
 

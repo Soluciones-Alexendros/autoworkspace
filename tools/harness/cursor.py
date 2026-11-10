@@ -26,6 +26,7 @@ from orchestrator.model import RunContext  # noqa: E402
 from orchestrator.ports import AdapterResult  # noqa: E402
 
 from harness.base import Check, build_report, report_exit_code  # noqa: E402
+from harness.policy import assert_argv_policy, build_policy  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 SHELL_GATE = ROOT / ".cursor" / "hooks" / "shell_gate.py"
@@ -79,100 +80,265 @@ def agent_authenticated(binary: str | None = None) -> bool:
     return result.returncode == 0
 
 
-def discovery_check(target: Path, expected_skills: set[str]) -> Check:  # noqa: PLR0911
-    """Level B: skills, rules, agents and hooks are present after full install."""
+def static_install_check(target: Path, expected_skills: set[str]) -> Check:  # noqa: PLR0911
+    """Level A: filesystem presence after install (not native discovery)."""
     cursor = target.resolve() / ".cursor"
     if not cursor.is_dir():
-        return Check("cursor-native-discovery", "B", "fail", ".cursor missing")
+        return Check("cursor-static-install", "A", "fail", ".cursor missing")
     skills_dir = cursor / "skills"
     if not skills_dir.is_dir():
-        return Check("cursor-native-discovery", "B", "fail", "skills directory missing")
+        return Check("cursor-static-install", "A", "fail", "skills directory missing")
     found = {path.name for path in skills_dir.iterdir() if path.is_dir() or path.is_symlink()}
     missing = sorted(expected_skills - found)
     if missing:
-        return Check("cursor-native-discovery", "B", "fail", f"missing skills: {missing}")
+        return Check("cursor-static-install", "A", "fail", f"missing skills: {missing}")
     rules = cursor / "rules" / "autoworkspace.mdc"
     agents = list((cursor / "agents").glob("*.md")) if (cursor / "agents").is_dir() else []
     hooks = cursor / "hooks.json"
     hook_scripts = list((cursor / "hooks").glob("*.py")) if (cursor / "hooks").is_dir() else []
     if not rules.is_file() and not rules.is_symlink():
-        return Check("cursor-native-discovery", "B", "fail", "rules/autoworkspace.mdc missing")
+        return Check("cursor-static-install", "A", "fail", "rules/autoworkspace.mdc missing")
     if not agents:
-        return Check("cursor-native-discovery", "B", "fail", "no agents discovered")
+        return Check("cursor-static-install", "A", "fail", "no agents discovered")
     if not hooks.is_file() and not hooks.is_symlink():
-        return Check("cursor-native-discovery", "B", "fail", "hooks.json missing")
+        return Check("cursor-static-install", "A", "fail", "hooks.json missing")
     if not hook_scripts:
-        return Check("cursor-native-discovery", "B", "fail", "hook scripts missing")
-    required_agents = {"aw-verifier.md", "aw-planner.md", "aw-worker.md"}
+        return Check("cursor-static-install", "A", "fail", "hook scripts missing")
     agent_names = {path.name for path in agents}
-    # Planner/worker land in T22; verifier alone is enough for B during T15.
-    if not required_agents <= agent_names and "aw-verifier.md" not in agent_names:
-        return Check("cursor-native-discovery", "B", "fail", "aw-verifier.md missing")
+    if "aw-verifier.md" not in agent_names:
+        return Check("cursor-static-install", "A", "fail", "aw-verifier.md missing")
     detail = f"skills={len(found)} agents={sorted(agent_names)} hooks={len(hook_scripts)} rules=autoworkspace.mdc"
+    return Check("cursor-static-install", "A", "pass", detail)
+
+
+def discovery_check(target: Path, expected_skills: set[str]) -> Check:
+    """Level B: Cursor CLI must load hooks (sessionStart) — filesystem alone is not enough."""
+    binary = resolve_agent_binary()
+    if not binary:
+        return Check("cursor-native-discovery", "B", "not_run", "agent binary missing")
+    static = static_install_check(target, expected_skills)
+    if static.outcome != "pass":
+        return Check("cursor-native-discovery", "B", "fail", f"static precheck failed: {static.detail}")
+    root = target.resolve()
+    marker = root / ".autoworkspace-cursor-session-marker"
+    marker.unlink(missing_ok=True)
+    hooks_json = root / ".cursor" / "hooks.json"
+    if not hooks_json.exists():
+        return Check("cursor-native-discovery", "B", "fail", "hooks.json missing")
+    original_hooks = hooks_json.read_text(encoding="utf-8")
+    probe = root / ".autoworkspace-session-probe.py"
+    original_session = root / ".cursor" / "hooks" / "session_start.py"
+    probe.write_text(
+        "#!/usr/bin/env python3\n"
+        "from __future__ import annotations\n"
+        "import json, runpy, sys\n"
+        "from pathlib import Path\n"
+        f"Path({str(marker)!r}).write_text('session-start-ok\\n', encoding='utf-8')\n"
+        f"sys.path.insert(0, str(Path({str(original_session.parent)!r})))\n"
+        f"runpy.run_path({str(original_session)!r}, run_name='__main__')\n",
+        encoding="utf-8",
+    )
+    probe.chmod(probe.stat().st_mode | 0o100)
+    payload = json.loads(original_hooks)
+    payload.setdefault("hooks", {})["sessionStart"] = [{"command": f"python3 {probe}"}]
+    # Replace possibly-symlinked hooks.json with a real file Cursor will load.
+    if hooks_json.is_symlink() or not hooks_json.is_file():
+        hooks_json.unlink()
+    hooks_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    try:
+        result = subprocess.run(
+            [
+                binary,
+                "--print",
+                "--mode",
+                "ask",
+                "--trust",
+                "--workspace",
+                str(root),
+                "Reply with exactly: PONG",
+            ],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return Check("cursor-native-discovery", "B", "fail", f"agent invocation failed: {exc}")
+    finally:
+        if hooks_json.exists() or hooks_json.is_symlink():
+            hooks_json.unlink()
+        hooks_json.write_text(original_hooks, encoding="utf-8")
+        probe.unlink(missing_ok=True)
+    if not marker.is_file():
+        return Check(
+            "cursor-native-discovery",
+            "B",
+            "fail",
+            "sessionStart marker missing after agent run (static paths alone are insufficient); "
+            f"agent_exit={result.returncode} stderr={(result.stderr or '')[:200]}",
+        )
+    detail = f"sessionStart observed via Cursor; agent_exit={result.returncode}"
     return Check("cursor-native-discovery", "B", "pass", detail)
 
 
-def _run_shell_gate(command: str) -> dict[str, Any]:
-    payload = json.dumps({"command": command})
-    result = subprocess.run(
-        [sys.executable, str(SHELL_GATE)],
-        input=payload,
-        capture_output=True,
-        text=True,
-        timeout=10,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"shell_gate exit {result.returncode}: {result.stderr}")
-    data = json.loads(result.stdout)
-    if not isinstance(data, dict) or "permission" not in data:
-        raise RuntimeError(f"shell_gate returned invalid payload: {result.stdout!r}")
-    return data
+def policy_check(target: Path, work_dir: Path | None = None) -> Check:  # noqa: C901, PLR0911, PLR0915
+    """Level C: Cursor must invoke beforeShellExecution; observe allow/deny/ask without --force/--yolo.
 
-
-def policy_check(work_dir: Path) -> Check:  # noqa: C901, PLR0911
-    """Level C: allow creates sentinel; deny does not; ask waits without acting."""
-    if not SHELL_GATE.is_file():
-        return Check("cursor-native-policy", "C", "fail", f"shell_gate missing: {SHELL_GATE}")
-    work_dir = work_dir.resolve()
-    work_dir.mkdir(parents=True, exist_ok=True)
-    allow_path = work_dir / "sentinel-allow.txt"
-    deny_path = work_dir / "sentinel-deny.txt"
-    ask_path = work_dir / "sentinel-ask.txt"
-    for path in (allow_path, deny_path, ask_path):
+    The harness never calls shell_gate.py / the probe directly for proof, and never
+    writes the allow/deny/ask effect files itself.
+    """
+    binary = resolve_agent_binary()
+    if not binary:
+        return Check("cursor-native-policy", "C", "not_run", "agent binary missing")
+    if not agent_authenticated(binary):
+        return Check(
+            "cursor-native-policy",
+            "C",
+            "not_run",
+            "agent authentication required for headless policy probe",
+        )
+    root = target.resolve()
+    policy_root = (work_dir or (root / ".autoworkspace-cursor-policy")).resolve()
+    policy_root.mkdir(parents=True, exist_ok=True)
+    hooks_json = root / ".cursor" / "hooks.json"
+    hooks_dir = root / ".cursor" / "hooks"
+    if not hooks_json.exists():
+        return Check("cursor-native-policy", "C", "fail", "hooks.json missing before policy probe")
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    original_hooks = hooks_json.read_text(encoding="utf-8")
+    probe = hooks_dir / "aw_policy_probe.py"
+    decisions = root / ".autoworkspace-policy-decisions.jsonl"
+    allow_effect = root / ".autoworkspace-policy-allow.txt"
+    deny_effect = root / ".autoworkspace-policy-deny.txt"
+    ask_effect = root / ".autoworkspace-policy-ask.txt"
+    for path in (decisions, allow_effect, deny_effect, ask_effect):
         path.unlink(missing_ok=True)
+    probe.write_text(
+        "#!/usr/bin/env python3\n"
+        "from __future__ import annotations\n"
+        "import json, sys\n"
+        "from pathlib import Path\n"
+        f"DECISIONS = Path({str(decisions)!r})\n"
+        "payload = json.load(sys.stdin)\n"
+        "cmd = str(payload.get('command') or '')\n"
+        "if 'AW_POLICY_DENY' in cmd:\n"
+        "    permission = 'deny'\n"
+        "elif 'AW_POLICY_ASK' in cmd:\n"
+        "    permission = 'ask'\n"
+        "elif 'AW_POLICY_ALLOW' in cmd:\n"
+        "    permission = 'allow'\n"
+        "else:\n"
+        "    permission = 'allow'\n"
+        "record = {'command': cmd, 'permission': permission, 'hook_event_name': payload.get('hook_event_name')}\n"
+        "with DECISIONS.open('a', encoding='utf-8') as fh:\n"
+        "    fh.write(json.dumps(record, sort_keys=True) + '\\n')\n"
+        "out = {'permission': permission}\n"
+        "if permission != 'allow':\n"
+        "    out['user_message'] = f'policy probe {permission}'\n"
+        "    out['agent_message'] = f'policy probe returned {permission}'\n"
+        "print(json.dumps(out))\n",
+        encoding="utf-8",
+    )
+    probe.chmod(probe.stat().st_mode | 0o100)
+    payload = json.loads(original_hooks)
+    payload.setdefault("hooks", {})["beforeShellExecution"] = [
+        {"command": f"python3 {probe}", "failClosed": True, "timeout": 10}
+    ]
+    if hooks_json.is_symlink() or not hooks_json.is_file():
+        hooks_json.unlink()
+    hooks_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    prompt = (
+        "You MUST use the Shell tool exactly three times in this workspace. Do not skip any.\n"
+        "1) Run exactly: echo AW_POLICY_ALLOW > .autoworkspace-policy-allow.txt\n"
+        "2) Run exactly: echo AW_POLICY_DENY > .autoworkspace-policy-deny.txt\n"
+        "3) Run exactly: echo AW_POLICY_ASK > .autoworkspace-policy-ask.txt\n"
+        "After attempting all three, reply with exactly: POLICY_DONE\n"
+    )
+    argv = [
+        binary,
+        "--print",
+        "--output-format",
+        "text",
+        "--trust",
+        "--sandbox",
+        "enabled",
+        "--workspace",
+        str(root),
+        prompt,
+    ]
+    try:
+        assert_argv_policy(argv)
+    except ValueError as exc:
+        return Check("cursor-native-policy", "C", "fail", f"forbidden argv for policy probe: {exc}")
+    try:
+        result = subprocess.run(
+            argv,
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return Check("cursor-native-policy", "C", "fail", f"agent policy probe failed: {exc}")
+    finally:
+        if hooks_json.exists() or hooks_json.is_symlink():
+            hooks_json.unlink()
+        hooks_json.write_text(original_hooks, encoding="utf-8")
+        probe.unlink(missing_ok=True)
 
-    # Allow via approved /tmp/autoworkspace-* rm; deny via sudo; ask via outbound curl.
-    allow = _run_shell_gate("rm -rf /tmp/autoworkspace-policy-sentinel")
-    deny = _run_shell_gate("sudo rm -rf /tmp/should-not-exist")
-    ask = _run_shell_gate("curl https://example.com/")
-
-    if allow.get("permission") != "allow":
-        return Check("cursor-native-policy", "C", "fail", f"expected allow, got {allow}")
-    if deny.get("permission") != "deny":
-        return Check("cursor-native-policy", "C", "fail", f"expected deny, got {deny}")
-    if ask.get("permission") != "ask":
-        return Check("cursor-native-policy", "C", "fail", f"expected ask, got {ask}")
-
-    # Apply the decision: only allow writes the sentinel.
-    if allow["permission"] == "allow":
-        allow_path.write_text("allow-ok\n", encoding="utf-8")
-    if deny["permission"] == "allow":
-        deny_path.write_text("deny-leak\n", encoding="utf-8")
-    if ask["permission"] == "allow":
-        ask_path.write_text("ask-leak\n", encoding="utf-8")
-    # ask waits for operator decision — no side effect before that.
-    if ask["permission"] == "ask" and ask_path.exists():
-        return Check("cursor-native-policy", "C", "fail", "ask created sentinel before decision")
-    if deny_path.exists():
-        return Check("cursor-native-policy", "C", "fail", "deny created sentinel")
-    if not allow_path.is_file() or allow_path.read_text(encoding="utf-8") != "allow-ok\n":
-        return Check("cursor-native-policy", "C", "fail", "allow did not create sentinel")
+    if not decisions.is_file():
+        return Check(
+            "cursor-native-policy",
+            "C",
+            "fail",
+            "beforeShellExecution decisions missing — Cursor did not invoke the policy probe; "
+            f"agent_exit={result.returncode}",
+        )
+    seen: dict[str, str] = {}
+    for line in decisions.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        permission = str(row.get("permission") or "")
+        command = str(row.get("command") or "")
+        for token in ("ALLOW", "DENY", "ASK"):
+            if f"AW_POLICY_{token}" in command:
+                seen[token.lower()] = permission
+    expected = {"allow": "allow", "deny": "deny", "ask": "ask"}
+    if seen != expected:
+        return Check(
+            "cursor-native-policy",
+            "C",
+            "fail",
+            f"hook decisions incomplete or wrong: {seen!r}; agent_exit={result.returncode}",
+        )
+    if not allow_effect.is_file():
+        return Check("cursor-native-policy", "C", "fail", "allow permission did not produce shell side effect")
+    if deny_effect.is_file():
+        return Check("cursor-native-policy", "C", "fail", "deny permission still produced a side effect")
+    if ask_effect.is_file():
+        return Check(
+            "cursor-native-policy",
+            "C",
+            "fail",
+            "ask permission produced a side effect in headless mode (expected blocked pending approval)",
+        )
+    # Persist a compact receipt under work_dir for operators; effects stay as Cursor-produced proof.
+    receipt = {
+        "decisions": seen,
+        "allow_effect": allow_effect.read_text(encoding="utf-8").strip(),
+        "agent_exit": result.returncode,
+        "force_flags": False,
+    }
+    (policy_root / "policy-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
     return Check(
         "cursor-native-policy",
         "C",
         "pass",
-        "allow wrote sentinel; deny idle; ask waited without side effects",
+        "beforeShellExecution allow/deny/ask observed via Cursor without --force/--yolo; "
+        f"allow_effect={allow_effect.name}",
     )
 
 
@@ -186,6 +352,7 @@ def capability_checks(
     binary = resolve_agent_binary()
     version = agent_version(binary)
     checks: list[Check] = []
+    checks.append(static_install_check(target, expected_skills))
     if not binary or not version:
         checks.append(Check("cursor-cli-version", "B", "blocked", "agent binary missing from PATH"))
         checks.append(Check("cursor-native-discovery", "B", "not_run", "agent unavailable"))
@@ -194,7 +361,7 @@ def capability_checks(
     checks.append(Check("cursor-cli-version", "B", "pass", f"{binary} → {version}"))
     checks.append(discovery_check(target, expected_skills))
     policy_dir = work_dir or (target.resolve() / ".autoworkspace-cursor-policy")
-    checks.append(policy_check(policy_dir))
+    checks.append(policy_check(target, work_dir=policy_dir))
     if require_auth and not agent_authenticated(binary):
         checks.append(
             Check(
@@ -217,11 +384,14 @@ class CursorSubagentAdapter:
         model: str | None = None,
         timeout: int = 300,
         force: bool = False,
+        credential_names: tuple[str, ...] = (),
     ) -> None:
+        if force:
+            raise ValueError("auto-approval (--force/--yolo) is forbidden for Cursor acceptance")
         self.binary = binary or resolve_agent_binary() or "agent"
         self.model = model
         self.timeout = timeout
-        self.force = force
+        self.credential_names = credential_names
 
     @staticmethod
     def _kill(process: subprocess.Popen[str]) -> None:
@@ -237,6 +407,12 @@ class CursorSubagentAdapter:
             sort_keys=True,
         )
         plan_digest = hashlib.sha256(packet.encode("utf-8")).hexdigest()
+        policy = build_policy(
+            harness="cursor",
+            task=task,
+            timeout_s=self.timeout,
+            credential_names=self.credential_names,
+        )
         role = (task.get("roles") or ["role-back"])[0]
         agent_name = {
             "plan-specification": "aw-planner",
@@ -244,13 +420,13 @@ class CursorSubagentAdapter:
         }.get(operation.skill, "aw-worker")
         if operation.skill == "plan-validators" or role == "aw-verifier":
             agent_name = "aw-verifier"
-        write = bool(task.get("write_scope"))
+        write = bool(policy.write_scope)
         prompt = (
             f"You are the {agent_name} subagent. Use skill {operation.skill}. "
             f"Execute exactly this task packet and stop:\n{packet}\n"
         )
         if write:
-            paths = ", ".join(task["write_scope"])
+            paths = ", ".join(policy.write_scope)
             prompt += (
                 f"Write only the files in write_scope ({paths}) under the workspace. "
                 "Do not publish, push, tag or open PRs.\n"
@@ -265,19 +441,19 @@ class CursorSubagentAdapter:
             "--workspace",
             str(context.repo),
             "--trust",
+            "--sandbox",
+            "enabled",
         ]
         if self.model:
             argv.extend(["--model", self.model])
-        if self.force and write:
-            # Only force when the task packet already authorizes writes.
-            argv.append("--force")
-        # Default: ask mode for non-writers; writers use sandbox without yolo.
-        elif not write:
+        if not write:
             argv.extend(["--mode", "ask"])
         argv.append(prompt)
+        assert_argv_policy(argv)
         process = subprocess.Popen(
             argv,
             cwd=str(context.repo),
+            env=policy.env_mapping(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

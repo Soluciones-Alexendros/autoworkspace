@@ -1,4 +1,4 @@
-.PHONY: quality validate lint test smoke diagrams help new-product new-harness validate-harnesses e2e-orchestration
+.PHONY: quality validate lint test smoke diagrams help new-product new-harness validate-harnesses e2e-orchestration readiness
 
 # Carga .env local si existe (sin commitear; ver .env.example / docs/USAGE.md).
 ifneq (,$(wildcard .env))
@@ -15,6 +15,7 @@ help:
 	@echo "  make smoke     — scripts/smoke.sh (canon contract)"
 	@echo "  make validate-harnesses — Pi/Cursor native A/B/C (exit 3 = blocked/not_run)"
 	@echo "  make e2e-orchestration — core + Pi/Cursor native orchestration"
+	@echo "  make readiness — validate+test+smoke+typecheck+lint+native+e2e (blocks on exit 3)"
 	@echo "  make new-product DEST=dir — copy templates/product/"
 	@echo "  make new-harness DEST=dir — copy harness yaml into DEST/.autoworkspace/"
 
@@ -43,8 +44,27 @@ validate-harnesses:
 
 e2e-orchestration:
 	bash scripts/tests/test_orchestration_core.sh
-	bash scripts/tests/test_pi_orchestration.sh
-	bash scripts/tests/test_cursor_orchestration.sh
+	@status=0; \
+	bash scripts/tests/test_pi_orchestration.sh || status=$$?; \
+	if [ $$status -ne 0 ] && [ $$status -ne 3 ]; then exit $$status; fi; \
+	cstatus=0; \
+	bash scripts/tests/test_cursor_orchestration.sh || cstatus=$$?; \
+	if [ $$cstatus -ne 0 ] && [ $$cstatus -ne 3 ]; then exit $$cstatus; fi; \
+	if [ $$status -eq 3 ] || [ $$cstatus -eq 3 ]; then \
+	  echo "e2e-orchestration: core pass; native lanes not_run/blocked (need AW_NATIVE_OPT_IN=1)" >&2; \
+	  exit 3; \
+	fi
+
+# Aggregate release readiness. Exit 3 from native/e2e lanes is a hard block here
+# (unlike casual local runs): missing opt-in, auth, or capability C ≠ PASS.
+readiness:
+	$(MAKE) validate
+	$(MAKE) test
+	$(MAKE) smoke
+	npm run typecheck
+	npm run lint
+	$(MAKE) validate-harnesses
+	$(MAKE) e2e-orchestration
 
 diagrams:
 	bash scripts/diagrams.sh

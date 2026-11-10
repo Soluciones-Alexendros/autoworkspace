@@ -11,6 +11,8 @@ from typing import Any
 
 from orchestrator.model import RunContext, RunSummary
 from orchestrator.ports import AdapterResult, SubagentAdapter
+from orchestrator.runner import WorktreeAdapter
+from orchestrator.worktrees import RunWorkspace
 
 WORKSPACE_ROUTER = Path(__file__).resolve().parents[1] / "workspace-router"
 if str(WORKSPACE_ROUTER) not in sys.path:
@@ -126,29 +128,39 @@ class Scheduler:
             adapter=type(self.adapter).__name__,
             cancel_event=self.cancel_event,
         )
+        workspace: RunWorkspace | None = None
+        if isinstance(self.adapter, WorktreeAdapter):
+            workspace = RunWorkspace(self.repo, context.base_revision, context.run_id)
+            self.adapter.bind_workspace(workspace)
+            if self.resume:
+                self._rebuild_from_succeeded(workspace)
         results: list[AdapterResult] = []
         running: dict[Future[AdapterResult], dict[str, Any]] = {}
         stop_scheduling = False
-        with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
-            while True:
-                if not stop_scheduling and not self.cancel_event.is_set():
-                    for task in ready_tasks(self.repo):
-                        if len(running) >= self.max_parallel:
-                            break
-                        if task in running.values():
-                            continue
-                        running[executor.submit(self._execute, task, context)] = task
-                if not running:
-                    break
-                done, _pending = wait(tuple(running), return_when=FIRST_COMPLETED)
-                for future in done:
-                    task = running.pop(future)
-                    result = future.result()
-                    results.append(result)
-                    if result.outcome != "succeeded" and task["on_failure"] == "stop":
-                        stop_scheduling = True
-                if stop_scheduling and not running:
-                    break
+        try:
+            with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
+                while True:
+                    if not stop_scheduling and not self.cancel_event.is_set():
+                        for task in ready_tasks(self.repo):
+                            if len(running) >= self.max_parallel:
+                                break
+                            if task in running.values():
+                                continue
+                            running[executor.submit(self._execute, task, context)] = task
+                    if not running:
+                        break
+                    done, _pending = wait(tuple(running), return_when=FIRST_COMPLETED)
+                    for future in done:
+                        task = running.pop(future)
+                        result = future.result()
+                        results.append(result)
+                        if result.outcome != "succeeded" and task["on_failure"] == "stop":
+                            stop_scheduling = True
+                    if stop_scheduling and not running:
+                        break
+        finally:
+            if workspace is not None:
+                workspace.cleanup()
         final = load_status(self.repo)
         states = [task.get("state") for task in final["tasks"].values()]
         if any(state == "failed" for state in states):
@@ -160,3 +172,27 @@ class Scheduler:
         else:
             outcome = "blocked"
         return RunSummary(outcome, tuple(results))
+
+    def _rebuild_from_succeeded(self, workspace: RunWorkspace) -> None:
+        status = load_status(self.repo)
+        items: list[dict[str, Any]] = []
+        for task_id, task in status.get("tasks", {}).items():
+            if task.get("state") != "succeeded":
+                continue
+            run_id = str(task.get("run_id") or "")
+            if not run_id:
+                continue
+            # Prefer artifacts under the current workspace run directory naming.
+            candidates = list((self.repo / ".autoworkspace" / "runs").glob(f"*/{task_id}.patch"))
+            if not candidates:
+                continue
+            patch = sorted(candidates)[-1]
+            manifest_path = patch.with_suffix(".manifest.json")
+            if not manifest_path.is_file():
+                raise ValueError(f"succeeded task {task_id} missing manifest for resume")
+            items.append({"patch": patch, "manifest": manifest_path})
+        if items:
+            # Order by plan dependency waves so rebuild stays topological.
+            order = {task_id: index for index, wave in enumerate(plan_schedule(self.document)) for task_id in wave}
+            items.sort(key=lambda item: order.get(Path(item["patch"]).stem, 10**9))
+            workspace.rebuild_staging_from_artifacts(items)

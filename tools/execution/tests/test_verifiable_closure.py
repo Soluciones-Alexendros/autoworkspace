@@ -312,12 +312,11 @@ def test_a23_artifact_content_mismatch(tmp_path: Path) -> None:
 
 
 def test_a24_stale_content_blocks_complete(tmp_path: Path) -> None:
-    code = tmp_path / "app.py"
-    code.write_text("v1")
     (tmp_path / ".autoworkspace").mkdir()
     rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", skill="project-publish")
-    code.write_text("v2")
-    with pytest.raises(ValueError, match="stale"):
+    # Stale means the declared artifact bytes changed, not an unrelated sibling file.
+    (tmp_path / "artifact.txt").write_text("mutated")
+    with pytest.raises(ValueError, match="stale|mismatch"):
         advance_status(
             tmp_path,
             phase="VALIDATE",
@@ -325,6 +324,14 @@ def test_a24_stale_content_blocks_complete(tmp_path: Path) -> None:
             evidence_ok=True,
             run_id=rid,
         )
+
+
+def test_a24b_sibling_write_does_not_invalidate_artifact_evidence(tmp_path: Path) -> None:
+    (tmp_path / ".autoworkspace").mkdir()
+    rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", skill="project-publish")
+    (tmp_path / "sibling.txt").write_text("parallel writer")
+    data = load_evidence(tmp_path, rid, revalidate_content=True, expected_phase="VALIDATE")
+    assert data["outcome"] == "succeeded"
 
 
 def test_a25_admin_only_ok(tmp_path: Path) -> None:

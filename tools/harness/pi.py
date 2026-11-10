@@ -26,6 +26,7 @@ from orchestrator.model import RunContext  # noqa: E402
 from orchestrator.ports import AdapterResult  # noqa: E402
 
 from harness.base import Check, build_report, report_exit_code  # noqa: E402
+from harness.policy import assert_argv_policy, build_policy  # noqa: E402
 
 
 def response_commands(response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -113,10 +114,12 @@ class PiSubagentAdapter:
         binary: str = "pi",
         model: str | None = None,
         timeout: int = 300,
+        credential_names: tuple[str, ...] = (),
     ) -> None:
         self.binary = binary
         self.model = model
         self.timeout = timeout
+        self.credential_names = credential_names
 
     @staticmethod
     def _kill(process: subprocess.Popen[str]) -> None:
@@ -129,14 +132,17 @@ class PiSubagentAdapter:
         operation = get_operation(str(task["operation"]))
         packet = json.dumps({"task": task, "plan_id": context.plan_id, "run_id": context.run_id}, sort_keys=True)
         plan_digest = hashlib.sha256(packet.encode("utf-8")).hexdigest()
-        write = bool(task.get("write_scope"))
-        tools = ["read", "grep", "find", "ls"]
-        if write:
-            tools += ["write", "edit", "bash"]
+        policy = build_policy(
+            harness="pi",
+            task=task,
+            timeout_s=self.timeout,
+            credential_names=self.credential_names,
+        )
+        write = bool(policy.write_scope)
         prompt = f"/skill:{operation.skill}\n\nExecute exactly this task packet:\n{packet}"
         if write:
-            paths = ", ".join(task["write_scope"])
-            expected = "\n".join(f"{path} must contain exactly: {task['id']}" for path in task["write_scope"])
+            paths = ", ".join(policy.write_scope)
+            expected = "\n".join(f"{path} must contain exactly: {task['id']}" for path in policy.write_scope)
             prompt += (
                 f"\nWrite only these files under the workspace ({paths}).\n"
                 f"{expected}\n"
@@ -149,14 +155,16 @@ class PiSubagentAdapter:
             "-p",
             "--no-session",
             "--tools",
-            ",".join(tools),
+            ",".join(policy.tools),
         ]
         if self.model:
             argv.extend(["--model", self.model])
         argv.append(prompt)
+        assert_argv_policy(argv)
         process = subprocess.Popen(
             argv,
             cwd=str(context.repo),
+            env=policy.env_mapping(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

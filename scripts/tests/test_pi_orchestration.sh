@@ -3,14 +3,26 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
+if [[ "${AW_NATIVE_OPT_IN:-}" != "1" ]]; then
+  echo "not_run: set AW_NATIVE_OPT_IN=1 to authorize Pi model orchestration" >&2
+  exit 3
+fi
 if ! command -v pi >/dev/null 2>&1; then
   echo "not_run: pi binary missing" >&2
   exit 3
 fi
-if ! pi auth check --model "${AW_PI_MODEL:-kimi-coding/k3.1-pro}" --json >/tmp/aw-pi-auth.json 2>&1; then
-  echo "not_run: pi model auth not ready" >&2
+AW_PI_MODEL="${AW_PI_MODEL:-opencode-go/beam-free}"
+export AW_PI_MODEL
+if ! pi auth check --model "$AW_PI_MODEL" --json >/tmp/aw-pi-auth.json 2>&1; then
+  echo "not_run: pi model auth not ready for $AW_PI_MODEL" >&2
   exit 3
 fi
+python3 - <<'PY'
+import json
+data = json.load(open("/tmp/aw-pi-auth.json", encoding="utf-8"))
+assert data.get("status") == "ready", data
+print("pi auth ready:", data)
+PY
 
 TMP=$(mktemp -d /tmp/autoworkspace-pi-orch-XXXXXX)
 trap 'git worktree prune; rm -rf "$TMP"' EXIT

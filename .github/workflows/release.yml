@@ -78,12 +78,30 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Archive source
+      - name: Resolve release version
+        id: version
         env:
-          VERSION: ${{ needs.publish.outputs.version }}
+          PUBLISH_VERSION: ${{ needs.publish.outputs.version }}
         run: |
           set -euo pipefail
-          if [ -z "$VERSION" ]; then VERSION="${GITHUB_REF_NAME#v}"; fi
+          if [ -n "${PUBLISH_VERSION}" ]; then
+            VERSION="${PUBLISH_VERSION}"
+          elif [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            echo "ERROR: cannot resolve release VERSION from publish output or tag ref (${GITHUB_REF_NAME})" >&2
+            exit 1
+          fi
+          if [ -z "${VERSION}" ] || [ "${VERSION}" = "main" ] || [[ "${VERSION}" == *"/"* ]]; then
+            echo "ERROR: invalid release VERSION=${VERSION}" >&2
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved release version v${VERSION}"
+      - name: Archive source
+        run: |
+          set -euo pipefail
           git archive --format=tar.gz --prefix="autoworkspace-${VERSION}/" -o "autoworkspace-${VERSION}.tar.gz" HEAD
           echo "ARCHIVE=autoworkspace-${VERSION}.tar.gz" >> "$GITHUB_ENV"
       - name: Checksum source archive
@@ -96,5 +114,71 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          VERSION="${VERSION:-${GITHUB_REF_NAME#v}}"
+          test -n "${VERSION}"
+          test -n "${ARCHIVE}"
+          test -f "${ARCHIVE}"
+          test -f SHA256SUMS
+          gh release view "v${VERSION}" >/dev/null
           gh release upload "v${VERSION}" "${ARCHIVE}" SHA256SUMS
+          # Fail closed if assets are still missing after upload.
+          mapfile -t ASSETS < <(gh release view "v${VERSION}" --json assets --jq '.assets[].name')
+          printf '%s\n' "${ASSETS[@]}" | grep -qx "${ARCHIVE}"
+          printf '%s\n' "${ASSETS[@]}" | grep -qx SHA256SUMS
+
+  post-release-smoke:
+    name: Post-release public smoke
+    needs: [publish, provenance]
+    if: ${{ always() && needs.provenance.result == 'success' && ((github.ref == 'refs/heads/main' && needs.publish.outputs.tagged == 'true') || startsWith(github.ref, 'refs/tags/v')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Resolve version
+        id: version
+        env:
+          PUBLISH_VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PUBLISH_VERSION}" ]; then
+            VERSION="${PUBLISH_VERSION}"
+          elif [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            echo "ERROR: cannot resolve release VERSION from publish output or tag ref (${GITHUB_REF_NAME})" >&2
+            exit 1
+          fi
+          if [ -z "${VERSION}" ] || [ "${VERSION}" = "main" ] || [[ "${VERSION}" == *"/"* ]]; then
+            echo "ERROR: invalid release VERSION=${VERSION}" >&2
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Download and verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TMP=$(mktemp -d)
+          gh release download "v${VERSION}" --dir "$TMP" --pattern "autoworkspace-${VERSION}.tar.gz" --pattern SHA256SUMS
+          (
+            cd "$TMP"
+            sha256sum -c SHA256SUMS
+          )
+          gh attestation verify "$TMP/autoworkspace-${VERSION}.tar.gz" --repo "${GITHUB_REPOSITORY}"
+          echo "Public assets + checksum + attestation OK for v${VERSION}"
+      - name: Bootstrap smoke (Pi + Cursor, no models)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TMP=$(mktemp -d)
+          bash scripts/bootstrap.sh --version "${VERSION}" --harness pi --target "$TMP/pi" --json
+          bash scripts/bootstrap.sh --version "${VERSION}" --harness cursor --target "$TMP/cursor" --json
