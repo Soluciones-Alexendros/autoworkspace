@@ -31,6 +31,30 @@ assert_abs_links() {
   test "$n" = 17
 }
 
+assert_rel_links() {
+  local dir="$1"
+  local n=0 link target
+  for link in "$dir"/*; do
+    [ -L "$link" ] || continue
+    n=$((n + 1))
+    target=$(readlink -- "$link")
+    case "$target" in
+      /*) echo "FAIL not relative $link -> $target"; exit 1 ;;
+    esac
+    case "$target" in
+      *Work/autoworkspace*) echo "FAIL checkout path in link $link -> $target"; exit 1 ;;
+    esac
+  done
+  test "$n" = 17
+}
+
+prepare_runtime() {
+  local home="$1"
+  mkdir -p "$home"
+  HOME="$home" bash "$ROOT/scripts/runtime-sync.sh" sync --from "$ROOT" --json >/dev/null
+  test -d "$home/.autoworkspace/skills"
+}
+
 # --- dry-run must not create missing target ---
 MISSING="$TMP/does-not-exist-yet"
 bash "$ROOT/scripts/install-cursor.sh" --target "$MISSING" --dry-run
@@ -226,16 +250,29 @@ DRY_PI_OUT=$(bash "$ROOT/scripts/install-pi.sh" --target "$DRY_PI" --dry-run --j
 echo "$DRY_PI_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True and d["installed"]==17, d'
 test ! -e "$DRY_PI"
 
-# --user with a fake HOME: dry-run writes nothing; real install is absolute
+# --user requires ~/.autoworkspace; dry-run writes no harness links
 HOME_DRY="$TMP/home-dry"
+prepare_runtime "$HOME_DRY"
 USER_DRY=$(HOME="$HOME_DRY" bash "$ROOT/scripts/install-pi.sh" --user --dry-run --json)
 echo "$USER_DRY" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True, d; assert d["target"].endswith(".pi/agent/skills"), d'
-test ! -e "$HOME_DRY"
+test ! -e "$HOME_DRY/.pi/agent/skills"
 
 HOME_REAL="$TMP/home-real"
+prepare_runtime "$HOME_REAL"
 USER_REAL=$(HOME="$HOME_REAL" bash "$ROOT/scripts/install-pi.sh" --user --yes --json)
 echo "$USER_REAL" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==17, d; assert d["target"].endswith(".pi/agent/skills"), d'
-assert_abs_links "$HOME_REAL/.pi/agent/skills"
+assert_rel_links "$HOME_REAL/.pi/agent/skills"
+test -L "$HOME_REAL/.pi/agent/extensions/autoworkspace.ts"
+case "$(readlink -- "$HOME_REAL/.pi/agent/extensions/autoworkspace.ts")" in
+  /*) echo "FAIL extension link must be relative"; exit 1 ;;
+esac
+
+# --user without runtime fails closed
+HOME_MISS="$TMP/home-missing"
+mkdir -p "$HOME_MISS"
+if HOME="$HOME_MISS" bash "$ROOT/scripts/install-pi.sh" --user --yes --json >/dev/null 2>&1; then
+  echo "FAIL: --user without runtime should fail"; exit 1
+fi
 
 # --user wins over --target on the public installer and on the wrapper
 IGN_PUB="$TMP/ignored-public"
@@ -246,21 +283,24 @@ grep -q "WARN: --user overrides --target" "$BOTH_ERR"
 test ! -e "$IGN_PUB"
 
 HOME_WRAP="$TMP/home-wrap"
+prepare_runtime "$HOME_WRAP"
 IGN_WRAP="$TMP/ignored-wrap"
 WRAP_ERR="$TMP/wrap-user.err"
 WRAP_USER=$(HOME="$HOME_WRAP" bash "$ROOT/scripts/install.sh" --harness pi --target "$IGN_WRAP" --user --yes --json 2>"$WRAP_ERR")
 echo "$WRAP_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==17, d; assert d["target"].endswith(".pi/agent/skills"), d'
 grep -q "WARN: --user overrides --target; ignoring --target" "$WRAP_ERR"
 test ! -e "$IGN_WRAP"
-assert_abs_links "$HOME_WRAP/.pi/agent/skills"
+assert_rel_links "$HOME_WRAP/.pi/agent/skills"
 
 IGN_CURSOR="$TMP/ignored-cursor"
 CUR_ERR="$TMP/cursor-user.err"
 HOME_CURSOR="$TMP/home-cursor"
+prepare_runtime "$HOME_CURSOR"
 CUR_USER=$(HOME="$HOME_CURSOR" bash "$ROOT/scripts/install-cursor.sh" --user --target "$IGN_CURSOR" --yes --json 2>"$CUR_ERR")
 echo "$CUR_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==17, d; assert d["target"].endswith(".cursor/skills"), d'
 grep -q "WARN: --user overrides --target" "$CUR_ERR"
 test ! -e "$IGN_CURSOR"
+assert_rel_links "$HOME_CURSOR/.cursor/skills"
 
 # Cursor full component mode: project root, dry-run, idempotence and uninstall.
 FULL="$TMP/full-cursor"
@@ -278,8 +318,42 @@ FULL_JSON2=$(bash "$ROOT/scripts/install.sh" --harness cursor --components full 
 echo "$FULL_JSON2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["changed"]==0 and d["skipped"]==24, d'
 bash "$ROOT/scripts/install.sh" --harness cursor --components full --target "$FULL" --uninstall --yes --json >/dev/null
 test ! -e "$FULL/.cursor/skills/plan-continue"
+# User-scope full install: relative links from ~/.autoworkspace, no project rule.
+FULL_USER_HOME="$TMP/home-full"
+prepare_runtime "$FULL_USER_HOME"
+FULL_USER=$(HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --yes --json)
+echo "$FULL_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["scope"]=="user", d; assert d["installed"]==23, d; assert d["omitted"]==["rules/autoworkspace.mdc"], d; assert d["notes"], d'
+USER_CURSOR="$FULL_USER_HOME/.cursor"
+test -L "$USER_CURSOR/skills/plan-continue"
+test -L "$USER_CURSOR/agents/aw-verifier.md"
+test -L "$USER_CURSOR/hooks.json"
+test -L "$USER_CURSOR/hooks/shell_gate.py"
+test ! -e "$USER_CURSOR/rules"
+assert_rel_links "$USER_CURSOR/skills"
+case "$(readlink -- "$USER_CURSOR/hooks.json")" in
+  /*) echo "FAIL hooks.json must be relative"; exit 1 ;;
+esac
+python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); cmds=[e["command"] for v in data["hooks"].values() for e in v]; assert cmds, data; assert not any(".cursor/hooks/" in c for c in cmds), cmds; assert all(c.startswith("python3 hooks/") for c in cmds), cmds' "$USER_CURSOR/hooks.json"
+FULL_USER2=$(HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --yes --json)
+echo "$FULL_USER2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["changed"]==0 and d["skipped"]==23, d'
+HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --uninstall --yes --json >/dev/null
+test ! -e "$USER_CURSOR/hooks.json"
+test ! -e "$USER_CURSOR/agents/aw-verifier.md"
+
 if bash "$ROOT/scripts/install.sh" --harness pi --components full --target "$TMP/invalid-full" --yes --json 2>/dev/null; then
   echo "FAIL: Pi full mode should be rejected"; exit 1
+fi
+
+# Cursor user rule helper: whole rule with frontmatter (Customize -> Rules format).
+RULE_OUT=$(bash "$ROOT/scripts/cursor-user-rule.sh")
+test "$(echo "$RULE_OUT" | head -1)" = "---"
+echo "$RULE_OUT" | grep -q "^alwaysApply: true$"
+echo "$RULE_OUT" | grep -q "^description: ."
+echo "$RULE_OUT" | grep -q "^# Contrato de ejecución de autoworkspace$"
+echo "$RULE_OUT" | grep -q "run_registered"
+test "$(echo "$RULE_OUT" | grep -c '^---$')" = "2"
+if bash "$ROOT/scripts/cursor-user-rule.sh" --bogus 2>/dev/null; then
+  echo "FAIL: unknown arg accepted by cursor-user-rule.sh"; exit 1
 fi
 
 echo "install tests OK"

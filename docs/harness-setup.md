@@ -2,6 +2,35 @@
 
 `skills/` is the only catalog that is committed. Installers create symlinks; they do not copy skill bodies.
 
+## Machine runtime (`~/.autoworkspace`)
+
+User-scope installs (`--user`) never link into a development checkout. They read a real directory at `$HOME/.autoworkspace` (not a symlink) that holds the harness payload: `skills/`, `.cursor/` (agents, hooks, rules, `hooks.json`), `extensions/autoworkspace/` and `package.json`.
+
+```bash
+bash scripts/runtime-sync.sh sync --from /path/to/checkout   # copy payload from a checkout
+bash scripts/runtime-sync.sh install --version 7.1.2         # verified release extract
+```
+
+Then install Cursor and Pi user links (relative paths into the runtime):
+
+```bash
+bash scripts/install.sh --harness cursor --components full --user --yes --json
+bash scripts/install-pi.sh --user --yes --json
+```
+
+| Default path                              | Link kind                                                  |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| `~/.cursor/skills/<name>`                 | directory symlink → `../../.autoworkspace/skills/<name>`   |
+| `~/.cursor/agents/*.md`                   | file symlink                                               |
+| `~/.cursor/hooks/*.py`                    | file symlink                                               |
+| `~/.cursor/hooks.json`                    | file symlink (runtime holds user-scoped commands)          |
+| `~/.pi/agent/skills/<name>`               | directory symlink                                          |
+| `~/.pi/agent/extensions/autoworkspace.ts` | file symlink → runtime `extensions/autoworkspace/index.ts` |
+
+Project installs (`--target`, checkout `.cursor/skills`) keep absolute symlinks into the checkout that runs the installer. That is the CI/fixture contract.
+
+On failure, install and sync print `FAIL <component> <function>: <detail>` on stderr. With `--json`, the object also includes `failures` (each entry has `component`, `function`, `detail`) so an update can name the exact skill, hook or extension that broke.
+
 ## Pi native Git package (release installation)
 
 Install an immutable release as one Pi package; no symlink installer is needed:
@@ -50,7 +79,25 @@ The default `--components skills` is explicitly a partial installation. To insta
 bash scripts/install.sh --harness cursor --components full --target /tmp/ai-cursor --yes --json
 ```
 
-A full target is the project root, not its skills directory. `--user --components full` targets `~/.cursor`. Full dry-run writes nothing; uninstall uses the full manifest and retains foreign or changed resources. The Cursor plugin remains the native distribution for the complete harness.
+A full target is the project root, not its skills directory. Full dry-run writes nothing; uninstall uses the full manifest and retains foreign or changed resources. The Cursor plugin remains the native distribution for the complete harness.
+
+`--user --components full` targets `~/.cursor` and is scope-aware, because Cursor reads different surfaces per scope:
+
+| Component                 | Project scope `<project>/.cursor` | User scope `~/.cursor` (from `~/.autoworkspace`)                 |
+| ------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| `skills/*`                | absolute symlink                  | relative directory symlink                                       |
+| `agents/*.md`             | absolute symlink                  | relative file symlink                                            |
+| `rules/autoworkspace.mdc` | absolute symlink                  | **omitted** — user rules live in Customize → Rules               |
+| `hooks.json`              | absolute symlink                  | relative symlink; runtime JSON uses `python3 hooks/...` commands |
+| `hooks/*.py`              | absolute symlink                  | relative file symlink                                            |
+
+To apply the execution contract globally, paste the whole rule into Customize → Rules (Cursor keeps user rules in Settings and syncs them with the account, so no file can carry them). The pasted text keeps its YAML frontmatter (`description`, `alwaysApply: true`), like any other user rule:
+
+```bash
+bash scripts/cursor-user-rule.sh --copy   # whole rule, frontmatter included
+```
+
+The JSON result reports `scope`, `omitted`, `notes` and (on upgrades) `pruned`. A pre-existing foreign `~/.cursor/hooks.json` is never overwritten: the install fails closed with a `foreign file conflict`. To get the execution contract globally, paste `rules/autoworkspace.mdc` into Customize → Rules.
 
 ## Pi notes
 
@@ -58,13 +105,14 @@ Pi loads project skills from `.pi/skills/` and user skills from `~/.pi/agent/ski
 
 After install or update of user-level skills, run `/reload` (or start a new Pi session) so `<available_skills>` picks up the catalog.
 
-Quickstart (`--user` writes `$HOME/.pi/agent/skills`; the fourth line is the idempotent rerun, `changed` 0 and `skipped` 17):
+Quickstart (sync the runtime once, then install project and user surfaces; the last line is the idempotent user rerun):
 
 ```bash
+bash scripts/runtime-sync.sh sync
 bash scripts/install-pi.sh
-bash scripts/install-pi.sh --user
+bash scripts/install-pi.sh --user --yes --json
 bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq .installed
-bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq '{installed,changed,skipped}'
+bash scripts/install-pi.sh --user --yes --json | jq '{installed,changed,skipped}'
 ```
 
 ## Verified release bootstrap

@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
@@ -87,7 +89,11 @@ export default function autoworkspace(pi: ExtensionAPI) {
       const tools = ["read", "grep", "find", "ls"];
       if (params.write) tools.push("write", "edit");
       if (params.allow_bash) tools.push("bash");
-      const worker = path.join(import.meta.dirname, "agents", "worker.md");
+      // Follow symlink when installed as ~/.pi/agent/extensions/autoworkspace.ts
+      const extensionDir = path.dirname(
+        fs.realpathSync(fileURLToPath(import.meta.url))
+      );
+      const worker = path.join(extensionDir, "agents", "worker.md");
       const args = [
         "--mode",
         "json",

@@ -17,7 +17,9 @@ MANIFEST_NAME=".autoworkspace-install-manifest.json"
 YES=0
 JSON_OUT=0
 HARNESS="cursor"
-VERSION="7.1.0"
+RUNTIME_HOME="${HOME}/.autoworkspace"
+# Single source of truth for the release version (avoids drift with package.json).
+VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$ROOT/package.json")"
 INSTALLED=0
 CHANGED=0
 SKIPPED=0
@@ -29,6 +31,7 @@ Usage: bash $INSTALLER [--target DIR] [--user] [--dry-run] [--uninstall] [--yes]
   --target DIR   Destination skills directory. '.' is this script's checkout (\$ROOT), not the cwd.
                  A path ending in .cursor/skills, .pi/skills, or .pi/agent/skills is used as-is.
   --user         Destination is the harness user directory. Overrides --target.
+                 Reads the catalog from \$HOME/.autoworkspace (relative symlinks).
   --dry-run      Preflight only — no mkdir, no links, no manifest.
   --uninstall    Remove only resources listed in the manifest under the destination.
   --yes          Non-interactive; does not overwrite foreign/real-dir conflicts.
@@ -49,10 +52,10 @@ emit_json() {
   local status="$1"
   local dry_bool=false
   [ "$DRY_RUN" = 1 ] && dry_bool=true
-  python3 - "$HARNESS" "$TARGET" "$INSTALLED" "$CHANGED" "$SKIPPED" "$CONFLICTS" "$dry_bool" "$status" "$VERSION" <<'PY'
+  python3 - "$HARNESS" "$TARGET" "$INSTALLED" "$CHANGED" "$SKIPPED" "$CONFLICTS" "$dry_bool" "$status" "$VERSION" "${FAILURE_JSON:-}" <<'PY'
 import json, sys
 harness, target, installed, changed, skipped, conflicts, dry, status, version = sys.argv[1:10]
-print(json.dumps({
+payload = {
     "harness": harness,
     "target": target,
     "installed": int(installed),
@@ -62,8 +65,24 @@ print(json.dumps({
     "dry_run": dry == "true",
     "status": status,
     "version": version,
-}))
+}
+raw = sys.argv[10] if len(sys.argv) > 10 else ""
+if raw:
+    payload["failures"] = json.loads(raw)
+print(json.dumps(payload))
 PY
+}
+
+emit_failure() {
+  local component="$1"
+  local function_name="$2"
+  local detail="$3"
+  local status="${4:-failed}"
+  echo "FAIL ${component} ${function_name}: ${detail}" >&2
+  FAILURE_JSON=$(python3 -c 'import json,sys; print(json.dumps([{"component":sys.argv[1],"function":sys.argv[2],"detail":sys.argv[3]}]))' "$component" "$function_name" "$detail")
+  if [ "$JSON_OUT" = 1 ]; then
+    emit_json "$status"
+  fi
 }
 
 finish_ok() {
@@ -106,6 +125,29 @@ done
 
 # --yes is accepted for AI/CI non-interactive mode; foreign/real-dir still refused.
 : "${YES}"
+
+FAILURE_JSON=""
+if [ "$USER_INSTALL" = 1 ]; then
+  if [ -L "$RUNTIME_HOME" ]; then
+    TARGET="${USER_TARGET:-$RUNTIME_HOME}"
+    emit_failure "runtime" "link-skills" "runtime must be a real directory, not a symlink: $RUNTIME_HOME"
+    exit 1
+  fi
+  if [ ! -d "$RUNTIME_HOME/skills" ]; then
+    if [ "$UNINSTALL" != 1 ]; then
+      TARGET="${USER_TARGET:-${HOME}/.pi/agent/skills}"
+      if [ "$HARNESS" = "cursor" ]; then
+        TARGET="${USER_TARGET:-${HOME}/.cursor/skills}"
+      fi
+      emit_failure "runtime" "link-skills" "runtime missing: $RUNTIME_HOME (run scripts/runtime-sync.sh sync first)"
+      exit 1
+    fi
+  else
+    SRC="$RUNTIME_HOME/skills"
+    VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$RUNTIME_HOME/package.json")"
+    ROOT="$RUNTIME_HOME"
+  fi
+fi
 
 if [ "$USER_INSTALL" = 1 ] && [ -n "$TARGET" ]; then
   echo "WARN: --user overrides --target; ignoring --target $TARGET" >&2
@@ -168,22 +210,35 @@ assert_user_ancestor_writable() {
   fi
 }
 
-assert_planned_symlinks_absolute() {
+assert_planned_symlinks() {
   local name dest link
   for name in "${RESOURCES[@]}"; do
     dest="$TARGET/$name"
     if [ ! -L "$dest" ]; then
-      echo "ERROR: expected symlink at $dest" >&2
+      emit_failure "$name" "assert_planned_symlinks" "expected symlink at $dest"
       exit 1
     fi
     link=$(readlink -- "$dest")
-    case "$link" in
-      /*) ;;
-      *)
-        echo "ERROR: symlink is not absolute: $dest -> $link" >&2
-        exit 1
-        ;;
-    esac
+    if [ "$USER_INSTALL" = 1 ]; then
+      case "$link" in
+        /*)
+          emit_failure "$name" "assert_planned_symlinks" "user symlink must be relative: $dest -> $link"
+          exit 1
+          ;;
+      esac
+    else
+      case "$link" in
+        /*) ;;
+        *)
+          emit_failure "$name" "assert_planned_symlinks" "symlink is not absolute: $dest -> $link"
+          exit 1
+          ;;
+      esac
+    fi
+    if [ "$(readlink -f -- "$dest")" != "$(readlink -f -- "$SRC/$name")" ]; then
+      emit_failure "$name" "assert_planned_symlinks" "symlink resolves outside catalog: $dest"
+      exit 1
+    fi
   done
 }
 
@@ -212,7 +267,11 @@ resolve_existing_or_parent() {
 }
 
 preflight_conflicts() {
-  local dest name s cur
+  local dest name s cur prev_root
+  prev_root=""
+  if [ -f "$TARGET/$MANIFEST_NAME" ]; then
+    prev_root=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8")).get("source_root",""))' "$TARGET/$MANIFEST_NAME")
+  fi
   for s in "$SRC"/*; do
     [ -d "$s" ] || continue
     [ -f "$s/SKILL.md" ] || continue
@@ -235,9 +294,13 @@ preflight_conflicts() {
           case "$cur" in
             "$SRC"/*) ;;
             *)
-              echo "ERROR: conflict — symlink $dest → $cur not owned by this install" >&2
-              CONFLICTS=$((CONFLICTS + 1))
-              return 1
+              if [ -n "$prev_root" ] && [[ "$cur" == "$prev_root"/* ]]; then
+                :
+              else
+                echo "ERROR: conflict — symlink $dest → $cur not owned by this install" >&2
+                CONFLICTS=$((CONFLICTS + 1))
+                return 1
+              fi
               ;;
           esac
         fi
@@ -415,7 +478,7 @@ if [ ! -d "$TARGET" ]; then
   mkdir -p "$TARGET"
 fi
 
-COUNTS_LINE=$(python3 - "$JOURNAL" "$SRC" "$TARGET" "${RESOURCES[@]}" <<'PY'
+COUNTS_LINE=$(python3 - "$JOURNAL" "$SRC" "$TARGET" "$USER_INSTALL" "${RESOURCES[@]}" <<'PY'
 """Write-ahead journal: persist prior state BEFORE each filesystem effect."""
 import json, os, sys
 from pathlib import Path
@@ -423,7 +486,8 @@ from pathlib import Path
 journal_path = Path(sys.argv[1])
 src = Path(sys.argv[2]).resolve()
 target = Path(sys.argv[3]).resolve()
-names = sys.argv[4:]
+relative = sys.argv[4] == "1"
+names = sys.argv[5:]
 
 
 def persist(doc: dict) -> None:
@@ -438,6 +502,12 @@ def persist(doc: dict) -> None:
             os.close(fd)
     except OSError:
         pass
+
+
+def link_text(source: Path, dest: Path) -> str:
+    if relative:
+        return os.path.relpath(str(source), start=str(dest.parent))
+    return str(source)
 
 
 doc = {"schema_version": 1, "run_id": os.environ.get("AW_INSTALL_RUN", ""), "entries": []}
@@ -476,7 +546,7 @@ for name in names:
     if action != "unchanged":
         if dest.is_symlink() or (dest.exists() and not dest.is_dir()):
             dest.unlink()
-        os.symlink(str(s), dest)
+        os.symlink(link_text(s, dest), dest)
     entry["applied"] = True
     persist(doc)
 
@@ -507,7 +577,7 @@ tmp.replace(mf)
 print(f"manifest → {mf}", file=sys.stderr)
 PY
 validate_manifest_paths "$MANIFEST"
-assert_planned_symlinks_absolute
+assert_planned_symlinks
 rm -f "$JOURNAL"
 trap - ERR
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -151,6 +152,54 @@ def test_decide_fallback_ask_for_unclassified_match() -> None:
     # Hook matcher may fire on strings the deny/network branches do not classify.
     mod = _load_gate()
     assert mod.decide({"command": "echo matched-but-unclassified"})["permission"] == "ask"
+
+
+def _hook_matcher() -> re.Pattern[str]:
+    config = json.loads((REPO / ".cursor" / "hooks.json").read_text(encoding="utf-8"))
+    raw = config["hooks"]["beforeShellExecution"][0]["matcher"]
+    return re.compile(raw)
+
+
+def test_hook_matcher_skips_ordinary_text() -> None:
+    """Whole-word matcher: substrings inside ordinary git/python text stay out of the gate."""
+    matcher = _hook_matcher()
+    ordinary = [
+        "git status",
+        "git commit -m 'update chapter adapter'",
+        "echo curly",
+        "python -m pytest tools/validate/tests/test_shell_gate.py",
+        "npm test",
+    ]
+    for command in ordinary:
+        assert matcher.search(command) is None, command
+
+
+def test_hook_matcher_covers_host_and_network_commands() -> None:
+    matcher = _hook_matcher()
+    gated = [
+        "apt update",
+        "apt-get upgrade",
+        "sudo -v",
+        "curl --version",
+        "rm -rf /tmp/example",
+        "ssh host.example",
+        "sshd",
+        "nc -l 9",
+        "systemctl status",
+        "dd if=/dev/zero of=/dev/null",
+        "nft list ruleset",
+        "pacman -Syu",
+        "wget https://example.com",
+        "mkfs.ext4 /dev/sdb",
+        "shutdown -h now",
+        "iptables -L",
+        "ufw status",
+        "scp file host:",
+        "dnf upgrade",
+        "reboot",
+    ]
+    for command in gated:
+        assert matcher.search(command), command
 
 
 def test_session_start_emits_additional_context() -> None:

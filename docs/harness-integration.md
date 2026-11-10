@@ -23,10 +23,12 @@ Versioned under `.cursor/` (skills symlinks are **not** committed; run `install-
 - `.cursor/agents/aw-verifier.md`
 - `tools/validate/tests/test_shell_gate.py`
 
+Surfaces are scope-aware under `--user`: the catalog is `$HOME/.autoworkspace`, and every owned path under `~/.cursor` / `~/.pi/agent` is a relative symlink into that runtime. The project rule is omitted because Cursor keeps user rules in Settings. `hooks.json` is rewritten in the runtime with `hooks/...` commands (user hooks run from `~/.cursor`) and linked from `~/.cursor/hooks.json`. `doctor.py --full` accepts both scopes.
+
 Levels beyond A:
 
-- **B (native discovery/load):** Customize → Skills lists all 16; `/plan-continue` routes. Human IDE only → **`not_run` in CI**.
-- **C (shell gate in IDE):** an agent-proposed host-mutating shell (e.g. `apt-get upgrade`) is `deny` or `ask`. The `beforeShellExecution` matcher covers host mutation and outbound network only; unmatched commands (e.g. `python`, `git`, `npm`, `pytest`) never enter the hook and stay open. Human IDE only → **`not_run` in CI**.
+- **B (native discovery/load):** Customize → Skills lists all 17; `/plan-continue` routes. Human IDE only → **`not_run` in CI**.
+- **C (shell gate in IDE):** an agent-proposed host-mutating shell (e.g. `apt-get upgrade`) is `deny` or `ask`. The `beforeShellExecution` matcher is whole-word, so it covers host mutation and outbound network only; ordinary commands (`python`, `git`, `npm`, `pytest`) stay open even when their text contains substrings such as `chapter`, `adapter` or `curly`. Human IDE only → **`not_run` in CI**.
 
 ## Permissions
 

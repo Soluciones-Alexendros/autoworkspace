@@ -13,7 +13,14 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from harness.base import Check, build_report, report_exit_code  # noqa: E402
-from harness.doctor import skill_link_check, version_coherence_checks  # noqa: E402
+from harness.cursor_install import install_full  # noqa: E402
+from harness.doctor import (  # noqa: E402
+    cursor_full_check,
+    installer_version_check,
+    skill_link_check,
+    version_coherence_checks,
+)
+from harness.runtime import make_relative_symlink, sync_payload  # noqa: E402
 
 
 def _schema() -> dict[str, Any]:
@@ -73,13 +80,74 @@ def test_version_drift_is_detected(tmp_path: Path) -> None:
     assert any(check.outcome == "fail" and "cursor-plugin" in check.check_id for check in checks)
 
 
-def test_skill_links_must_be_absolute_and_resolve_to_catalog(tmp_path: Path) -> None:
+def _installer(tmp_path: Path, assignment: str) -> None:
+    path = tmp_path / "scripts" / "lib" / "link-skills.sh"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(assignment + "\n", encoding="utf-8")
+
+
+def test_installer_version_accepts_package_json_derivation(tmp_path: Path) -> None:
+    derived = 'VERSION="$(python3 -c \'import json; print(json.load(open("$ROOT/package.json"))["version"])\'")'
+    _installer(tmp_path, derived)
+    check = installer_version_check(tmp_path, "1.2.3")
+    assert check.outcome == "pass", check.detail
+    assert "derived" in check.detail
+
+
+def test_installer_version_flags_stale_literal(tmp_path: Path) -> None:
+    _installer(tmp_path, 'VERSION="1.2.2"')
+    check = installer_version_check(tmp_path, "1.2.3")
+    assert check.outcome == "fail"
+    assert "1.2.2" in check.detail
+
+
+def test_installer_version_flags_unrecognized_assignment(tmp_path: Path) -> None:
+    _installer(tmp_path, 'VERSION="$(cat VERSION.txt)"')
+    check = installer_version_check(tmp_path, "1.2.3")
+    assert check.outcome == "fail"
+    assert "neither literal" in check.detail
+
+
+def test_cursor_full_check_accepts_project_and_user_scope(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    install_full(ROOT, project)
+    assert cursor_full_check(project).outcome == "pass"
+    user_home = tmp_path / "home"
+    user_home.mkdir()
+    sync_payload(ROOT, user_home / ".autoworkspace", origin="sync")
+    install_full(ROOT, user_home / ".cursor", user_scope=True)
+    check = cursor_full_check(user_home)
+    assert check.outcome == "pass", check.detail
+    assert "user scope" in check.detail
+
+
+def test_cursor_full_check_rejects_missing_generated_hooks(tmp_path: Path) -> None:
+    user_home = tmp_path / "home"
+    user_home.mkdir()
+    sync_payload(ROOT, user_home / ".autoworkspace", origin="sync")
+    install_full(ROOT, user_home / ".cursor", user_scope=True)
+    (user_home / ".cursor" / "hooks.json").unlink()
+    assert cursor_full_check(user_home).outcome == "fail"
+
+
+def test_real_checkout_version_coherence_passes() -> None:
+    """Regression: the shipped installer must satisfy the doctor that verifies it."""
+    checks = version_coherence_checks(ROOT, None)
+    assert [check.outcome for check in checks] == ["pass"] * 3, [check.detail for check in checks]
+
+
+def test_skill_links_must_resolve_to_catalog(tmp_path: Path) -> None:
     _versioned_repo(tmp_path)
     destination = tmp_path / ".pi" / "skills"
     destination.mkdir(parents=True)
     (destination / "fixture-skill").symlink_to(tmp_path / "skills" / "fixture-skill")
     check = skill_link_check(tmp_path, "pi")
     assert check.outcome == "pass"
+    (destination / "fixture-skill").unlink()
+    make_relative_symlink(tmp_path / "skills" / "fixture-skill", destination / "fixture-skill")
+    check = skill_link_check(tmp_path, "pi")
+    assert check.outcome == "pass"
+    assert "relative" in check.detail
     (destination / "fixture-skill").unlink()
     (destination / "fixture-skill").symlink_to("relative-target")
     check = skill_link_check(tmp_path, "pi")

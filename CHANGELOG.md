@@ -6,6 +6,26 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.1.3] - 2026-11-10
+
+### Fixed
+
+- `scripts/lib/link-skills.sh` derives `VERSION` from `package.json` instead of pinning `7.1.0`, and `doctor.py` accepts that derivation while still failing a stale literal (regression test added).
+- The Cursor `beforeShellExecution` matcher is whole-word, so ordinary `git`/`python` text that merely contains substrings such as `chapter`, `adapter` or `curly` no longer enters the shell gate. `sshd` stays gated. `docs/harness-integration.md` now says 17 skills.
+- Cursor user-scope full install (`--user --components full`) is now scope-aware: the project rule is omitted and reported because Cursor keeps user rules in Settings, and owned components dropped by a scope change are pruned. A foreign `~/.cursor/hooks.json` is never overwritten.
+
+### Added
+
+- `scripts/cursor-user-rule.sh` prints (or `--copy`s) the whole rule, frontmatter included, for Cursor Customize -> Rules, since user rules live in the account and not on disk. `autoworkspace.mdc` now carries a descriptive `description` and a structured Markdown body.
+- Machine runtime at `~/.autoworkspace` via `scripts/runtime-sync.sh` (`sync` from a checkout, or `install --version` from a verified release). User-scope Cursor/Pi installs link relatively into that tree (skills, agents, hooks, `hooks.json`, Pi `extensions/autoworkspace.ts`) and refuse to link a development checkout.
+- Install/update failures report `component`, `function` and `detail` (`FAIL …` on stderr; `failures[]` with `--json`) after validating each payload path and each created link.
+
+### Changed
+
+- Full Cursor manifest moves to schema v2 (`{path, kind}` entries, `scope`, `omitted`); v1 manifests remain readable and uninstall honors both.
+- User-scope `hooks.json` is a relative symlink into the runtime (user-scoped commands written there) instead of a generated file under `~/.cursor`.
+- Docs drop leftover Alignux project references (`local-security` 7.1.0 -> 7.1.1).
+
 ## [7.1.2] - 2026-11-10
 
 ### Changed
@@ -333,7 +353,7 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 - `verificar-performance` 2.0.0 -> 3.0.0 (major)
 - `verificar-repo` 1.0.0 -> 2.0.0 (major)
 
-  Reestructuración a 4 familias por fase SDLC (disenar/construir/verificar/operar); fusión email-proton+protonpass → construir-proton-suite v1.0.0; dominios alignux, datos, integraciones suprimidos
+  Reestructuración a 4 familias por fase SDLC (disenar/construir/verificar/operar); fusión email-proton+protonpass → construir-proton-suite v1.0.0; dominios datos, integraciones suprimidos
 
 ## 1.0.0 - 2026-09-27
 
@@ -363,7 +383,8 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 - Estructura `skills/<nombre>/` con frontmatter normalizado (`license: MIT`, `metadata` con autor, versión, dominio e idioma).
 - Validadores `tools/validate/` (spec + enlaces), CI en `.github/workflows/` y `run-validation.sh` agregado.
 
-[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.2...HEAD
+[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.3...HEAD
+[7.1.3]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.2...v7.1.3
 [7.1.2]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.1...v7.1.2
 [7.1.1]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.0...v7.1.1
 [7.1.0]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.0.3...v7.1.0
