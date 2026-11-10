@@ -44,7 +44,7 @@
       "automerge": true
     },
     {
-      "description": "Autoworkspace: agrupar bumps Python (pip_requirements + pep621) con el resto de minor/patch",
+      "description": "Machineroom: agrupar bumps Python (pip_requirements + pep621) con el resto de minor/patch",
       "matchManagers": ["pip_requirements", "pep621"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "python deps (minor + patch)",

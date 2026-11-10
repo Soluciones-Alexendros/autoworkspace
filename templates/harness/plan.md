@@ -1,4 +1,4 @@
-# Autoworkspace plan template
+# Machineroom plan template
 
 Keep the narrative specification and this single structured block in the same
 canonical document. Replace the fixture IDs and scopes before activation.

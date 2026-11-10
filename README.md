@@ -1,4 +1,4 @@
-# autoworkspace
+# Machineroom
 
 ### Propósito de este documento
 
@@ -6,9 +6,9 @@
 - **Estructura:** Esta meta-sección → qué es el producto → inicio rápido → skills por dominio → nomenclatura → validación.
 - **Contenido a integrar según contexto:** El canon de flota vive en este mismo repo (`docs/architecture/`, `stacks/`, `templates/product/`). Este README presenta el producto y apunta al índice del canon.
 
-Workspace agéntico de Soluciones-Alexendros (MIT): no es una vitrina de skills, sino un pipeline preprogramado con variables por proyecto — especificación → esquemas/tests → código → validación → integración → status declarativo versionado. También es el **host público del canon de flota** (antes `repo-standard`).
+**Machineroom** (antes autoworkspace) es el workspace agéntico de Soluciones-Alexendros (MIT): no es una vitrina de skills, sino un pipeline preprogramado con variables por proyecto — especificación → esquemas/tests → código → validación → integración → status declarativo versionado. También es el **host público del canon de flota** (antes `repo-standard`).
 
-Versión **7.1.3**. 17 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
+Versión **7.1.4**. 17 skills en 5 dominios (`plan`, `local`, `project`, `web`, `role`). Nombres y contenido de skills en inglés; conversaciones en español.
 
 **Deps:** version-updates vía [Renovate](.github/renovate.json) (Dependabot Alerts de seguridad pueden quedar ON). App Renovate en la org es prerrequisito humano.
 

@@ -6,6 +6,12 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [7.1.4] - 2026-11-10
+
+### Changed
+
+- Package rename toward machineroom (`package.json` name) plus harness naming SSOT (`tools/harness/naming.py`) and living-doc brand updates; patch bump required so `package.json` stays ahead of tag `v7.1.3` for `cut_tag --check-repo`.
+
 ## [7.1.3] - 2026-11-10
 
 ### Fixed
@@ -383,7 +389,8 @@ Primera publicación pública del repo `Soluciones-Alexendros/autoworkspace` (21
 - Estructura `skills/<nombre>/` con frontmatter normalizado (`license: MIT`, `metadata` con autor, versión, dominio e idioma).
 - Validadores `tools/validate/` (spec + enlaces), CI en `.github/workflows/` y `run-validation.sh` agregado.
 
-[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.3...HEAD
+[Unreleased]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.4...HEAD
+[7.1.4]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.3...v7.1.4
 [7.1.3]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.2...v7.1.3
 [7.1.2]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.1...v7.1.2
 [7.1.1]: https://github.com/Soluciones-Alexendros/autoworkspace/compare/v7.1.0...v7.1.1

@@ -1,6 +1,6 @@
 {
   "name": "autoworkspace",
-  "version": "7.1.3",
+  "version": "7.1.4",
   "description": "Autoworkspace Cursor harness: skills, execution contract rule, shell gate hooks, and aw-verifier.",
   "license": "MIT",
   "skills": "skills",
