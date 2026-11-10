@@ -17,7 +17,7 @@ Versión **7.1.1**. 17 skills en 5 dominios (`plan`, `local`, `project`, `web`, 
 Pi, instalación de una release pineada:
 
 ```bash
-pi install git:github.com/Soluciones-Alexendros/autoworkspace@v7.1.0
+pi install git:github.com/Soluciones-Alexendros/autoworkspace@v7.1.1
 ```
 
 Desarrollo del checkout o instalación Cursor de solo skills:

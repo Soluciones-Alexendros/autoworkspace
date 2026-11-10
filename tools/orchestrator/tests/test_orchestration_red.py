@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -20,22 +19,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 
-
-def _clean_clone_env() -> dict[str, str]:
-    env = os.environ.copy()
-    for key in (
-        "GIT_INDEX_FILE",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-        "GIT_WORK_TREE",
-        "GIT_DIR",
-        "GIT_COMMON_DIR",
-        "GIT_PREFIX",
-    ):
-        env.pop(key, None)
-    return env
-
-
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools" / "workspace-router"))
 
@@ -46,7 +29,7 @@ from orchestrator.ports import AdapterResult  # noqa: E402
 from orchestrator.run import _default_verifier  # noqa: E402
 from orchestrator.runner import WorktreeAdapter  # noqa: E402
 from orchestrator.scheduler import Scheduler  # noqa: E402
-from orchestrator.worktrees import WorktreeManager  # noqa: E402
+from orchestrator.worktrees import WorktreeManager, _clean_git_env  # noqa: E402
 from status_bump import activate_plan, load_status  # noqa: E402
 
 
@@ -56,7 +39,7 @@ def _fixture_repo(tmp_path: Path) -> Path:
         ["git", "clone", "--dissociate", f"file://{ROOT}", str(repo)],
         check=True,
         capture_output=True,
-        env=_clean_clone_env(),
+        env=_clean_git_env(),
     )
     subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=repo, check=True, capture_output=True)
     return repo
@@ -292,35 +275,21 @@ def test_resume_rejects_stale_patch_digest(tmp_path: Path) -> None:
             + "\n",
             encoding="utf-8",
         )
-        # Desired API: reconstructing staging from this pair must raise / fail digest check.
         manager = WorktreeManager(repo, revision)
         try:
-            staging = manager.create("resume-staging")
-            # Preferred contract after T09: validate_manifest_against_patch or rebuild_staging.
-            validate = getattr(manager, "validate_patch_manifest", None)
-            rebuild = getattr(manager, "rebuild_staging_from_artifacts", None)
-            assert callable(validate) or callable(rebuild), (
-                "WorktreeManager must expose patch/manifest validation or staging rebuild"
-            )
-            if callable(validate):
-                validate(patch, json.loads(manifest.read_text(encoding="utf-8")))
+            manager.create("resume-staging")
+            try:
+                manager.validate_patch_manifest(patch, json.loads(manifest.read_text(encoding="utf-8")))
                 raise AssertionError("stale patch/manifest pair must be rejected")
-            if callable(rebuild):
-                rebuild(staging, [{"patch": patch, "manifest": manifest}])
-                raise AssertionError("stale patch/manifest pair must be rejected")
-        except (ValueError, AssertionError) as exc:
-            if "must expose" in str(exc) or "must be rejected" in str(exc):
-                raise
-            # ValueError from validation is the desired GREEN outcome.
-            assert (
-                "stale" in str(exc).lower()
-                or "digest" in str(exc).lower()
-                or "hash" in str(exc).lower()
-                or "manifest" in str(exc).lower()
-            )
+            except ValueError as exc:
+                assert (
+                    "stale" in str(exc).lower()
+                    or "digest" in str(exc).lower()
+                    or "hash" in str(exc).lower()
+                    or "manifest" in str(exc).lower()
+                )
         finally:
             manager.cleanup()
-        # Silence unused under RED when API missing — assertion above already fails.
         _ = adapter
     finally:
         _cleanup(repo)

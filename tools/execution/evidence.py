@@ -11,6 +11,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from contracts.result import new_run_id as _canonical_run_id
+
 from execution.ops import NON_TERMINAL, OpResult
 from execution.registry import OpSpec, get_operation, known_operation_ids
 
@@ -189,7 +191,11 @@ def content_manifest(root: Path) -> dict[str, Any]:
 
 
 def work_digest(root: Path) -> str:
-    """Content digest of workspace bytes (excludes evidence/status/admin)."""
+    """Content digest of workspace bytes (excludes evidence/status/admin).
+
+    Acceptance / closure identity. Symlink-aware via ``content_manifest``. Not
+    interchangeable with ``orchestrator.worktrees.tree_digest`` (staging patches).
+    """
     return str(content_manifest(root)["digest"])
 
 
@@ -646,4 +652,5 @@ def load_evidence(  # noqa: PLR0913  # API pública de evidencia: keyword-only, 
 
 
 def new_run_id() -> str:
-    return str(uuid.uuid4())
+    """Canonical run ids live in contracts.result; re-export for callers."""
+    return _canonical_run_id()

@@ -5,12 +5,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import shutil
-import signal
 import subprocess
 import sys
-import threading
 import time
 import uuid
 from pathlib import Path
@@ -27,6 +24,7 @@ from orchestrator.ports import AdapterResult  # noqa: E402
 
 from harness.base import Check, build_report, report_exit_code  # noqa: E402
 from harness.policy import assert_argv_policy, build_policy  # noqa: E402
+from harness.subprocess_run import run_cancellable_subprocess  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 SHELL_GATE = ROOT / ".cursor" / "hooks" / "shell_gate.py"
@@ -111,7 +109,7 @@ def static_install_check(target: Path, expected_skills: set[str]) -> Check:  # n
     return Check("cursor-static-install", "A", "pass", detail)
 
 
-def discovery_check(target: Path, expected_skills: set[str]) -> Check:
+def cursor_discovery_check(target: Path, expected_skills: set[str]) -> Check:
     """Level B: Cursor CLI must load hooks (sessionStart) — filesystem alone is not enough."""
     binary = resolve_agent_binary()
     if not binary:
@@ -182,7 +180,153 @@ def discovery_check(target: Path, expected_skills: set[str]) -> Check:
     return Check("cursor-native-discovery", "B", "pass", detail)
 
 
-def policy_check(target: Path, work_dir: Path | None = None) -> Check:  # noqa: C901, PLR0911, PLR0912, PLR0915
+def _policy_probe_source(decisions: Path) -> str:
+    return (
+        "#!/usr/bin/env python3\n"
+        "from __future__ import annotations\n"
+        "import json, sys\n"
+        "from pathlib import Path\n"
+        f"DECISIONS = Path({str(decisions)!r})\n"
+        "payload = json.load(sys.stdin)\n"
+        "cmd = str(payload.get('command') or '')\n"
+        "if 'AW_POLICY_DENY' in cmd:\n"
+        "    permission = 'deny'\n"
+        "elif 'AW_POLICY_ASK' in cmd:\n"
+        "    permission = 'ask'\n"
+        "elif 'AW_POLICY_ALLOW' in cmd:\n"
+        "    permission = 'allow'\n"
+        "else:\n"
+        "    permission = 'allow'\n"
+        "record = {'command': cmd, 'permission': permission, 'hook_event_name': payload.get('hook_event_name')}\n"
+        "with DECISIONS.open('a', encoding='utf-8') as fh:\n"
+        "    fh.write(json.dumps(record, sort_keys=True) + '\\n')\n"
+        "out = {'permission': permission}\n"
+        "if permission != 'allow':\n"
+        "    out['user_message'] = f'policy probe {permission}'\n"
+        "    out['agent_message'] = f'policy probe returned {permission}'\n"
+        "print(json.dumps(out))\n"
+    )
+
+
+def _install_policy_probe(
+    root: Path,
+    *,
+    original_hooks: str,
+    probe: Path,
+    decisions: Path,
+) -> None:
+    probe.write_text(_policy_probe_source(decisions), encoding="utf-8")
+    probe.chmod(probe.stat().st_mode | 0o100)
+    payload = json.loads(original_hooks)
+    payload.setdefault("hooks", {})["beforeShellExecution"] = [
+        {"command": f"python3 {probe}", "failClosed": True, "timeout": 10}
+    ]
+    hooks_json = root / ".cursor" / "hooks.json"
+    if hooks_json.is_symlink() or not hooks_json.is_file():
+        hooks_json.unlink()
+    hooks_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _restore_policy_hooks(hooks_json: Path, original_hooks: str, probe: Path) -> None:
+    if hooks_json.exists() or hooks_json.is_symlink():
+        hooks_json.unlink()
+    hooks_json.write_text(original_hooks, encoding="utf-8")
+    probe.unlink(missing_ok=True)
+
+
+def _run_policy_agent(binary: str, root: Path) -> subprocess.CompletedProcess[str]:
+    prompt = (
+        "You MUST use the Shell tool exactly three times in this workspace. Do not skip any.\n"
+        "1) Run exactly: echo AW_POLICY_ALLOW > .autoworkspace-policy-allow.txt\n"
+        "2) Run exactly: echo AW_POLICY_DENY > .autoworkspace-policy-deny.txt\n"
+        "3) Run exactly: echo AW_POLICY_ASK > .autoworkspace-policy-ask.txt\n"
+        "After attempting all three, reply with exactly: POLICY_DONE\n"
+    )
+    argv = [
+        binary,
+        "--print",
+        "--output-format",
+        "text",
+        "--trust",
+        "--sandbox",
+        "enabled",
+        "--workspace",
+        str(root),
+        prompt,
+    ]
+    assert_argv_policy(argv)
+    return subprocess.run(
+        argv,
+        cwd=str(root),
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+
+
+def _assert_policy_outcomes(  # noqa: PLR0913  # outcome paths + agent_exit for receipt
+    *,
+    decisions: Path,
+    allow_effect: Path,
+    deny_effect: Path,
+    ask_effect: Path,
+    agent_exit: int,
+    policy_root: Path,
+) -> Check:
+    if not decisions.is_file():
+        return Check(
+            "cursor-native-policy",
+            "C",
+            "fail",
+            f"beforeShellExecution decisions missing — Cursor did not invoke the policy probe; agent_exit={agent_exit}",
+        )
+    seen: dict[str, str] = {}
+    for line in decisions.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        permission = str(row.get("permission") or "")
+        command = str(row.get("command") or "")
+        for token in ("ALLOW", "DENY", "ASK"):
+            if f"AW_POLICY_{token}" in command:
+                seen[token.lower()] = permission
+    expected = {"allow": "allow", "deny": "deny", "ask": "ask"}
+    if seen != expected:
+        return Check(
+            "cursor-native-policy",
+            "C",
+            "fail",
+            f"hook decisions incomplete or wrong: {seen!r}; agent_exit={agent_exit}",
+        )
+    if not allow_effect.is_file():
+        return Check("cursor-native-policy", "C", "fail", "allow permission did not produce shell side effect")
+    if deny_effect.is_file():
+        return Check("cursor-native-policy", "C", "fail", "deny permission still produced a side effect")
+    if ask_effect.is_file():
+        return Check(
+            "cursor-native-policy",
+            "C",
+            "fail",
+            "ask permission produced a side effect in headless mode (expected blocked pending approval)",
+        )
+    receipt = {
+        "decisions": seen,
+        "allow_effect": allow_effect.read_text(encoding="utf-8").strip(),
+        "agent_exit": agent_exit,
+        "force_flags": False,
+    }
+    (policy_root / "policy-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    return Check(
+        "cursor-native-policy",
+        "C",
+        "pass",
+        "beforeShellExecution allow/deny/ask observed via Cursor without --force/--yolo; "
+        f"allow_effect={allow_effect.name}",
+    )
+
+
+def policy_check(target: Path, work_dir: Path | None = None) -> Check:
     """Level C: Cursor must invoke beforeShellExecution; observe allow/deny/ask without --force/--yolo.
 
     The harness never calls shell_gate.py / the probe directly for proof, and never
@@ -214,131 +358,23 @@ def policy_check(target: Path, work_dir: Path | None = None) -> Check:  # noqa: 
     ask_effect = root / ".autoworkspace-policy-ask.txt"
     for path in (decisions, allow_effect, deny_effect, ask_effect):
         path.unlink(missing_ok=True)
-    probe.write_text(
-        "#!/usr/bin/env python3\n"
-        "from __future__ import annotations\n"
-        "import json, sys\n"
-        "from pathlib import Path\n"
-        f"DECISIONS = Path({str(decisions)!r})\n"
-        "payload = json.load(sys.stdin)\n"
-        "cmd = str(payload.get('command') or '')\n"
-        "if 'AW_POLICY_DENY' in cmd:\n"
-        "    permission = 'deny'\n"
-        "elif 'AW_POLICY_ASK' in cmd:\n"
-        "    permission = 'ask'\n"
-        "elif 'AW_POLICY_ALLOW' in cmd:\n"
-        "    permission = 'allow'\n"
-        "else:\n"
-        "    permission = 'allow'\n"
-        "record = {'command': cmd, 'permission': permission, 'hook_event_name': payload.get('hook_event_name')}\n"
-        "with DECISIONS.open('a', encoding='utf-8') as fh:\n"
-        "    fh.write(json.dumps(record, sort_keys=True) + '\\n')\n"
-        "out = {'permission': permission}\n"
-        "if permission != 'allow':\n"
-        "    out['user_message'] = f'policy probe {permission}'\n"
-        "    out['agent_message'] = f'policy probe returned {permission}'\n"
-        "print(json.dumps(out))\n",
-        encoding="utf-8",
-    )
-    probe.chmod(probe.stat().st_mode | 0o100)
-    payload = json.loads(original_hooks)
-    payload.setdefault("hooks", {})["beforeShellExecution"] = [
-        {"command": f"python3 {probe}", "failClosed": True, "timeout": 10}
-    ]
-    if hooks_json.is_symlink() or not hooks_json.is_file():
-        hooks_json.unlink()
-    hooks_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    prompt = (
-        "You MUST use the Shell tool exactly three times in this workspace. Do not skip any.\n"
-        "1) Run exactly: echo AW_POLICY_ALLOW > .autoworkspace-policy-allow.txt\n"
-        "2) Run exactly: echo AW_POLICY_DENY > .autoworkspace-policy-deny.txt\n"
-        "3) Run exactly: echo AW_POLICY_ASK > .autoworkspace-policy-ask.txt\n"
-        "After attempting all three, reply with exactly: POLICY_DONE\n"
-    )
-    argv = [
-        binary,
-        "--print",
-        "--output-format",
-        "text",
-        "--trust",
-        "--sandbox",
-        "enabled",
-        "--workspace",
-        str(root),
-        prompt,
-    ]
+    _install_policy_probe(root, original_hooks=original_hooks, probe=probe, decisions=decisions)
     try:
-        assert_argv_policy(argv)
+        result = _run_policy_agent(binary, root)
     except ValueError as exc:
         return Check("cursor-native-policy", "C", "fail", f"forbidden argv for policy probe: {exc}")
-    try:
-        result = subprocess.run(
-            argv,
-            cwd=str(root),
-            capture_output=True,
-            text=True,
-            timeout=180,
-            check=False,
-        )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return Check("cursor-native-policy", "C", "fail", f"agent policy probe failed: {exc}")
     finally:
-        if hooks_json.exists() or hooks_json.is_symlink():
-            hooks_json.unlink()
-        hooks_json.write_text(original_hooks, encoding="utf-8")
-        probe.unlink(missing_ok=True)
+        _restore_policy_hooks(hooks_json, original_hooks, probe)
 
-    if not decisions.is_file():
-        return Check(
-            "cursor-native-policy",
-            "C",
-            "fail",
-            "beforeShellExecution decisions missing — Cursor did not invoke the policy probe; "
-            f"agent_exit={result.returncode}",
-        )
-    seen: dict[str, str] = {}
-    for line in decisions.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        permission = str(row.get("permission") or "")
-        command = str(row.get("command") or "")
-        for token in ("ALLOW", "DENY", "ASK"):
-            if f"AW_POLICY_{token}" in command:
-                seen[token.lower()] = permission
-    expected = {"allow": "allow", "deny": "deny", "ask": "ask"}
-    if seen != expected:
-        return Check(
-            "cursor-native-policy",
-            "C",
-            "fail",
-            f"hook decisions incomplete or wrong: {seen!r}; agent_exit={result.returncode}",
-        )
-    if not allow_effect.is_file():
-        return Check("cursor-native-policy", "C", "fail", "allow permission did not produce shell side effect")
-    if deny_effect.is_file():
-        return Check("cursor-native-policy", "C", "fail", "deny permission still produced a side effect")
-    if ask_effect.is_file():
-        return Check(
-            "cursor-native-policy",
-            "C",
-            "fail",
-            "ask permission produced a side effect in headless mode (expected blocked pending approval)",
-        )
-    # Persist a compact receipt under work_dir for operators; effects stay as Cursor-produced proof.
-    receipt = {
-        "decisions": seen,
-        "allow_effect": allow_effect.read_text(encoding="utf-8").strip(),
-        "agent_exit": result.returncode,
-        "force_flags": False,
-    }
-    (policy_root / "policy-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
-    return Check(
-        "cursor-native-policy",
-        "C",
-        "pass",
-        "beforeShellExecution allow/deny/ask observed via Cursor without --force/--yolo; "
-        f"allow_effect={allow_effect.name}",
+    return _assert_policy_outcomes(
+        decisions=decisions,
+        allow_effect=allow_effect,
+        deny_effect=deny_effect,
+        ask_effect=ask_effect,
+        agent_exit=result.returncode,
+        policy_root=policy_root,
     )
 
 
@@ -359,7 +395,7 @@ def capability_checks(
         checks.append(Check("cursor-native-policy", "C", "not_run", "agent unavailable"))
         return checks
     checks.append(Check("cursor-cli-version", "B", "pass", f"{binary} → {version}"))
-    checks.append(discovery_check(target, expected_skills))
+    checks.append(cursor_discovery_check(target, expected_skills))
     policy_dir = work_dir or (target.resolve() / ".autoworkspace-cursor-policy")
     checks.append(policy_check(target, work_dir=policy_dir))
     if require_auth and not agent_authenticated(binary):
@@ -393,12 +429,7 @@ class CursorSubagentAdapter:
         self.timeout = timeout
         self.credential_names = credential_names
 
-    @staticmethod
-    def _kill(process: subprocess.Popen[str]) -> None:
-        if process.poll() is None:
-            os.killpg(process.pid, signal.SIGKILL)
-
-    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:  # noqa: C901, PLR0915
+    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:
         started = time.monotonic()
         run_id = str(uuid.uuid4())
         operation = get_operation(str(task["operation"]))
@@ -450,35 +481,14 @@ class CursorSubagentAdapter:
             argv.extend(["--mode", "ask"])
         argv.append(prompt)
         assert_argv_policy(argv)
-        process = subprocess.Popen(
+        run = run_cancellable_subprocess(
             argv,
             cwd=str(context.repo),
             env=policy.env_mapping(),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            start_new_session=True,
+            timeout=self.timeout,
+            cancel_event=context.cancel_event,
         )
-        cancelled = threading.Event()
-        watcher_done = threading.Event()
-
-        def watch_cancellation() -> None:
-            while not watcher_done.is_set() and process.poll() is None:
-                if context.cancel_event.wait(0.05):
-                    cancelled.set()
-                    self._kill(process)
-                    return
-
-        watcher = threading.Thread(target=watch_cancellation)
-        watcher.start()
-        try:
-            stdout, stderr = process.communicate(timeout=self.timeout)
-        except subprocess.TimeoutExpired:
-            self._kill(process)
-            process.wait(timeout=5)
-            watcher_done.set()
-            watcher.join(timeout=1)
+        if run.timed_out:
             operation_result = OpResult(
                 operation.operation_id,
                 "cancelled",
@@ -490,22 +500,20 @@ class CursorSubagentAdapter:
                 plan_digest=plan_digest,
             )
             return AdapterResult("cancelled", detail=operation_result.detail, operation_result=operation_result)
-        watcher_done.set()
-        watcher.join(timeout=1)
-        combined = f"{stdout}\n{stderr}"
-        if cancelled.is_set():
+        combined = f"{run.stdout}\n{run.stderr}"
+        if run.cancelled:
             outcome = "cancelled"
         elif "authentication required" in combined.lower():
             outcome = "blocked"
-        elif process.returncode != 0:
+        elif run.returncode != 0:
             outcome = "failed"
         else:
             outcome = "succeeded"
-        detail = (stdout or stderr or "")[:500]
+        detail = (run.stdout or run.stderr or "")[:500]
         operation_result = OpResult(
             operation.operation_id,
             outcome if outcome != "blocked" else "failed",
-            process.returncode,
+            run.returncode,
             int((time.monotonic() - started) * 1000),
             detail,
             operation.effect,

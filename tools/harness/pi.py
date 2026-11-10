@@ -10,7 +10,6 @@ import shutil
 import signal
 import subprocess
 import sys
-import threading
 import time
 import uuid
 from pathlib import Path
@@ -27,6 +26,7 @@ from orchestrator.ports import AdapterResult  # noqa: E402
 
 from harness.base import Check, build_report, report_exit_code  # noqa: E402
 from harness.policy import assert_argv_policy, build_policy  # noqa: E402
+from harness.subprocess_run import run_cancellable_subprocess  # noqa: E402
 
 
 def response_commands(response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -81,7 +81,7 @@ def rpc_commands(cwd: Path, *, timeout: int = 20, env: dict[str, str] | None = N
     raise ValueError("Pi RPC did not return get_commands")
 
 
-def discovery_check(cwd: Path, expected_skills: set[str], *, require_package: bool = True) -> Check:
+def pi_discovery_check(cwd: Path, expected_skills: set[str], *, require_package: bool = True) -> Check:
     if shutil.which("pi") is None:
         return Check("pi-native-discovery", "B", "not_run", "Pi binary not found")
     try:
@@ -121,12 +121,7 @@ class PiSubagentAdapter:
         self.timeout = timeout
         self.credential_names = credential_names
 
-    @staticmethod
-    def _kill(process: subprocess.Popen[str]) -> None:
-        if process.poll() is None:
-            os.killpg(process.pid, signal.SIGKILL)
-
-    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:  # noqa: C901, PLR0915
+    def execute(self, task: dict[str, Any], context: RunContext) -> AdapterResult:  # noqa: C901
         started = time.monotonic()
         run_id = str(uuid.uuid4())
         operation = get_operation(str(task["operation"]))
@@ -161,35 +156,14 @@ class PiSubagentAdapter:
             argv.extend(["--model", self.model])
         argv.append(prompt)
         assert_argv_policy(argv)
-        process = subprocess.Popen(
+        run = run_cancellable_subprocess(
             argv,
             cwd=str(context.repo),
             env=policy.env_mapping(),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            start_new_session=True,
+            timeout=self.timeout,
+            cancel_event=context.cancel_event,
         )
-        cancelled = threading.Event()
-        watcher_done = threading.Event()
-
-        def watch_cancellation() -> None:
-            while not watcher_done.is_set() and process.poll() is None:
-                if context.cancel_event.wait(0.05):
-                    cancelled.set()
-                    self._kill(process)
-                    return
-
-        watcher = threading.Thread(target=watch_cancellation)
-        watcher.start()
-        try:
-            stdout, stderr = process.communicate(timeout=self.timeout)
-        except subprocess.TimeoutExpired:
-            self._kill(process)
-            process.wait(timeout=5)
-            watcher_done.set()
-            watcher.join(timeout=1)
+        if run.timed_out:
             operation_result = OpResult(
                 operation.operation_id,
                 "cancelled",
@@ -201,12 +175,10 @@ class PiSubagentAdapter:
                 plan_digest=plan_digest,
             )
             return AdapterResult("cancelled", detail=operation_result.detail, operation_result=operation_result)
-        watcher_done.set()
-        watcher.join(timeout=1)
         stop_reason = ""
         final_text = ""
         try:
-            for line in stdout.splitlines():
+            for line in run.stdout.splitlines():
                 if not line.strip():
                     continue
                 event = json.loads(line)
@@ -223,17 +195,17 @@ class PiSubagentAdapter:
         except (json.JSONDecodeError, AttributeError) as exc:
             stop_reason = "error"
             final_text = f"invalid Pi JSONL: {exc}"
-        if cancelled.is_set():
+        if run.cancelled:
             outcome = "cancelled"
-        elif process.returncode != 0 or stop_reason in {"error", "aborted"}:
+        elif run.returncode != 0 or stop_reason in {"error", "aborted"}:
             outcome = "failed"
         else:
             outcome = "succeeded"
-        detail = (final_text or stderr or "")[:500]
+        detail = (final_text or run.stderr or "")[:500]
         operation_result = OpResult(
             operation.operation_id,
             outcome,
-            process.returncode,
+            run.returncode,
             int((time.monotonic() - started) * 1000),
             detail,
             operation.effect,
@@ -262,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     skills_dir = args.catalog.resolve() / "skills"
     expected = {path.name for path in skills_dir.iterdir() if path.is_dir() and (path / "SKILL.md").is_file()}
-    check = discovery_check(args.cwd.resolve(), expected, require_package=not args.allow_top_level)
+    check = pi_discovery_check(args.cwd.resolve(), expected, require_package=not args.allow_top_level)
     report = build_report(
         "pi",
         [check],

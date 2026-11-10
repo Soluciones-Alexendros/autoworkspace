@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,25 +11,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 
-
-def _clean_clone_env() -> dict[str, str]:
-    env = os.environ.copy()
-    for key in (
-        "GIT_INDEX_FILE",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-        "GIT_WORK_TREE",
-        "GIT_DIR",
-        "GIT_COMMON_DIR",
-        "GIT_PREFIX",
-    ):
-        env.pop(key, None)
-    return env
-
-
 sys.path.insert(0, str(ROOT / "tools"))
 
-from orchestrator.worktrees import WorktreeManager  # noqa: E402
+from orchestrator.worktrees import WorktreeManager, _clean_git_env  # noqa: E402
 
 
 def _isolated_repo(tmp_path: Path) -> Path:
@@ -39,7 +22,7 @@ def _isolated_repo(tmp_path: Path) -> Path:
         ["git", "clone", "--dissociate", f"file://{ROOT}", str(repo)],
         check=True,
         capture_output=True,
-        env=_clean_clone_env(),
+        env=_clean_git_env(),
     )
     subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=repo, check=True, capture_output=True)
     return repo
