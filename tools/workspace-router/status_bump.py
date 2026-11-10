@@ -228,6 +228,81 @@ def await_task(repo: Path | str, task_id: str, *, state: str = "awaiting_agent")
     return _with_status_lock(root, await_state)
 
 
+def _apply_task_completion(  # noqa: PLR0913  # locked completion context
+    data: dict[str, Any],
+    *,
+    root: Path,
+    task_id: str,
+    run_id: str,
+    target: str,
+    skill: str,
+    replay: dict[str, bool],
+) -> dict[str, Any]:
+    """Pure-ish status mutation for one successful task (load_evidence under lock)."""
+    from execution.evidence import load_evidence  # noqa: PLC0415
+
+    current_document = load_active_plan(root)
+    current_task = _task_definition(current_document, task_id)
+    evidence = load_evidence(
+        root,
+        run_id,
+        revalidate_content=True,
+        expected_phase=str(current_task["phase"]),
+        expected_skill=skill,
+        expected_target=target,
+        expected_operation=str(current_task["operation"]),
+        for_complete=True,
+    )
+    if evidence.get("plan_id") != current_document.plan_id:
+        raise ValueError(f"evidence plan_id mismatch: {evidence.get('plan_id')}")
+    if evidence.get("task_id") != task_id:
+        raise ValueError(f"evidence task_id mismatch: {evidence.get('task_id')}")
+    receipt_key = f"{task_id}:{run_id}"
+    receipts = dict(data.get("task_receipts") or {})
+    if receipt_key in receipts:
+        replay["idempotent"] = True
+        return data
+    entry = _task_entry(data, task_id)
+    if entry.get("state") != "running":
+        raise ValueError(f"task {task_id} cannot complete from {entry.get('state')}")
+    out, updated = _set_task_state(data, task_id, "succeeded")
+    updated.update(
+        {
+            "run_id": run_id,
+            "output_digest": evidence["output_digest"],
+            "completed_at": _utc_stamp(),
+        }
+    )
+    out["tasks"][task_id] = updated
+    receipts[receipt_key] = {
+        "plan_id": current_document.plan_id,
+        "plan_digest": current_document.digest,
+        "output_digest": evidence["output_digest"],
+        "at": _utc_stamp(),
+    }
+    out["task_receipts"] = receipts
+    out["state_revision"] = int(out.get("state_revision") or 0) + 1
+    out["advance"] = int(out.get("advance") or 0) + 1
+    out["last_skill"] = skill
+    out["updated_at"] = _utc_stamp()
+    remaining = [item for item in current_document.tasks if out["tasks"][str(item["id"])].get("state") != "succeeded"]
+    out["phase"] = str(remaining[0]["phase"]) if remaining else "STATUS"
+    history = list(out.get("history") or [])
+    history.append(
+        {
+            "phase": current_task["phase"],
+            "task_id": task_id,
+            "plan_id": current_document.plan_id,
+            "run_id": run_id,
+            "state_revision": out["state_revision"],
+            "at": out["updated_at"],
+            "evidence_ok": True,
+        }
+    )
+    out["history"] = history[-50:]
+    return out
+
+
 def complete_task(
     repo: Path | str,
     task_id: str,
@@ -235,79 +310,26 @@ def complete_task(
     run_id: str,
     target: str,
 ) -> dict[str, Any]:
+    """Task-level closure with evidence + receipts (not phase ``advance_status``)."""
     root = Path(repo).resolve()
     document = load_active_plan(root)
     task = _task_definition(document, task_id)
     _ensure_tools_on_path()
-    from execution.evidence import load_evidence  # noqa: PLC0415
     from execution.registry import get_operation  # noqa: PLC0415
 
     spec = get_operation(str(task["operation"]))
     replay = {"idempotent": False}
 
     def complete(data: dict[str, Any]) -> dict[str, Any]:
-        current_document = load_active_plan(root)
-        current_task = _task_definition(current_document, task_id)
-        evidence = load_evidence(
-            root,
-            run_id,
-            revalidate_content=True,
-            expected_phase=str(current_task["phase"]),
-            expected_skill=spec.skill,
-            expected_target=target,
-            expected_operation=str(current_task["operation"]),
-            for_complete=True,
+        return _apply_task_completion(
+            data,
+            root=root,
+            task_id=task_id,
+            run_id=run_id,
+            target=target,
+            skill=spec.skill,
+            replay=replay,
         )
-        if evidence.get("plan_id") != current_document.plan_id:
-            raise ValueError(f"evidence plan_id mismatch: {evidence.get('plan_id')}")
-        if evidence.get("task_id") != task_id:
-            raise ValueError(f"evidence task_id mismatch: {evidence.get('task_id')}")
-        receipt_key = f"{task_id}:{run_id}"
-        receipts = dict(data.get("task_receipts") or {})
-        if receipt_key in receipts:
-            replay["idempotent"] = True
-            return data
-        entry = _task_entry(data, task_id)
-        if entry.get("state") != "running":
-            raise ValueError(f"task {task_id} cannot complete from {entry.get('state')}")
-        out, updated = _set_task_state(data, task_id, "succeeded")
-        updated.update(
-            {
-                "run_id": run_id,
-                "output_digest": evidence["output_digest"],
-                "completed_at": _utc_stamp(),
-            }
-        )
-        out["tasks"][task_id] = updated
-        receipts[receipt_key] = {
-            "plan_id": current_document.plan_id,
-            "plan_digest": current_document.digest,
-            "output_digest": evidence["output_digest"],
-            "at": _utc_stamp(),
-        }
-        out["task_receipts"] = receipts
-        out["state_revision"] = int(out.get("state_revision") or 0) + 1
-        out["advance"] = int(out.get("advance") or 0) + 1
-        out["last_skill"] = spec.skill
-        out["updated_at"] = _utc_stamp()
-        remaining = [
-            item for item in current_document.tasks if out["tasks"][str(item["id"])].get("state") != "succeeded"
-        ]
-        out["phase"] = str(remaining[0]["phase"]) if remaining else "STATUS"
-        history = list(out.get("history") or [])
-        history.append(
-            {
-                "phase": current_task["phase"],
-                "task_id": task_id,
-                "plan_id": current_document.plan_id,
-                "run_id": run_id,
-                "state_revision": out["state_revision"],
-                "at": out["updated_at"],
-                "evidence_ok": True,
-            }
-        )
-        out["history"] = history[-50:]
-        return out
 
     result = _with_status_lock(root, complete)
     if replay["idempotent"]:
@@ -713,10 +735,12 @@ def resolve_awaiting_agent(  # noqa: PLR0913  # API pública: keyword-only
     target: str = "",
     write: bool = True,
 ) -> dict[str, Any]:
-    """Public API: clear awaiting_agent after validated evidence (H14/C11).
+    """Clear awaiting_agent after validated evidence (H14/C11).
 
-    Does not advance the phase by itself — call advance_status after resolve
-    (or use complete_after_resolve). Editing status.yaml manually is not required.
+    Does not advance the phase by itself — call ``advance_status`` after resolve.
+    Task-level closure uses ``complete_task`` (evidence + receipts); phase-level
+    closure uses ``advance_status`` / CLI ``--complete``. Editing status.yaml
+    manually is not required.
     """
     if phase not in PHASES:
         raise ValueError(f"unknown phase {phase!r}")

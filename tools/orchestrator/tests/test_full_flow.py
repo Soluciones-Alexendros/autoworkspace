@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import shutil
 import subprocess
 import sys
@@ -15,22 +14,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 
-
-def _clean_clone_env() -> dict[str, str]:
-    env = os.environ.copy()
-    for key in (
-        "GIT_INDEX_FILE",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-        "GIT_WORK_TREE",
-        "GIT_DIR",
-        "GIT_COMMON_DIR",
-        "GIT_PREFIX",
-    ):
-        env.pop(key, None)
-    return env
-
-
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools" / "workspace-router"))
 
@@ -40,6 +23,7 @@ from orchestrator.model import RunContext  # noqa: E402
 from orchestrator.ports import AdapterResult  # noqa: E402
 from orchestrator.runner import Verifier, WorktreeAdapter  # noqa: E402
 from orchestrator.scheduler import Scheduler  # noqa: E402
+from orchestrator.worktrees import _clean_git_env  # noqa: E402
 from status_bump import activate_plan, load_status  # noqa: E402
 
 
@@ -119,7 +103,7 @@ def _fixture_repo(tmp_path: Path) -> Path:
         ["git", "clone", "--dissociate", f"file://{ROOT}", str(repo)],
         check=True,
         capture_output=True,
-        env=_clean_clone_env(),
+        env=_clean_git_env(),
     )
     subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=repo, check=True, capture_output=True)
     return repo

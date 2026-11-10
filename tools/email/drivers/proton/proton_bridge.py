@@ -298,12 +298,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument(
         "--approve-send",
         default="",
-        help="Ignored (legacy). Approval goes through ApprovalProvider only.",
+        help="Rejected if set (legacy). Approval goes through ApprovalProvider only.",
     )
     sp.add_argument(
         "--approve-digest",
         default="",
-        help="Ignored (legacy). Plan digest is computed by the registry.",
+        help="Rejected if set (legacy). Plan digest is computed by the registry.",
     )
     sp.set_defaults(fn=cmd_send)
     return p
@@ -317,6 +317,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     p = build_parser()
     args = p.parse_args(argv)
+    if getattr(args, "approve_send", "") or getattr(args, "approve_digest", ""):
+        logger.error("legacy --approve-send/--approve-digest rejected; use ApprovalProvider")
+        return 2
     try:
         args.fn(args)
     except ProtonBridgeError as exc:

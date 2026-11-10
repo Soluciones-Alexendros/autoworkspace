@@ -41,19 +41,19 @@ def test_rpc_response_requires_successful_get_commands() -> None:
 def test_discovery_checks_names_and_package_origin(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pi")
     monkeypatch.setattr(pi, "rpc_commands", lambda cwd: _commands(["one", "two"]))
-    check = pi.discovery_check(Path("."), {"one", "two"})
+    check = pi.pi_discovery_check(Path("."), {"one", "two"})
     assert check.outcome == "pass"
 
 
 def test_discovery_rejects_missing_or_non_package_skill(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pi")
     monkeypatch.setattr(pi, "rpc_commands", lambda cwd: _commands(["one"], origin="top-level"))
-    check = pi.discovery_check(Path("."), {"one", "two"})
+    check = pi.pi_discovery_check(Path("."), {"one", "two"})
     assert check.outcome == "fail"
     assert "two" in check.detail or "package" in check.detail
 
 
 def test_missing_binary_is_not_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shutil, "which", lambda name: None)
-    check = pi.discovery_check(Path("."), {"one"})
+    check = pi.pi_discovery_check(Path("."), {"one"})
     assert check.outcome == "not_run"

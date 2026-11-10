@@ -18,7 +18,10 @@ RESULT_OUTCOMES = frozenset(
         "not_applicable",
     }
 )
+# Schema-layer non-terminal outcomes (D03). Not the same as
+# execution.ops.PHASE_BLOCKING_OUTCOMES (also includes simulated/blocked).
 NON_TERMINAL = frozenset({"awaiting_agent", "awaiting_approval"})
+SCHEMA_NON_TERMINAL_OUTCOMES = NON_TERMINAL
 
 # CLI exit codes
 EXIT_OK = 0

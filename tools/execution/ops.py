@@ -50,8 +50,10 @@ SHELL_ESCAPES = {"bash", "sh", "dash", "zsh"}
 SHELL_FLAG_ARGC = 2
 APPROVAL_EFFECTS = frozenset({"mutate-host", "communicate-external", "access-secret"})
 
-# Outcomes that may never complete a pipeline phase.
-NON_TERMINAL = frozenset({"simulated", "awaiting_agent", "awaiting_approval", "blocked"})
+# Outcomes that may never complete a pipeline phase (execution layer).
+# Distinct from contracts.result.NON_TERMINAL (schema awaiting_* only).
+PHASE_BLOCKING_OUTCOMES = frozenset({"simulated", "awaiting_agent", "awaiting_approval", "blocked"})
+NON_TERMINAL = PHASE_BLOCKING_OUTCOMES  # compat alias
 
 
 def _reject_shell_escape(argv: list[str]) -> str | None:
@@ -449,7 +451,7 @@ def run_verified(  # noqa: PLR0913  # API pública: contexto completo de ejecuci
     )
 
 
-def run_operation(  # noqa: PLR0913  # API pública: keyword-only, espejo del schema
+def reject_free_form_run(  # noqa: PLR0913  # fence API mirrors run_operation kwargs
     *,
     operation_id: str,
     argv: list[str] | None = None,
@@ -460,10 +462,10 @@ def run_operation(  # noqa: PLR0913  # API pública: keyword-only, espejo del sc
     cwd: str | None = None,
     require_approval: bool | None = None,
 ) -> OpResult:
-    """Deprecated free-form entry. Always rejects caller-supplied argv/effect/approval.
+    """Fence: reject caller-supplied argv/effect/approval; never a free-form dispatcher.
 
-    Use run_registered(operation_id, params). Tests that need arbitrary subprocesses
-    must use an isolated fixture helper, not this product API.
+    Product code must call ``run_registered``. This entry exists so tests can prove
+    free-form parameters stay blocked.
     """
     _ = (timeout, cwd)
     if argv is not None or effect is not None or require_approval is not None:
@@ -476,6 +478,30 @@ def run_operation(  # noqa: PLR0913  # API pública: keyword-only, espejo del sc
             effect or "unknown",
         )
     return run_registered(operation_id, params, target=target, cwd=cwd)
+
+
+def run_operation(  # noqa: PLR0913  # fence alias kept for tests/callers
+    *,
+    operation_id: str,
+    argv: list[str] | None = None,
+    effect: str | None = None,
+    target: str = ".",
+    params: dict[str, Any] | None = None,
+    timeout: int = 60,
+    cwd: str | None = None,
+    require_approval: bool | None = None,
+) -> OpResult:
+    """Compat name for ``reject_free_form_run`` (not a general operation dispatcher)."""
+    return reject_free_form_run(
+        operation_id=operation_id,
+        argv=argv,
+        effect=effect,
+        target=target,
+        params=params,
+        timeout=timeout,
+        cwd=cwd,
+        require_approval=require_approval,
+    )
 
 
 _ = DenyProvider

@@ -75,6 +75,11 @@ def content_acceptance_verifier(task: dict[str, Any]) -> Verifier:
 
 
 def resolve(task: dict[str, Any]) -> Verifier:
-    """Resolve plan verification ids to an executable verifier (catalog only)."""
+    """Gate plan verification ids against ALLOWED_VERIFIER_IDS, then bind acceptance.
+
+    The catalog is an allowlist for plan YAML/Markdown — not a per-id dispatcher.
+    Every allowed id currently executes ``content_acceptance_verifier`` until
+    specialized verifiers exist.
+    """
     resolve_verifier_ids(task)
     return content_acceptance_verifier(task)

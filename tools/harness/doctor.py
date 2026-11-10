@@ -124,9 +124,9 @@ def collect_checks(  # noqa: PLR0913  # doctor entry: keyword-only harness/nativ
         if not native:
             checks.append(skill_link_check(root, "pi", source_root=source))
         else:
-            from harness.pi import discovery_check  # noqa: PLC0415
+            from harness.pi import pi_discovery_check  # noqa: PLC0415
 
-            checks.append(discovery_check(root, expected_skills))
+            checks.append(pi_discovery_check(root, expected_skills))
     if harness in {"cursor", "all"}:
         checks.append(skill_link_check(root, "cursor", source_root=source))
         if full:

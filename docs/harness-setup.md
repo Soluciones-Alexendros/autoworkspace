@@ -7,7 +7,7 @@
 Install an immutable release as one Pi package; no symlink installer is needed:
 
 ```bash
-pi install git:github.com/Soluciones-Alexendros/autoworkspace@v7.1.0
+pi install git:github.com/Soluciones-Alexendros/autoworkspace@v7.1.1
 ```
 
 Use `--local` for a project-local declaration, subject to Pi project trust. `pi list` shows the configured package. Updating requires selecting a new tag explicitly; a pinned ref does not move on `pi update`. npm distribution is not part of this release channel.
@@ -72,7 +72,7 @@ bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq '{ins
 With `gh`, `uv` and the selected harness available, this one-line flow clones the installer at an immutable tag, downloads the release assets, verifies SHA-256 and provenance before extraction, installs, and runs the doctor:
 
 ```bash
-git clone --depth 1 --branch v7.1.0 https://github.com/Soluciones-Alexendros/autoworkspace.git /tmp/autoworkspace-7.1.0 && bash /tmp/autoworkspace-7.1.0/scripts/bootstrap.sh --version 7.1.0 --harness cursor --target /path/to/project --json
+git clone --depth 1 --branch v7.1.1 https://github.com/Soluciones-Alexendros/autoworkspace.git /tmp/autoworkspace-7.1.1 && bash /tmp/autoworkspace-7.1.1/scripts/bootstrap.sh --version 7.1.1 --harness cursor --target /path/to/project --json
 ```
 
 Use `--harness pi` for the bootstrap flow, or the simpler native `pi install git:…@vX.Y.Z` command above. `--dry-run` performs no writes. A checksum, attestation, extraction or doctor failure prevents installation or triggers owned-resource rollback. No `curl | bash` is used.

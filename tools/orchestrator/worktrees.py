@@ -32,7 +32,12 @@ def _clean_git_env() -> dict[str, str]:
 
 
 def tree_digest(root: Path) -> str:
-    """Stable SHA-256 over relative file paths and contents under root."""
+    """Stable SHA-256 over tracked worktree files under root.
+
+    Staging / patch identity only. Follows ``Path.rglob`` file discovery and does
+    **not** apply evidence exclusions or symlink-aware recording. For acceptance
+    digests use ``execution.evidence.work_digest`` / ``content_manifest``.
+    """
     digest = hashlib.sha256()
     root = root.resolve()
     for path in sorted(p for p in root.rglob("*") if p.is_file() and ".git" not in p.parts):
