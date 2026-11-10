@@ -8,12 +8,20 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import pytest
+import pytest  # noqa: I001 — keep pytest with stdlib for local style
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from harness.cursor_install import ConflictError, install_full, uninstall_full  # noqa: E402
+from harness.runtime import sync_payload  # noqa: E402
+
+
+def _user_home(tmp_path: Path) -> Path:
+    home = tmp_path / "home"
+    home.mkdir()
+    sync_payload(ROOT, home / ".autoworkspace", origin="sync")
+    return home
 
 
 def test_full_install_idempotence_and_manifest(tmp_path: Path) -> None:
@@ -50,7 +58,7 @@ USER_SCOPE_COMPONENTS = 23  # 17 skills + 3 agents + hooks.json + 2 hook scripts
 
 
 def test_user_scope_generates_hooks_and_omits_project_rule(tmp_path: Path) -> None:
-    home = tmp_path / "home"
+    home = _user_home(tmp_path)
     target = home / ".cursor"
     result = install_full(ROOT, target, user_scope=True)
     assert result["scope"] == "user"
@@ -62,7 +70,8 @@ def test_user_scope_generates_hooks_and_omits_project_rule(tmp_path: Path) -> No
     data = json.loads(hooks.read_text())
     commands = [entry["command"] for entries in data["hooks"].values() for entry in entries]
     assert commands and not any(".cursor/hooks/" in command for command in commands), commands
-    assert not hooks.is_symlink()
+    assert hooks.is_symlink()
+    assert not Path(os.readlink(hooks)).is_absolute()
     assert not (target / "rules").exists()
     assert (target / "skills" / "plan-continue").is_symlink()
     assert (target / "agents" / "aw-verifier.md").is_symlink()
@@ -71,14 +80,16 @@ def test_user_scope_generates_hooks_and_omits_project_rule(tmp_path: Path) -> No
     assert second["skipped"] == USER_SCOPE_COMPONENTS
     manifest = json.loads((target / ".autoworkspace-full-manifest.json").read_text())
     assert manifest["scope"] == "user"
-    assert {"path": "hooks.json", "kind": "generated"} in manifest["resources"]
-    uninstalled = uninstall_full(ROOT, target)
+    assert {"path": "hooks.json", "kind": "symlink"} in manifest["resources"]
+    uninstalled = uninstall_full(home / ".autoworkspace", target)
     assert uninstalled["retained"] == []
     assert not hooks.exists()
 
 
 def test_user_scope_prunes_project_only_rule_from_previous_manifest(tmp_path: Path) -> None:
-    target = tmp_path / "home" / ".cursor"
+    home = _user_home(tmp_path)
+    target = home / ".cursor"
+    # Seed a project-shaped install under the user path, then switch to user scope.
     install_full(ROOT, target)
     stale_rule = target / "rules" / "autoworkspace.mdc"
     assert stale_rule.is_symlink()
@@ -86,26 +97,30 @@ def test_user_scope_prunes_project_only_rule_from_previous_manifest(tmp_path: Pa
     assert result["pruned"] == ["rules/autoworkspace.mdc"]
     assert not stale_rule.exists()
     assert not (target / "rules").exists()
-    assert (target / "hooks.json").is_file() and not (target / "hooks.json").is_symlink()
+    assert (target / "hooks.json").is_symlink()
 
 
 def test_user_scope_preserves_foreign_hooks_file(tmp_path: Path) -> None:
-    target = tmp_path / "home" / ".cursor"
+    home = _user_home(tmp_path)
+    target = home / ".cursor"
     target.mkdir(parents=True)
     (target / "hooks.json").write_text('{"version": 1, "hooks": {}}', encoding="utf-8")
-    with pytest.raises(ConflictError, match="foreign file conflict"):
+    with pytest.raises(ConflictError, match="real file/dir conflict"):
         install_full(ROOT, target, user_scope=True)
     assert (target / "hooks.json").read_text(encoding="utf-8") == '{"version": 1, "hooks": {}}'
 
 
-def test_user_scope_retains_edited_generated_hooks(tmp_path: Path) -> None:
-    target = tmp_path / "home" / ".cursor"
-    install_full(ROOT, target, user_scope=True)
+def test_user_scope_retains_foreign_symlink_hooks(tmp_path: Path) -> None:
+    home = _user_home(tmp_path)
+    target = home / ".cursor"
+    target.mkdir(parents=True)
+    foreign = tmp_path / "foreign-hooks.json"
+    foreign.write_text('{"version": 1, "hooks": {}}', encoding="utf-8")
     hooks = target / "hooks.json"
-    hooks.write_text(hooks.read_text(encoding="utf-8").replace("hooks/", "./hooks/"), encoding="utf-8")
-    result = uninstall_full(ROOT, target)
-    assert result["retained"] == ["hooks.json"]
-    assert hooks.exists()
+    hooks.symlink_to(foreign)
+    with pytest.raises(ConflictError, match="foreign symlink conflict"):
+        install_full(ROOT, target, user_scope=True)
+    assert hooks.is_symlink() and hooks.resolve() == foreign.resolve()
 
 
 def test_full_dry_run_creates_nothing(tmp_path: Path) -> None:
