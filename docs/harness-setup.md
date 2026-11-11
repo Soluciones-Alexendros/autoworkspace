@@ -2,9 +2,9 @@
 
 `skills/` is the only catalog that is committed. Installers create symlinks; they do not copy skill bodies.
 
-## Machine runtime (`~/.autoworkspace`)
+## Machine runtime (`~/.machineroom`)
 
-User-scope installs (`--user`) never link into a development checkout. They read a real directory at `$HOME/.autoworkspace` (not a symlink) that holds the harness payload: `skills/`, `.cursor/` (agents, hooks, rules, `hooks.json`), `extensions/autoworkspace/` and `package.json`.
+User-scope installs (`--user`) never link into a development checkout. They read a real directory at `$HOME/.machineroom` (not a symlink) that holds the harness payload: `skills/`, `.cursor/` (agents, hooks, rules, `hooks.json`), `extensions/machineroom/` and `package.json`.
 
 ```bash
 bash scripts/runtime-sync.sh sync --from /path/to/checkout   # copy payload from a checkout
@@ -18,14 +18,14 @@ bash scripts/install.sh --harness cursor --components full --user --yes --json
 bash scripts/install-pi.sh --user --yes --json
 ```
 
-| Default path                              | Link kind                                                  |
-| ----------------------------------------- | ---------------------------------------------------------- |
-| `~/.cursor/skills/<name>`                 | directory symlink → `../../.autoworkspace/skills/<name>`   |
-| `~/.cursor/agents/*.md`                   | file symlink                                               |
-| `~/.cursor/hooks/*.py`                    | file symlink                                               |
-| `~/.cursor/hooks.json`                    | file symlink (runtime holds user-scoped commands)          |
-| `~/.pi/agent/skills/<name>`               | directory symlink                                          |
-| `~/.pi/agent/extensions/autoworkspace.ts` | file symlink → runtime `extensions/autoworkspace/index.ts` |
+| Default path                            | Link kind                                                |
+| --------------------------------------- | -------------------------------------------------------- |
+| `~/.cursor/skills/<name>`               | directory symlink → `../../.machineroom/skills/<name>`   |
+| `~/.cursor/agents/*.md`                 | file symlink                                             |
+| `~/.cursor/hooks/*.py`                  | file symlink                                             |
+| `~/.cursor/hooks.json`                  | file symlink (runtime holds user-scoped commands)        |
+| `~/.pi/agent/skills/<name>`             | directory symlink                                        |
+| `~/.pi/agent/extensions/machineroom.ts` | file symlink → runtime `extensions/machineroom/index.ts` |
 
 Project installs (`--target`, checkout `.cursor/skills`) keep absolute symlinks into the checkout that runs the installer. That is the CI/fixture contract.
 
@@ -36,7 +36,7 @@ On failure, install and sync print `FAIL <component> <function>: <detail>` on st
 Install an immutable release as one Pi package; no symlink installer is needed:
 
 ```bash
-pi install git:github.com/Soluciones-Alexendros/autoworkspace@v7.1.1
+pi install git:github.com/Soluciones-Alexendros/machineroom@v7.1.1
 ```
 
 Use `--local` for a project-local declaration, subject to Pi project trust. `pi list` shows the configured package. Updating requires selecting a new tag explicitly; a pinned ref does not move on `pi update`. npm distribution is not part of this release channel.
@@ -83,13 +83,13 @@ A full target is the project root, not its skills directory. Full dry-run writes
 
 `--user --components full` targets `~/.cursor` and is scope-aware, because Cursor reads different surfaces per scope:
 
-| Component                 | Project scope `<project>/.cursor` | User scope `~/.cursor` (from `~/.autoworkspace`)                 |
-| ------------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| `skills/*`                | absolute symlink                  | relative directory symlink                                       |
-| `agents/*.md`             | absolute symlink                  | relative file symlink                                            |
-| `rules/autoworkspace.mdc` | absolute symlink                  | **omitted** — user rules live in Customize → Rules               |
-| `hooks.json`              | absolute symlink                  | relative symlink; runtime JSON uses `python3 hooks/...` commands |
-| `hooks/*.py`              | absolute symlink                  | relative file symlink                                            |
+| Component               | Project scope `<project>/.cursor` | User scope `~/.cursor` (from `~/.machineroom`)                   |
+| ----------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| `skills/*`              | absolute symlink                  | relative directory symlink                                       |
+| `agents/*.md`           | absolute symlink                  | relative file symlink                                            |
+| `rules/machineroom.mdc` | absolute symlink                  | **omitted** — user rules live in Customize → Rules               |
+| `hooks.json`            | absolute symlink                  | relative symlink; runtime JSON uses `python3 hooks/...` commands |
+| `hooks/*.py`            | absolute symlink                  | relative file symlink                                            |
 
 To apply the execution contract globally, paste the whole rule into Customize → Rules (Cursor keeps user rules in Settings and syncs them with the account, so no file can carry them). The pasted text keeps its YAML frontmatter (`description`, `alwaysApply: true`), like any other user rule:
 
@@ -97,7 +97,7 @@ To apply the execution contract globally, paste the whole rule into Customize �
 bash scripts/cursor-user-rule.sh --copy   # whole rule, frontmatter included
 ```
 
-The JSON result reports `scope`, `omitted`, `notes` and (on upgrades) `pruned`. A pre-existing foreign `~/.cursor/hooks.json` is never overwritten: the install fails closed with a `foreign file conflict`. To get the execution contract globally, paste `rules/autoworkspace.mdc` into Customize → Rules.
+The JSON result reports `scope`, `omitted`, `notes` and (on upgrades) `pruned`. A pre-existing foreign `~/.cursor/hooks.json` is never overwritten: the install fails closed with a `foreign file conflict`. To get the execution contract globally, paste `rules/machineroom.mdc` into Customize → Rules.
 
 ## Pi notes
 
@@ -120,7 +120,7 @@ bash scripts/install-pi.sh --user --yes --json | jq '{installed,changed,skipped}
 With `gh`, `uv` and the selected harness available, this one-line flow clones the installer at an immutable tag, downloads the release assets, verifies SHA-256 and provenance before extraction, installs, and runs the doctor:
 
 ```bash
-git clone --depth 1 --branch v7.1.1 https://github.com/Soluciones-Alexendros/autoworkspace.git /tmp/autoworkspace-7.1.1 && bash /tmp/autoworkspace-7.1.1/scripts/bootstrap.sh --version 7.1.1 --harness cursor --target /path/to/project --json
+git clone --depth 1 --branch v7.1.1 https://github.com/Soluciones-Alexendros/machineroom.git /tmp/machineroom-7.1.1 && bash /tmp/machineroom-7.1.1/scripts/bootstrap.sh --version 7.1.1 --harness cursor --target /path/to/project --json
 ```
 
 Use `--harness pi` for the bootstrap flow, or the simpler native `pi install git:…@vX.Y.Z` command above. `--dry-run` performs no writes. A checksum, attestation, extraction or doctor failure prevents installation or triggers owned-resource rollback. No `curl | bash` is used.
@@ -131,7 +131,7 @@ Local readiness aggregates deterministic and native gates; it does **not** creat
 
 ```bash
 make readiness
-# requires AW_NATIVE_OPT_IN=1 for model e2e lanes; exit 3 (blocked/not_run) fails readiness
+# requires MR_NATIVE_OPT_IN=1 for model e2e lanes; exit 3 (blocked/not_run) fails readiness
 ```
 
 Publication remains a separate, operator-authorized step (`project-publish`). The GitHub `release` workflow uploads attested assets and runs a post-release smoke (download → checksum → attestation → bootstrap Pi/Cursor without models). A green smoke after an unauthorized local readiness run is not closure GO.

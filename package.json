@@ -1,6 +1,6 @@
 {
   "name": "machineroom",
-  "version": "7.1.4",
+  "version": "8.0.0",
   "description": "Machineroom \u2014 agentic pipeline: spec \u2192 schemas/tests \u2192 code \u2192 validate \u2192 integrate \u2192 declarative status",
   "private": true,
   "keywords": [
@@ -11,7 +11,7 @@
       "./skills"
     ],
     "extensions": [
-      "./extensions/autoworkspace/index.ts"
+      "./extensions/machineroom/index.ts"
     ]
   },
   "scripts": {

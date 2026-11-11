@@ -36,12 +36,12 @@ def _default_verifier(task: Mapping[str, Any]) -> Verifier:
 
 def _build_adapter(name: str) -> SubagentAdapter:
     if name == "pi":
-        model = os.environ.get("AW_PI_MODEL", "kimi-coding/k3.1-pro")
+        model = os.environ.get("MR_PI_MODEL", "kimi-coding/k3.1-pro")
         inner: SubagentAdapter = PiSubagentAdapter(model=model)
     else:
-        if os.environ.get("AW_CURSOR_FORCE", "0") == "1":
-            raise ValueError("AW_CURSOR_FORCE is forbidden; auto-approval cannot produce PASS")
-        cursor_model = os.environ.get("AW_CURSOR_MODEL")
+        if os.environ.get("MR_CURSOR_FORCE", "0") == "1":
+            raise ValueError("MR_CURSOR_FORCE is forbidden; auto-approval cannot produce PASS")
+        cursor_model = os.environ.get("MR_CURSOR_MODEL")
         inner = CursorSubagentAdapter(model=cursor_model)
     return inner
 
@@ -75,7 +75,7 @@ def _resolve_plan(repo: Path, plan_path: Path | None, *, dry_run: bool) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Autoworkspace DAG orchestrator")
+    parser = argparse.ArgumentParser(description="Machineroom DAG orchestrator")
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument(
         "--plan", type=Path, help="Plan document with aw-plan block (validated; activates when not dry-run)"

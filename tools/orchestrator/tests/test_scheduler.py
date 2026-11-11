@@ -55,9 +55,9 @@ def test_plan_schedule_is_deterministic_and_topological(tmp_path: Path) -> None:
     _activate(tmp_path)
     scheduler = Scheduler(tmp_path, adapter=None)
     assert plan_schedule(scheduler.document) == [["first"], ["second"]]
-    before = (tmp_path / ".autoworkspace" / "status.yaml").read_bytes()
+    before = (tmp_path / ".machineroom" / "status.yaml").read_bytes()
     assert scheduler.dry_run().outcome == "simulated"
-    assert (tmp_path / ".autoworkspace" / "status.yaml").read_bytes() == before
+    assert (tmp_path / ".machineroom" / "status.yaml").read_bytes() == before
 
 
 def test_invalid_parallelism_is_rejected(tmp_path: Path) -> None:

@@ -21,23 +21,23 @@ def test_build_child_env_drops_secrets() -> None:
         {
             "PATH": "/usr/bin",
             "HOME": "/tmp/home",
-            "AW_FIXTURE_SECRET": "nope",
+            "MR_FIXTURE_SECRET": "nope",
             "GITHUB_TOKEN": "ghs_nope",
             "LANG": "C",
         }
     )
     assert env["PATH"] == "/usr/bin"
-    assert "AW_FIXTURE_SECRET" not in env
+    assert "MR_FIXTURE_SECRET" not in env
     assert "GITHUB_TOKEN" not in env
 
 
 def test_explicit_credential_names_are_passed() -> None:
     env = build_child_env(
-        {"PATH": "/bin", "CURSOR_API_KEY": "k", "AW_FIXTURE_SECRET": "x"},
+        {"PATH": "/bin", "CURSOR_API_KEY": "k", "MR_FIXTURE_SECRET": "x"},
         credential_names=("CURSOR_API_KEY",),
     )
     assert env["CURSOR_API_KEY"] == "k"
-    assert "AW_FIXTURE_SECRET" not in env
+    assert "MR_FIXTURE_SECRET" not in env
 
 
 def test_writer_tools_exclude_bash() -> None:

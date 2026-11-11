@@ -1,7 +1,7 @@
 {
-  "name": "autoworkspace",
-  "version": "7.1.4",
-  "description": "Autoworkspace Cursor harness: skills, execution contract rule, shell gate hooks, and aw-verifier.",
+  "name": "machineroom",
+  "version": "8.0.0",
+  "description": "Machineroom Cursor harness: skills, execution contract rule, shell gate hooks, and mr-verifier.",
   "license": "MIT",
   "skills": "skills",
   "rules": ".cursor/rules",

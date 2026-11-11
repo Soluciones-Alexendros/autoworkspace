@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Print the full autoworkspace Cursor rule (frontmatter + Markdown body) for
+# Print the full machineroom Cursor rule (frontmatter + Markdown body) for
 # Customize -> Rules. Cursor keeps user rules in Settings and syncs them with the
 # account, so this cannot be written as a file: paste it, or pipe it with --copy.
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-RULE="$ROOT/.cursor/rules/autoworkspace.mdc"
+RULE="$ROOT/.cursor/rules/machineroom.mdc"
 COPY=false
 
 while [ $# -gt 0 ]; do

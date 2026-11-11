@@ -4,9 +4,9 @@
 
 - **Objetivos:** Puerta de entrada del esqueleto que se copia a un repo nuevo: qué es, cómo arrancar y dónde está el resto de la docs del canon.
 - **Estructura:** Esta meta-sección → Qué hace / no hace → Crear repo → Scripts → índice → decisiones cerradas → licencia.
-- **Contenido a integrar según contexto:** Sustituye el H1 y «Qué hace» por el _producto_. Enlaza el contrato vigente en autoworkspace ([ADR-0010](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md)). Ajusta badges, description y topics.
+- **Contenido a integrar según contexto:** Sustituye el H1 y «Qué hace» por el _producto_. Enlaza el contrato vigente en machineroom ([ADR-0010](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/ADR-0010-semver-contrato-estandar.md)). Ajusta badges, description y topics.
 
-Esqueleto P0/P1 de **Soluciones-Alexendros**. El canon vivo (ADRs, reusables, stacks) está en [`Soluciones-Alexendros/autoworkspace`](https://github.com/Soluciones-Alexendros/autoworkspace).
+Esqueleto P0/P1 de **Soluciones-Alexendros**. El canon vivo (ADRs, reusables, stacks) está en [`Soluciones-Alexendros/machineroom`](https://github.com/Soluciones-Alexendros/machineroom).
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -20,7 +20,7 @@ Esqueleto P0/P1 de **Soluciones-Alexendros**. El canon vivo (ADRs, reusables, st
 
 **No hace**
 
-- No incluye los reusables CI ni los ADRs (viven en autoworkspace; los callers se pinean por SHA).
+- No incluye los reusables CI ni los ADRs (viven en machineroom; los callers se pinean por SHA).
 - No es una app ni un starter de Next/Astro/Rust.
 - No sustituye `website-landingpage-template` como plantilla de landing.
 
@@ -33,7 +33,7 @@ Hay dos caminos. No son el mismo árbol.
 En GitHub: **Use this template**.
 
 ```bash
-gh repo create Soluciones-Alexendros/<n> --template Soluciones-Alexendros/autoworkspace --private --clone
+gh repo create Soluciones-Alexendros/<n> --template Soluciones-Alexendros/machineroom --private --clone
 ```
 
 Eso clona el canon entero (skills, tools, docs), no solo este esqueleto. En ese clon, Pi se instala así (la segunda línea escribe `$HOME/.pi/agent/skills`):
@@ -46,21 +46,21 @@ bash scripts/install.sh --harness pi --target /tmp/ai-pi --yes --json | jq .inst
 
 ### Esqueleto de producto
 
-Desde un checkout de autoworkspace:
+Desde un checkout de machineroom:
 
 ```bash
 make new-product DEST=<n>
 make new-harness DEST=<n>
 cd <n>
-# Ajusta README, .env.example, CODEOWNERS; copia stacks/<stack>/ci.yml → .github/workflows/ci.yml pineado al SHA de autoworkspace
+# Ajusta README, .env.example, CODEOWNERS; copia stacks/<stack>/ci.yml → .github/workflows/ci.yml pineado al SHA de machineroom
 bash run-validation.sh
 ```
 
-`make new-product` copia solo `templates/product/`. `.autoworkspace/` de esta copia sale de `templates/harness/` en el corte 7.0.0. `make new-harness` vuelve a volcar `project.yaml` y `status.yaml` desde el canon.
+`make new-product` copia solo `templates/product/`. `.machineroom/` de esta copia sale de `templates/harness/` en el corte 7.0.0. `make new-harness` vuelve a volcar `project.yaml` y `status.yaml` desde el canon.
 
-Inicio rápido del harness: [`templates/harness/README.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/templates/harness/README.md).
+Inicio rápido del harness: [`templates/harness/README.md`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/templates/harness/README.md).
 
-Para **alinear un repo existente**: checklist en [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md).
+Para **alinear un repo existente**: checklist en [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/REUTILIZACION.md).
 
 ## Scripts / Makefile
 
@@ -71,24 +71,24 @@ Para **alinear un repo existente**: checklist en [`docs/REUTILIZACION.md`](https
 | `make test`     | placeholder          | unit/function + coverage |
 | `make smoke`    | contrato documentado | health / `--help`        |
 
-## Documentación (canon en autoworkspace)
+## Documentación (canon en machineroom)
 
-| Doc                                                                                                                               | Para quién                                       |
-| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md)                 | Mantenedor que alinea un repo existente          |
-| [`docs/architecture/overview.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/overview.md) | Diseño del canon                                 |
-| [`docs/guides/`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/guides/)                                   | Setup, estilo, tests                             |
-| [`docs/runbooks/`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/runbooks/)                               | Deploy, rollback, secretos                       |
-| [`AGENTS.md`](AGENTS.md)                                                                                                          | Agentes IA / Mantenedor (viaja con la plantilla) |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                                              | Resumen de 1 página (viaja con la plantilla)     |
-| [`docs/README.md`](docs/README.md)                                                                                                | Índice local de esta plantilla                   |
+| Doc                                                                                                                             | Para quién                                       |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/REUTILIZACION.md)                 | Mantenedor que alinea un repo existente          |
+| [`docs/architecture/overview.md`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/overview.md) | Diseño del canon                                 |
+| [`docs/guides/`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/guides/)                                   | Setup, estilo, tests                             |
+| [`docs/runbooks/`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/runbooks/)                               | Deploy, rollback, secretos                       |
+| [`AGENTS.md`](AGENTS.md)                                                                                                        | Agentes IA / Mantenedor (viaja con la plantilla) |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                                            | Resumen de 1 página (viaja con la plantilla)     |
+| [`docs/README.md`](docs/README.md)                                                                                              | Índice local de esta plantilla                   |
 
 ## Decisiones cerradas (no reabrir)
 
-- **Renovate** es el único bot de version-updates ([ADR-0004](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)).
-- Auto-merge squash con `ci-gate` verde; 0 approvals; etiqueta opcional `hold` ([ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
-- Required check: solo `ci-gate` ([ADR-0013](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)).
-- Secret scanning + push protection ON a nivel org ([ADR-0005](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
+- **Renovate** es el único bot de version-updates ([ADR-0004](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/ADR-0004-renovate-org-y-dependabot.md)).
+- Auto-merge squash con `ci-gate` verde; 0 approvals; etiqueta opcional `hold` ([ADR-0012](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+- Required check: solo `ci-gate` ([ADR-0013](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)).
+- Secret scanning + push protection ON a nivel org ([ADR-0005](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/ADR-0005-secret-scanning-org.md)).
 
 ## Licencia
 

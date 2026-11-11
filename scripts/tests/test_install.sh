@@ -42,7 +42,7 @@ assert_rel_links() {
       /*) echo "FAIL not relative $link -> $target"; exit 1 ;;
     esac
     case "$target" in
-      *Work/autoworkspace*) echo "FAIL checkout path in link $link -> $target"; exit 1 ;;
+      *Work/machineroom*) echo "FAIL checkout path in link $link -> $target"; exit 1 ;;
     esac
   done
   test "$n" = 17
@@ -52,26 +52,26 @@ prepare_runtime() {
   local home="$1"
   mkdir -p "$home"
   HOME="$home" bash "$ROOT/scripts/runtime-sync.sh" sync --from "$ROOT" --json >/dev/null
-  test -d "$home/.autoworkspace/skills"
+  test -d "$home/.machineroom/skills"
 }
 
 # --- dry-run must not create missing target ---
 MISSING="$TMP/does-not-exist-yet"
 bash "$ROOT/scripts/install-cursor.sh" --target "$MISSING" --dry-run
 test ! -e "$MISSING"
-test ! -e "$MISSING/.autoworkspace-install-manifest.json"
+test ! -e "$MISSING/.machineroom-install-manifest.json"
 
 TARGET="$TMP/skills-dest"
 mkdir -p "$TARGET"
 
 # dry-run: no manifest
 bash "$ROOT/scripts/install-cursor.sh" --target "$TARGET" --dry-run
-test ! -e "$TARGET/.autoworkspace-install-manifest.json"
+test ! -e "$TARGET/.machineroom-install-manifest.json"
 
 # real install
 bash "$ROOT/scripts/install-cursor.sh" --target "$TARGET"
 test -L "$TARGET/local-maintenance"
-test -f "$TARGET/.autoworkspace-install-manifest.json"
+test -f "$TARGET/.machineroom-install-manifest.json"
 
 # foreign dir preserved
 mkdir -p "$TARGET/foreign-skill"
@@ -153,7 +153,7 @@ journal = {
         {"name": "local-maintenance", "dest": str(dest), "action": "replaced", "previous": previous}
     ],
 }
-jp = target / ".autoworkspace-install-journal.json"
+jp = target / ".machineroom-install-journal.json"
 jp.write_text(json.dumps(journal), encoding="utf-8")
 # rollback logic (mirrors scripts/lib/link-skills.sh)
 doc = json.loads(jp.read_text(encoding="utf-8"))
@@ -202,7 +202,7 @@ DRY_T="$TMP/dry-json-dest"
 DRY_OUT=$(bash "$ROOT/scripts/install-cursor.sh" --target "$DRY_T" --dry-run --json)
 echo "$DRY_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True and d["installed"]==17 and d["changed"]==17, d'
 test ! -e "$DRY_T"
-test ! -e "$DRY_T/.autoworkspace-install-manifest.json"
+test ! -e "$DRY_T/.machineroom-install-manifest.json"
 
 # --- 7.0.2: wrapper --target . anchors to the checkout, even from /tmp ---
 WRAP_DOT_PI=$(cd /tmp && bash "$ROOT/scripts/install.sh" --harness pi --target . --yes --json)
@@ -250,7 +250,7 @@ DRY_PI_OUT=$(bash "$ROOT/scripts/install-pi.sh" --target "$DRY_PI" --dry-run --j
 echo "$DRY_PI_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["dry_run"] is True and d["installed"]==17, d'
 test ! -e "$DRY_PI"
 
-# --user requires ~/.autoworkspace; dry-run writes no harness links
+# --user requires ~/.machineroom; dry-run writes no harness links
 HOME_DRY="$TMP/home-dry"
 prepare_runtime "$HOME_DRY"
 USER_DRY=$(HOME="$HOME_DRY" bash "$ROOT/scripts/install-pi.sh" --user --dry-run --json)
@@ -262,8 +262,8 @@ prepare_runtime "$HOME_REAL"
 USER_REAL=$(HOME="$HOME_REAL" bash "$ROOT/scripts/install-pi.sh" --user --yes --json)
 echo "$USER_REAL" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==17, d; assert d["target"].endswith(".pi/agent/skills"), d'
 assert_rel_links "$HOME_REAL/.pi/agent/skills"
-test -L "$HOME_REAL/.pi/agent/extensions/autoworkspace.ts"
-case "$(readlink -- "$HOME_REAL/.pi/agent/extensions/autoworkspace.ts")" in
+test -L "$HOME_REAL/.pi/agent/extensions/machineroom.ts"
+case "$(readlink -- "$HOME_REAL/.pi/agent/extensions/machineroom.ts")" in
   /*) echo "FAIL extension link must be relative"; exit 1 ;;
 esac
 
@@ -310,22 +310,22 @@ test ! -e "$FULL"
 FULL_JSON=$(bash "$ROOT/scripts/install.sh" --harness cursor --components full --target "$FULL" --yes --json)
 echo "$FULL_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["installed"]==24 and d["changed"]==24, d'
 assert_abs_links "$FULL/.cursor/skills"
-test -L "$FULL/.cursor/rules/autoworkspace.mdc"
-test -L "$FULL/.cursor/agents/aw-verifier.md"
+test -L "$FULL/.cursor/rules/machineroom.mdc"
+test -L "$FULL/.cursor/agents/mr-verifier.md"
 test -L "$FULL/.cursor/hooks.json"
 test -L "$FULL/.cursor/hooks/shell_gate.py"
 FULL_JSON2=$(bash "$ROOT/scripts/install.sh" --harness cursor --components full --target "$FULL" --yes --json)
 echo "$FULL_JSON2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["changed"]==0 and d["skipped"]==24, d'
 bash "$ROOT/scripts/install.sh" --harness cursor --components full --target "$FULL" --uninstall --yes --json >/dev/null
 test ! -e "$FULL/.cursor/skills/plan-continue"
-# User-scope full install: relative links from ~/.autoworkspace, no project rule.
+# User-scope full install: relative links from ~/.machineroom, no project rule.
 FULL_USER_HOME="$TMP/home-full"
 prepare_runtime "$FULL_USER_HOME"
 FULL_USER=$(HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --yes --json)
-echo "$FULL_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["scope"]=="user", d; assert d["installed"]==23, d; assert d["omitted"]==["rules/autoworkspace.mdc"], d; assert d["notes"], d'
+echo "$FULL_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["scope"]=="user", d; assert d["installed"]==23, d; assert d["omitted"]==["rules/machineroom.mdc"], d; assert d["notes"], d'
 USER_CURSOR="$FULL_USER_HOME/.cursor"
 test -L "$USER_CURSOR/skills/plan-continue"
-test -L "$USER_CURSOR/agents/aw-verifier.md"
+test -L "$USER_CURSOR/agents/mr-verifier.md"
 test -L "$USER_CURSOR/hooks.json"
 test -L "$USER_CURSOR/hooks/shell_gate.py"
 test ! -e "$USER_CURSOR/rules"
@@ -338,7 +338,7 @@ FULL_USER2=$(HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cu
 echo "$FULL_USER2" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["changed"]==0 and d["skipped"]==23, d'
 HOME="$FULL_USER_HOME" bash "$ROOT/scripts/install.sh" --harness cursor --components full --user --uninstall --yes --json >/dev/null
 test ! -e "$USER_CURSOR/hooks.json"
-test ! -e "$USER_CURSOR/agents/aw-verifier.md"
+test ! -e "$USER_CURSOR/agents/mr-verifier.md"
 
 if bash "$ROOT/scripts/install.sh" --harness pi --components full --target "$TMP/invalid-full" --yes --json 2>/dev/null; then
   echo "FAIL: Pi full mode should be rejected"; exit 1
@@ -349,7 +349,7 @@ RULE_OUT=$(bash "$ROOT/scripts/cursor-user-rule.sh")
 test "$(echo "$RULE_OUT" | head -1)" = "---"
 echo "$RULE_OUT" | grep -q "^alwaysApply: true$"
 echo "$RULE_OUT" | grep -q "^description: ."
-echo "$RULE_OUT" | grep -q "^# Contrato de ejecución de autoworkspace$"
+echo "$RULE_OUT" | grep -q "^# Contrato de ejecución de machineroom$"
 echo "$RULE_OUT" | grep -q "run_registered"
 test "$(echo "$RULE_OUT" | grep -c '^---$')" = "2"
 if bash "$ROOT/scripts/cursor-user-rule.sh" --bogus 2>/dev/null; then

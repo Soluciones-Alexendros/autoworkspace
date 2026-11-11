@@ -13,9 +13,9 @@ Before ANY action, you MUST evaluate if a skill in `skills/` applies.
 - Follow SKILL.md exactly, including reading its `references/` when instructed
 - Never skip required workflows
 
-## Lifecycle Enforcement (Autoworkspace pipeline)
+## Lifecycle Enforcement (Machineroom pipeline)
 
-Preprogrammed flow with per-project variables in `.autoworkspace/project.yaml`:
+Preprogrammed flow with per-project variables in `.machineroom/project.yaml`:
 
 DEFINE (plan-specification) → SCHEMAS/TESTS → IMPLEMENT (role-*) → VALIDATE (plan-validators) → INTEGRATE (project-publish) → STATUS
 
@@ -27,7 +27,7 @@ python tools/workspace-router/run.py --phase DEFINE --repo . --json
 
 Legacy `--bump` on the workspace router is rejected (`plan-continue`).
 
-- Ambiguous "¿por dónde empiezo?" or "pon al día este proyecto" → plan-continue (loads/creates `.autoworkspace/`)
+- Ambiguous "¿por dónde empiezo?" or "pon al día este proyecto" → plan-continue (loads/creates `.machineroom/`)
 - Mix audit+release ("audítalo y publícalo") → plan-continue first, then project-publish
 - WEB AUDITS → web-* · LOCAL (local OS) → local-*
 - At plan start and before EVERY task or independent implementation action, re-evaluate the scope and invoke all matching roles: backend/API/jobs → role-back; frontend/client routes → role-front; visual direction/tokens → role-design; clean-code/refactoring → role-clean-code. Previous role invocations do not cover later actions. Mixed work requires explicit contracts and handoffs. The phase router's single skill is only a fallback, never a substitute for per-task role selection.

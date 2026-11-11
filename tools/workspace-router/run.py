@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Autoworkspace router: phase → skill handoff using project.yaml variables.
+"""Machineroom router: phase → skill handoff using project.yaml variables.
 
 Query commands (route/list/status) are read-only: they do not create scaffold.
-Use --init explicitly to create .autoworkspace from templates.
+Use --init explicitly to create .machineroom from templates.
 """
 
 from __future__ import annotations
@@ -16,6 +16,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+_TOOLS = Path(__file__).resolve().parents[1]
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
 
 from project_load import (  # noqa: E402
     PHASES,
@@ -24,6 +27,7 @@ from project_load import (  # noqa: E402
     handoff_for_phase,
     load_project,
 )
+from state_paths import StateDirError, format_state_failure, migrate_state, state_dir  # noqa: E402
 from status_bump import advance_status, load_status, migrate_status  # noqa: E402
 
 
@@ -45,7 +49,7 @@ def load_catalog() -> list[str]:
 
 def ensure_scaffold(repo: Path) -> None:
     """Explicit init only."""
-    aw = repo / ".autoworkspace"
+    aw = repo / ".machineroom"
     aw.mkdir(parents=True, exist_ok=True)
     (aw / "schemas").mkdir(exist_ok=True)
     tmpl = ROOT / "templates" / "harness"
@@ -58,7 +62,7 @@ def ensure_scaffold(repo: Path) -> None:
 def route(repo: Path, phase: str, *, bump: bool, note: str, init: bool = False) -> dict:
     if init:
         ensure_scaffold(repo)
-    project_path = repo / ".autoworkspace" / "project.yaml"
+    project_path = state_dir(repo) / "project.yaml"
     if not project_path.is_file():
         raise ProjectConfigError(
             f"missing {project_path}; run with --init to create scaffold (route/list/status do not write by default)"
@@ -109,10 +113,11 @@ def route(repo: Path, phase: str, *, bump: bool, note: str, init: bool = False) 
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Autoworkspace phase router")
+    ap = argparse.ArgumentParser(description="Machineroom phase router")
     ap.add_argument("--repo", default=".", help="Target repository path")
     ap.add_argument("--phase", choices=PHASES, help="Pipeline phase")
-    ap.add_argument("--init", action="store_true", help="Create .autoworkspace scaffold")
+    ap.add_argument("--init", action="store_true", help="Create .machineroom scaffold")
+    ap.add_argument("--migrate", action="store_true", help="Move legacy .machineroom to .machineroom")
     ap.add_argument("--list", action="store_true", help="List allowed skills (read-only)")
     ap.add_argument("--status", action="store_true", help="Show status.yaml (read-only)")
     ap.add_argument("--migrate-status", action="store_true", help="Persist status schema migration explicitly")
@@ -133,6 +138,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Mark phase awaiting_agent without completing",
     )
     ap.add_argument("--note", default="", help="Optional status history note")
+    ap.add_argument("--dry-run", action="store_true", help="Report without writing (with --migrate)")
     ap.add_argument("--json", action="store_true", help="JSON output")
     return ap.parse_args(argv)
 
@@ -144,7 +150,7 @@ def _fail(message: object) -> int:
 
 def _cmd_init(repo: Path, args: argparse.Namespace) -> int:
     ensure_scaffold(repo)
-    print(json.dumps({"init": True, "repo": str(repo)}) if args.json else f"initialized {repo}/.autoworkspace")
+    print(json.dumps({"init": True, "repo": str(repo)}) if args.json else f"initialized {repo}/.machineroom")
     return 0
 
 
@@ -157,6 +163,16 @@ def _cmd_list(repo: Path, args: argparse.Namespace) -> int:
     except ProjectConfigError as exc:
         return _fail(exc)
     print(json.dumps({"allowed_skills": allowed}) if args.json else "\n".join(allowed))
+    return 0
+
+
+def _cmd_migrate_state(repo: Path, args: argparse.Namespace) -> int:
+    try:
+        data = migrate_state(repo, dry_run=args.dry_run)
+    except StateDirError as exc:
+        print(format_state_failure(exc.component, exc.function, exc.detail), file=sys.stderr)
+        return _fail(exc.detail)
+    print(json.dumps(data, ensure_ascii=False, indent=2) if args.json else data["detail"])
     return 0
 
 
@@ -255,12 +271,25 @@ def _dispatch_phase(repo: Path, args: argparse.Namespace) -> int:
     return _cmd_route(repo, args)
 
 
+_EXCLUSIVE_COMMANDS = ("migrate", "migrate_status", "init", "list", "status", "phase")
+
+
+def _conflict(args: argparse.Namespace, owner: str) -> str | None:
+    """Return an error message when a single-command flag is combined with others."""
+    others = [f"--{name.replace('_', '-')}" for name in _EXCLUSIVE_COMMANDS if name != owner and getattr(args, name)]
+    if not others:
+        return None
+    return f"--{owner.replace('_', '-')} cannot be combined with {', '.join(others)}"
+
+
 def _dispatch(repo: Path, args: argparse.Namespace) -> int:
-    if args.migrate_status:
-        if args.phase or args.list or args.status or args.init:
-            return _fail("--migrate-status cannot be combined with other commands")
-        return _cmd_migrate_status(repo, args)
-    if args.init and not args.phase and not args.list and not args.status:
+    if args.migrate or args.migrate_status:
+        owner = "migrate" if args.migrate else "migrate_status"
+        problem = _conflict(args, owner)
+        if problem:
+            return _fail(problem)
+        return _cmd_migrate_state(repo, args) if args.migrate else _cmd_migrate_status(repo, args)
+    if args.init and not (args.phase or args.list or args.status):
         return _cmd_init(repo, args)
     if args.list:
         return _cmd_list(repo, args)

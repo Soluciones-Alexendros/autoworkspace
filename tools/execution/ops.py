@@ -204,7 +204,7 @@ def run_registered(
     *,
     target: str = ".",
     cwd: str | None = None,
-    executable_id: str = "autoworkspace",
+    executable_id: str = "machineroom",
 ) -> OpResult:
     """Execute a registered operation. Callers may not pass effect/argv/approval flags."""
     raw = dict(params or {})

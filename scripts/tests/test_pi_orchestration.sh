@@ -3,34 +3,34 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
-if [[ "${AW_NATIVE_OPT_IN:-}" != "1" ]]; then
-  echo "not_run: set AW_NATIVE_OPT_IN=1 to authorize Pi model orchestration" >&2
+if [[ "${MR_NATIVE_OPT_IN:-}" != "1" ]]; then
+  echo "not_run: set MR_NATIVE_OPT_IN=1 to authorize Pi model orchestration" >&2
   exit 3
 fi
 if ! command -v pi >/dev/null 2>&1; then
   echo "not_run: pi binary missing" >&2
   exit 3
 fi
-AW_PI_MODEL="${AW_PI_MODEL:-opencode-go/beam-free}"
-export AW_PI_MODEL
-if ! pi auth check --model "$AW_PI_MODEL" --json >/tmp/aw-pi-auth.json 2>&1; then
-  echo "not_run: pi model auth not ready for $AW_PI_MODEL" >&2
+MR_PI_MODEL="${MR_PI_MODEL:-opencode-go/beam-free}"
+export MR_PI_MODEL
+if ! pi auth check --model "$MR_PI_MODEL" --json >/tmp/mr-pi-auth.json 2>&1; then
+  echo "not_run: pi model auth not ready for $MR_PI_MODEL" >&2
   exit 3
 fi
 python3 - <<'PY'
 import json
-data = json.load(open("/tmp/aw-pi-auth.json", encoding="utf-8"))
+data = json.load(open("/tmp/mr-pi-auth.json", encoding="utf-8"))
 assert data.get("status") == "ready", data
 print("pi auth ready:", data)
 PY
 
-TMP=$(mktemp -d /tmp/autoworkspace-pi-orch-XXXXXX)
+TMP=$(mktemp -d /tmp/machineroom-pi-orch-XXXXXX)
 trap 'git worktree prune; rm -rf "$TMP"' EXIT
 REPO="$TMP/repo"
 git worktree add --detach "$REPO" HEAD >/dev/null
 git -C "$REPO" config commit.gpgsign false
 
-export AW_PI_MODEL="${AW_PI_MODEL:-kimi-coding/k3.1-pro}"
+export MR_PI_MODEL="${MR_PI_MODEL:-kimi-coding/k3.1-pro}"
 uv run --project tools --frozen python - "$REPO" "$ROOT" <<'PY'
 import hashlib
 import subprocess
@@ -88,7 +88,7 @@ def verifier_for(task):
 
 adapter = WorktreeAdapter(
     repo,
-    PiSubagentAdapter(model=__import__("os").environ.get("AW_PI_MODEL", "kimi-coding/k3.1-pro"), timeout=180),
+    PiSubagentAdapter(model=__import__("os").environ.get("MR_PI_MODEL", "kimi-coding/k3.1-pro"), timeout=180),
     verifier_for,
 )
 summary = Scheduler(repo, adapter=adapter, max_parallel=1).run()
@@ -106,14 +106,14 @@ evidence = load_evidence(
 )
 assert evidence["plan_id"] == "pi-native-orchestration"
 assert not (repo / "orchestration-sentinel.txt").exists(), "must not mutate fixture checkout"
-patches = list((repo / ".autoworkspace" / "runs").glob("*/*.patch"))
+patches = list((repo / ".machineroom" / "runs").glob("*/*.patch"))
 assert patches, "expected staged patch artifact"
-verify = repo / ".autoworkspace" / "verify-tree"
+verify = repo / ".machineroom" / "verify-tree"
 subprocess.run(["git", "worktree", "add", "--detach", str(verify), "HEAD"], cwd=repo, check=True, capture_output=True)
 subprocess.run(["git", "apply", str(patches[0])], cwd=verify, check=True, capture_output=True)
 content = (verify / "orchestration-sentinel.txt").read_text(encoding="utf-8")
 assert content.strip() == "write-sentinel", repr(content)
-print("Pi orchestration PASS", "model=", __import__("os").environ.get("AW_PI_MODEL"), "digest=", hashlib.sha256(content.encode()).hexdigest()[:12])
+print("Pi orchestration PASS", "model=", __import__("os").environ.get("MR_PI_MODEL"), "digest=", hashlib.sha256(content.encode()).hexdigest()[:12])
 PY
 
 echo "Pi native orchestration OK"

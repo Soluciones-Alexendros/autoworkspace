@@ -30,9 +30,9 @@ def test_missing_upload_or_wrong_order_is_rejected(tmp_path: Path) -> None:
 
 
 def test_archive_and_checksum_fixture_round_trip(tmp_path: Path) -> None:
-    archive = tmp_path / "autoworkspace-fixture.tar.gz"
+    archive = tmp_path / "machineroom-fixture.tar.gz"
     subprocess.run(
-        ["git", "archive", "--format=tar.gz", "--prefix=autoworkspace-fixture/", "-o", str(archive), "HEAD"],
+        ["git", "archive", "--format=tar.gz", "--prefix=machineroom-fixture/", "-o", str(archive), "HEAD"],
         cwd=ROOT,
         check=True,
         capture_output=True,

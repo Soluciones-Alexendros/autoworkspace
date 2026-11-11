@@ -36,6 +36,6 @@ def test_plugin_hooks_resolve_from_plugin_root() -> None:
 
 def test_marketplace_entry_targets_repository_root() -> None:
     marketplace = json.loads((ROOT / ".cursor-plugin" / "marketplace.json").read_text(encoding="utf-8"))
-    plugins = [entry for entry in marketplace["plugins"] if entry["name"] == "autoworkspace"]
+    plugins = [entry for entry in marketplace["plugins"] if entry["name"] == "machineroom"]
     assert len(plugins) == 1
     assert plugins[0]["source"] == "."

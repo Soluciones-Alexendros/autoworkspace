@@ -14,7 +14,7 @@ fi
 VERSION=$(agent --version)
 echo "agent --version → ${VERSION}"
 
-TMP=$(mktemp -d /tmp/autoworkspace-cursor-native-XXXXXX)
+TMP=$(mktemp -d /tmp/machineroom-cursor-native-XXXXXX)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/project" "$TMP/policy"
 
@@ -80,7 +80,7 @@ python3 - "$TMP/project" <<'PY'
 from pathlib import Path
 import sys
 agents = {p.name for p in (Path(sys.argv[1]) / ".cursor" / "agents").glob("*.md")}
-for name in ("aw-planner.md", "aw-worker.md", "aw-verifier.md"):
+for name in ("mr-planner.md", "mr-worker.md", "mr-verifier.md"):
     assert name in agents, agents
 print("Cursor agents delegated:", sorted(agents))
 PY

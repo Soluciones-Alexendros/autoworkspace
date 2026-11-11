@@ -70,7 +70,7 @@ class TestProjectLoad(unittest.TestCase):
 
     def test_load_from_disk(self):
         with tempfile.TemporaryDirectory() as tmp:
-            aw = Path(tmp) / ".autoworkspace"
+            aw = Path(tmp) / ".machineroom"
             aw.mkdir()
             (aw / "project.yaml").write_text(
                 "schema_version: 1\nname: t\nprofile: P0\n",

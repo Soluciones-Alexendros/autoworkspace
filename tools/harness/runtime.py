@@ -1,4 +1,4 @@
-"""Machine runtime under ``$HOME/.autoworkspace`` (shared Cursor/Pi catalog)."""
+"""Machine runtime under ``$HOME/.machineroom`` (shared Cursor/Pi catalog)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,12 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-RUNTIME_DIRNAME = ".autoworkspace"
+from harness import naming
+
+RUNTIME_DIRNAME = naming.RUNTIME_DIRNAME
+LEGACY_RUNTIME_DIRNAME = naming.LEGACY_RUNTIME_DIRNAME
 MANIFEST_NAME = ".runtime-manifest.json"
-PAYLOAD_DIRS = ("skills", "extensions/autoworkspace")
+PAYLOAD_DIRS = ("skills", f"extensions/{naming.EXTENSION_DIR}")
 PAYLOAD_CURSOR = (".cursor/agents", ".cursor/hooks", ".cursor/rules")
 PAYLOAD_FILES = ("package.json", ".cursor/hooks.json")
 
@@ -34,7 +37,52 @@ def format_failure(component: str, function: str, detail: str) -> str:
 
 
 def runtime_root(home: Path | None = None) -> Path:
+    """Return the machine runtime path (``$HOME/.machineroom``)."""
     return (home or Path.home()) / RUNTIME_DIRNAME
+
+
+def legacy_runtime_root(home: Path | None = None) -> Path:
+    """Return the pre-8.0 runtime path (``$HOME/.autoworkspace``), read-only."""
+    return (home or Path.home()) / LEGACY_RUNTIME_DIRNAME
+
+
+def migrate_legacy_runtime(home: Path | None = None) -> dict[str, Any]:
+    """Move ``~/.autoworkspace`` to ``~/.machineroom`` once, without leaving two runtimes.
+
+    Failure modes (``InstallFailure`` with component ``runtime``):
+    - The legacy path is a symlink: symlinks are never runtime roots.
+    - Both paths exist: the operator must remove one; nothing is moved.
+    - The move fails: the legacy directory is restored in place before raising.
+    """
+    target = runtime_root(home)
+    legacy = legacy_runtime_root(home)
+    if target.exists() or target.is_symlink():
+        if legacy.exists() or legacy.is_symlink():
+            raise InstallFailure(
+                "runtime",
+                "migrate_legacy_runtime",
+                f"two runtimes present: {legacy} and {target}; remove one before migrating",
+            )
+        return {"migrated": False, "from": str(legacy), "to": str(target), "detail": "already migrated"}
+    if not legacy.exists() and not legacy.is_symlink():
+        return {"migrated": False, "from": str(legacy), "to": str(target), "detail": "no legacy runtime"}
+    if legacy.is_symlink():
+        raise InstallFailure(
+            "runtime",
+            "migrate_legacy_runtime",
+            f"legacy runtime must be a real directory, not a symlink: {legacy}",
+        )
+    try:
+        legacy.rename(target)
+    except OSError as exc:
+        if legacy.exists() and not target.exists():
+            raise InstallFailure(
+                "runtime", "migrate_legacy_runtime", f"cannot move {legacy} to {target}: {exc}"
+            ) from exc
+        raise InstallFailure(
+            "runtime", "migrate_legacy_runtime", f"move left both paths inconsistent ({legacy} -> {target}): {exc}"
+        ) from exc
+    return {"migrated": True, "from": str(legacy), "to": str(target), "detail": "migrated legacy runtime"}
 
 
 def require_runtime(home: Path | None = None) -> Path:
@@ -106,7 +154,7 @@ def sync_payload(  # noqa: C901, PLR0912, PLR0915  # staging/backup/verify branc
     *,
     origin: str,
 ) -> dict[str, Any]:
-    """Copy the harness payload into a real ``~/.autoworkspace`` directory."""
+    """Copy the harness payload into a real ``~/.machineroom`` directory."""
     source = source.resolve()
     if destination.is_symlink():
         raise InstallFailure("runtime", "sync_payload", f"runtime destination is a symlink: {destination}")
@@ -121,7 +169,7 @@ def sync_payload(  # noqa: C901, PLR0912, PLR0915  # staging/backup/verify branc
         if destination == Path(privileged):
             raise InstallFailure("runtime", "sync_payload", f"privileged runtime rejected: {destination}")
 
-    staging = destination.parent / f".autoworkspace-staging-{os.getpid()}"
+    staging = destination.parent / f"{RUNTIME_DIRNAME}-staging-{os.getpid()}"
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True)
@@ -160,7 +208,7 @@ def sync_payload(  # noqa: C901, PLR0912, PLR0915  # staging/backup/verify branc
         (staging / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
         if destination.exists():
-            backup = destination.parent / f".autoworkspace-backup-{os.getpid()}"
+            backup = destination.parent / f"{RUNTIME_DIRNAME}-backup-{os.getpid()}"
             if backup.exists():
                 shutil.rmtree(backup)
             destination.rename(backup)

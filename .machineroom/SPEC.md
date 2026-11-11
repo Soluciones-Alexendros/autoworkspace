@@ -21,7 +21,7 @@ handoffs apunten a skills que existen.
 
 - Python 3 y Markdown. Herramientas en `tools/` (router, validador, versión).
 - Node para gates locales: Husky 9, lint-staged 17, Prettier 3 (`package.json` 4.1.0).
-- Forja: `github.com/Soluciones-Alexendros/autoworkspace`. Perfil declarado: P1.
+- Forja: `github.com/Soluciones-Alexendros/machineroom`. Perfil declarado: P1.
 - Sin runtime de producto, sin base de datos y sin autenticación.
 
 ## Commands
@@ -42,7 +42,7 @@ skills/<nombre>/SKILL.md     → catálogo canónico (16)
 .cursor/skills/ y .pi/skills/ → symlinks locales, no versionados
 tools/skill-router/          → intent-map.yaml + skill-index.json
 tools/workspace-router/      → fase DEFINE…STATUS
-.autoworkspace/              → project.yaml, status.yaml, esta spec
+.machineroom/              → project.yaml, status.yaml, esta spec
 docs/TAXONOMY.md             → dominios normativos
 ```
 

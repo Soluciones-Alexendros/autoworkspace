@@ -12,6 +12,8 @@ import threading
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from state_paths import state_file
+
 # lint-staged / husky may leave these set; they break nested worktree operations.
 _GIT_ENV_BLOCKLIST = (
     "GIT_INDEX_FILE",
@@ -53,7 +55,7 @@ class WorktreeManager:
     def __init__(self, repo: Path, base_revision: str, *, temp_root: Path | None = None) -> None:
         self.repo = repo.resolve()
         self.base_revision = base_revision
-        self.temp_root = (temp_root or Path(tempfile.mkdtemp(prefix="autoworkspace-orchestration-"))).resolve()
+        self.temp_root = (temp_root or Path(tempfile.mkdtemp(prefix="machineroom-orchestration-"))).resolve()
         self.temp_root.mkdir(parents=True, exist_ok=True)
         self._worktrees: set[Path] = set()
 
@@ -213,9 +215,9 @@ class RunWorkspace:
                     writer,
                     [
                         "-c",
-                        "user.email=autoworkspace@local",
+                        "user.email=machineroom@local",
                         "-c",
-                        "user.name=autoworkspace",
+                        "user.name=machineroom",
                         "commit",
                         "--no-gpg-sign",
                         "-m",
@@ -275,7 +277,7 @@ class RunWorkspace:
                 raise
 
     def write_integrated_manifest(self) -> Path:
-        run_dir = self.repo / ".autoworkspace" / "runs" / self.run_id
+        run_dir = state_file(self.repo, "runs", self.run_id)
         run_dir.mkdir(parents=True, exist_ok=True)
         files: list[str] = []
         sha256: dict[str, str] = {}

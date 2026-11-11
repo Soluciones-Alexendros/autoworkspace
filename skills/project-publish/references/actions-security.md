@@ -21,7 +21,7 @@ Hazlo para cada `uses:` de un tercero, y también para `actions/*` y `github/*` 
 7. Escribe `uses: owner/repo@COMMIT # vX.Y.Z`.
 8. No hagas commit de `@vX`, `@main`, `@master` ni de un placeholder.
 
-Los callers canónicos viven en `stacks/<stack>/ci.yml` y los reusables en `.github/workflows/reusable-*.yml` (pinea SHA de autoworkspace). Los composite actions de esta skill (`actions/`) se alinean a esos SHAs. Si un digest falla verificación, marca `[PENDIENTE]` y no inventes el SHA.
+Los callers canónicos viven en `stacks/<stack>/ci.yml` y los reusables en `.github/workflows/reusable-*.yml` (pinea SHA de machineroom). Los composite actions de esta skill (`actions/`) se alinean a esos SHAs. Si un digest falla verificación, marca `[PENDIENTE]` y no inventes el SHA.
 
 Mantén los pins con Renovate (`github-actions`), en pull requests revisables. La política del repo o de la org puede exigir `sha_pinning_required`.
 

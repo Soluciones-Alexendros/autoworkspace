@@ -235,7 +235,7 @@ Cada tarea → rama de trabajo → PR a la rama del plan (squash). Cada tarea te
 
 4. **rename-skills** — `chore/04-rename-skills`. `project-autoworkspace` → `project-machineroom` (dir, frontmatter, `references/canon-map.md`, `references/harnesses.md`); strings en `plan-continue`, `plan-specification`, `project-publish` y `local-*`; regenerar índice; `tools/skill-router/intent-map.yaml`. No usa `scripts/rename-skills.sh`: es un mapa v3 de carpetas ES→EN, no este rename. **Implementation roles:** `role-back`, `role-clean-code`. **Test surfaces:** `test_catalog_17.py`; descriptions ≤1024 (`tools/validate/skill_spec.py`). **Ficheros probables:** `skills/project-machineroom/`, las skills citadas, `skill-index.json`, `tools/skill-router/intent-map.yaml`. **DoD:** `test_catalog_17.py` verde; ninguna description pasa de 1024; `scripts/rename-skills.sh` no se ha ejecutado ni adaptado para este rename.
 5. **rename-harness-surfaces** — `chore/05-rename-harness-surfaces`. Agents `mr-*`, plugin `.cursor-plugin`, extensión `extensions/machineroom/` (`mr_subagent`, `/mr-status`, `ALLOWED_SKILLS` derivado, incluye `project-machineroom`), alta de `extensions/machineroom/path-guard.ts` enlazado desde `~/.pi/agent/extensions/` (el install sustituye el fichero suelto), `~/.machineroom` en la lista dura y fail-closed H1 (ruta no listada fuera de `~/Work/` → block/confirm; allowlist mínima). No edita el texto SSOT de la rule ni la forma de los comandos de hooks (dueña: tarea 7). **Implementation roles:** `role-back`, `role-clean-code`. **Test surfaces:** `test_pi_subagent.py`, `test_pi_extension.py`; ramas de `path-guard` (lista dura, confirm, fail-closed, allowlist). **Ficheros probables:** `.cursor/agents/mr-*.md`, `.cursor-plugin/`, `extensions/machineroom/`, instalador Pi que enlaza `path-guard.ts`. **DoD:** esos tests verdes; `path-guard.ts` en el repo; lista dura con `~/.machineroom`; fail-closed + allowlist documentada. El grep global de `aw-` no es este DoD.
-6. **pi-shell-gate** — `feat/06-pi-shell-gate`. `tools/execution/deny-list.json`; `shell_gate.py` lo consume; la extensión Pi intercepta `tool_call` (bash) y `user_bash` con deny/ask/allow, fail-closed si el payload es malformado. **Implementation roles:** `role-back`, `role-clean-code`. **Test surfaces:** `test_deny_list.py` (solo paridad de datos); ramas deny/ask/allow en la capa de extensión, junto a `test_pi_extension.py` / `test_pi_subagent.py`. **Ficheros probables:** `tools/execution/deny-list.json`, `.cursor/hooks/shell_gate.py`, `extensions/machineroom/gates.ts`. **DoD:** `test_deny_list.py` verde y las ramas del interceptor verdes en esa capa. No hay pytest que importe TypeScript.
+6. **pi-shell-gate** — `feat/06-pi-shell-gate`. `extensions/machineroom/deny-list.json`; `shell_gate.py` lo consume vía `tools/execution/deny_list.py`; la extensión Pi intercepta `tool_call` (bash) y `user_bash` con deny/ask/allow, fail-closed si el payload es malformado. **Implementation roles:** `role-back`, `role-clean-code`. **Test surfaces:** `test_deny_list.py` (solo paridad de datos); ramas deny/ask/allow en la capa de extensión, junto a `test_pi_extension.py` / `test_pi_subagent.py`. **Ficheros probables:** `extensions/machineroom/deny-list.json`, `tools/execution/deny_list.py`, `.cursor/hooks/shell_gate.py`, `extensions/machineroom/gates.ts`. **DoD:** `test_deny_list.py` verde y las ramas del interceptor verdes en esa capa. No hay pytest que importe TypeScript.
 
 **Checkpoint tras las tareas 4–6.** Suite de lo ya tocado en verde. No se sigue sin ese verde.
 
@@ -252,20 +252,25 @@ Cada tarea → rama de trabajo → PR a la rama del plan (squash). Cada tarea te
 
 ## 12. Criterios de éxito verificables
 
-- Cero `autoworkspace` en superficies vivas. El grep usa `--exclude-dir=plans --exclude-dir=archives --exclude-dir=decisions` (basename) y `--exclude=skill-index-7.0.0.json`. Las únicas líneas vivas que pueden contener el literal son las constantes `LEGACY_*` de `tools/harness/naming.py`. Misma excepción `LEGACY_*` para `aw-planner`, `aw-verifier`, `aw-worker`, `aw_subagent` y `/aw-status`. Comando:
-
-```bash
-grep -rIl -i 'autoworkspace' skills/ .cursor/ .cursor-plugin/ extensions/ scripts/ tools/ templates/ stacks/ README.md ARCHITECTURE.md AGENTS.md package.json Makefile .env.example SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md .github/ docs/ --exclude-dir=plans --exclude-dir=archives --exclude-dir=decisions --exclude=skill-index-7.0.0.json
-```
-
-Tras quitar las líneas `LEGACY_*` de `tools/harness/naming.py`, no queda ninguna coincidencia.
+- Gate de naming: `python3 tools/validate/naming_gate.py` en verde (enganchado en
+  `run-validation.sh` como `[3a]`). El gate escanea las superficies vivas
+  (`skills/`, `.cursor/`, `.cursor-plugin/`, `extensions/`, `scripts/`, `tools/`,
+  `templates/`, `stacks/`, `docs/` y los ficheros de raíz) y falla si aparece el
+  nombre pre-8.0 fuera de una allowlist revisada. La allowlist cubre solo lo que
+  debe seguir nombrando el pasado: `naming.py`, `state_paths.py`, `GLOSARIO.md`,
+  los tests de migración/fallback, los instaladores que reconocen el runtime
+  viejo, el loader de contratos (dialecto legacy), la keyword `aw-plan`
+  embebida en planes históricos y el fallback documentado de bootstrap. Quedan
+  fuera por diseño la historia (`docs/plans/`, `docs/archives/`,
+  `docs/architecture/decisions/`, `CHANGELOG.md`, snapshots congelados) y los
+  artefactos generados (`docs/architecture/diagrams/rendered/`).
 
 - En este repo no existe el directorio `.autoworkspace/` (`test ! -d .autoworkspace`). El estado está en `.machineroom/`.
 - `ls skills/ | wc -l` == 17 e incluye `project-machineroom`; `ls skills/ | grep -c 'project-autoworkspace'` == 0.
 - `python3 tools/skill-index/generate.py` produce 17 y `README.md`/`docs/TAXONOMY.md` entre marcadores idénticos al generador.
-- El mismo grep de `aw-planner`, `aw-verifier`, `aw-worker`, `aw_subagent` y `/aw-status` en `skills/`, `.cursor/`, `extensions/`, `scripts/` y `tools/` solo puede coincidir en líneas `LEGACY_*` de `tools/harness/naming.py`.
+- El gate cubre también los identificadores `aw-planner`, `aw-verifier`, `aw-worker`, `aw_subagent` y `/aw-status`: ninguna superficie viva los usa ya.
 - `grep -rn 'RUNTIME_DIRNAME' tools/harness/` referencia `naming.py`/`.machineroom`; `bash scripts/runtime-sync.sh --dry-run` referencia `~/.machineroom`.
-- `bash run-validation.sh` y `make validate && make test && make smoke` en verde; `make readiness` sin bloqueos (model lanes opt-in `AW_NATIVE_OPT_IN=1`).
+- `bash run-validation.sh` y `make validate && make test && make smoke` en verde; `make readiness` sin bloqueos (model lanes opt-in `MR_NATIVE_OPT_IN=1`).
 - `python3 tools/workspace-router/run.py --phase DEFINE --repo . --json` lee `.machineroom/` (y acepta `.autoworkspace/` legacy con aviso).
 - Tests nuevos de §10.2 verdes y tests actualizados de §10.3 verdes.
 - `package.json` == `8.0.0`, CHANGELOG con sección 8.0.0, ADR-0018 presente.
@@ -288,6 +293,40 @@ Verificación:
 
 - **H4 — `pass` (2026-11-10).** Método: `pi --mode rpc --no-session` + `get_commands` (proceso fresco ≈ `/reload`). Resultado: 17 skills del catálogo + 3 Omarchy; `local-email`, `local-maintenance`, `local-security` presentes en cwd del repo y en cwd `/tmp` (usuario). Causa del anuncio incompleto en sesión previa: **sesión stale**, no loader ni descripción. La tarea 9 re-verifica tras el rename.
 
-## 14. Último paso
+## 14. Estado de ejecución (2026-11-10)
+
+Tareas 1–9 y checkpoint 1 de la tarea 10 ejecutadas en ramas `chore/*` y
+`feat/*`, cada una con la suite del repo en verde antes del commit.
+
+| Tarea                     | Estado                        | Evidencia                                                          |
+| ------------------------- | ----------------------------- | ------------------------------------------------------------------ |
+| 1 rename-core             | hecho                         | `naming.py`, marca en docs vivos, `ARCHITECTURE.md` a 17           |
+| 2 rename-runtime          | hecho                         | `~/.machineroom`, `migrate_legacy_runtime`, assets `machineroom-*` |
+| 3 rename-project-state    | hecho                         | `state_paths.py`, fallback con aviso, `--migrate`                  |
+| 4 rename-skills           | hecho                         | `project-machineroom`, registry e intent-map                       |
+| 5 rename-harness-surfaces | hecho                         | `mr-*`, `path-guard.ts` versionado, `mr_subagent`                  |
+| 6 pi-shell-gate           | hecho                         | deny-list compartida + gate Pi (paridad Node/Python)               |
+| 7 contract-ssot           | hecho                         | rule SSOT, puntero con digest, `contract_parity.py`                |
+| 8 mcp-parity              | hecho                         | lista canónica en `docs/harness-integration.md`                    |
+| 9 verify-local-skills     | hecho                         | `test_catalog_17.py`, RPC Pi post-rename                           |
+| 10 closure (1)            | hecho                         | `8.0.0`, CHANGELOG, ADR-0018, `naming_gate.py`                     |
+| 10 closure (2)            | **pendiente de autorización** | `mv ~/Work/...`, `gh repo rename`, relink de usuario               |
+| 10 closure (3)            | **pendiente de autorización** | tag `v8.0.0` y paquete Pi vía `project-publish`                    |
+
+Desviaciones registradas:
+
+1. La deny-list vive en `extensions/machineroom/deny-list.json`, no en
+   `tools/execution/`: así viaja en el payload del runtime y Cursor y Pi leen el
+   mismo fichero.
+2. La keyword `aw-plan` del bloque de plan embebido se conserva: renombrarla
+   invalidaría todos los planes ya commiteados. Queda en la allowlist del gate.
+3. `docs/architecture/diagrams/rendered/` no se regenera aquí (Archify no está
+   instalado); el gate lo trata como artefacto generado.
+4. Los nombres de fichero de ADR previos (`ADR-0016-autoworkspace-...`) son
+   historia: los enlaces los conservan y el gate los permite explícitamente.
+5. Variables de entorno pasan a `MR_*`; `MR_BOOTSTRAP_REPOSITORY` mantiene
+   fallback a la variable antigua.
+
+## 15. Último paso
 
 Actualizar el apartado del plan en Notion (política) con PRs, versión 8.0.0 publicada y URL del repo renombrado, cuando el operador lo apruebe.

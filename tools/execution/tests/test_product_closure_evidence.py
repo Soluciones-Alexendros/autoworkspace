@@ -48,9 +48,9 @@ def _write_art(tmp: Path, name: str = "artifact.txt", body: str = "ok") -> Path:
 
 
 def test_v01_succeeded_only_rejected(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     rid = str(uuid.uuid4())
-    ed = tmp_path / ".autoworkspace" / "evidence"
+    ed = tmp_path / ".machineroom" / "evidence"
     ed.mkdir()
     # Hand-craft minimal JSON (succeeded + uuid filename, no bindings)
     (ed / f"{rid}.json").write_text(json.dumps({"outcome": "succeeded", "run_id": rid, "schema_version": 1}))
@@ -59,7 +59,7 @@ def test_v01_succeeded_only_rejected(tmp_path: Path) -> None:
 
 
 def test_v02_omit_each_binding(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     art = _write_art(tmp_path)
     base: dict[str, Any] = dict(
         artifacts=[str(art)],
@@ -83,9 +83,9 @@ def test_v02_omit_each_binding(tmp_path: Path) -> None:
 
 
 def test_v03_bad_types_and_legacy(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     rid = str(uuid.uuid4())
-    ed = tmp_path / ".autoworkspace" / "evidence"
+    ed = tmp_path / ".machineroom" / "evidence"
     ed.mkdir()
     payload = {
         "schema_version": 1,
@@ -116,7 +116,7 @@ def test_v03_bad_types_and_legacy(tmp_path: Path) -> None:
 
 def test_v04_valid_accepted(tmp_path: Path) -> None:
     (tmp_path / "code.py").write_text("x")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     art = _write_art(tmp_path)
     digest = work_digest(tmp_path)
     rid = store_result(
@@ -142,7 +142,7 @@ def test_v04_valid_accepted(tmp_path: Path) -> None:
 
 def test_v05_local_gates_cannot_complete_define(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     art = _write_art(tmp_path)
     rid = store_result(
         tmp_path,
@@ -159,7 +159,7 @@ def test_v05_local_gates_cannot_complete_define(tmp_path: Path) -> None:
 
 def test_v06_prefix_and_wrong_phase_rejected(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     art = _write_art(tmp_path)
     rid = store_result(
         tmp_path,
@@ -176,7 +176,7 @@ def test_v06_prefix_and_wrong_phase_rejected(tmp_path: Path) -> None:
 
 def test_v07_missing_verification_rejected(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     art = _write_art(tmp_path)
     rid = store_result(
         tmp_path,
@@ -220,7 +220,7 @@ def test_v09_dir_symlink_recorded(tmp_path: Path) -> None:
 
 
 def test_v10_artifact_symlink_rejected(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     real = tmp_path / "real.txt"
     real.write_text("p")
     link = tmp_path / "art_link"
@@ -250,7 +250,7 @@ def test_v11_unreadable_file_errors(tmp_path: Path) -> None:
 
 def test_v12_admin_change_stable_new_file_changes(tmp_path: Path) -> None:
     (tmp_path / "code.py").write_text("stable")
-    aw = tmp_path / ".autoworkspace"
+    aw = tmp_path / ".machineroom"
     aw.mkdir()
     d1 = work_digest(tmp_path)
     (aw / "status.yaml").write_text("phase: DEFINE\n")

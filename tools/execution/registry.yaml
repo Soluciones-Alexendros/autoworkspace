@@ -1,5 +1,5 @@
 schema_version: 1
-dialect: autoworkspace.execution.registry
+dialect: machineroom.execution.registry
 tools:
   - tool_id: local-email
     skill: local-email
@@ -359,10 +359,10 @@ tools:
     automation_limits:
       Agent judgment remains for non-script operations; blocked mutators
       stay blocked without approval.
-  - tool_id: project-autoworkspace
-    skill: project-autoworkspace
+  - tool_id: project-machineroom
+    skill: project-machineroom
     entrypoint: tools/harness
-    description: Execution tool for skill project-autoworkspace
+    description: Execution tool for skill project-machineroom
     execution_kind: agent
     distribution: workspace-required
     shared_dependencies:
@@ -378,7 +378,7 @@ tools:
         idempotency: "yes"
         approval_required: false
         recovery_required: false
-        description: project-autoworkspace:self_audit
+        description: project-machineroom:self_audit
       - id: plan_self_change
         effect: write-workspace
         dry_run: "yes"
@@ -387,7 +387,7 @@ tools:
         recovery_required: false
         completion_phases: [DEFINE]
         required_verifications: [spec_deliverable]
-        description: project-autoworkspace:plan_self_change
+        description: project-machineroom:plan_self_change
     automation_limits: No publish operations; hand off to project-publish for release.
   - tool_id: role-back
     skill: role-back

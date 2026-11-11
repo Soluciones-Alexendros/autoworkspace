@@ -54,7 +54,7 @@ def test_shell_c_rejected_via_free_form() -> None:
 
 
 def test_mutate_blocked_without_approval(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AUTOWORKSPACE_APPROVAL_PROVIDER", "deny")
+    monkeypatch.setenv("MACHINEROOM_APPROVAL_PROVIDER", "deny")
     r = run_registered("clean_journal", {"snapshot_id": "snap-1"}, target="/")
     assert r.outcome == "blocked"
 

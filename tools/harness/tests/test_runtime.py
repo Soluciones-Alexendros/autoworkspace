@@ -20,7 +20,7 @@ USER_SCOPE_COMPONENTS = 23  # 17 skills + 3 agents + hooks.json + 2 hook scripts
 
 
 def _runtime(home: Path) -> Path:
-    dest = home / ".autoworkspace"
+    dest = home / ".machineroom"
     sync_payload(ROOT, dest, origin="sync")
     return dest
 
@@ -28,7 +28,7 @@ def _runtime(home: Path) -> Path:
 def test_sync_payload_rejects_symlink_destination(tmp_path: Path) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    dest = home / ".autoworkspace"
+    dest = home / ".machineroom"
     dest.symlink_to(tmp_path / "elsewhere")
     with pytest.raises(ValueError, match="symlink"):
         sync_payload(ROOT, dest, origin="sync")
@@ -37,12 +37,12 @@ def test_sync_payload_rejects_symlink_destination(tmp_path: Path) -> None:
 def test_sync_payload_copies_harness_payload(tmp_path: Path) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    manifest = sync_payload(ROOT, home / ".autoworkspace", origin="sync")
-    runtime = home / ".autoworkspace"
+    manifest = sync_payload(ROOT, home / ".machineroom", origin="sync")
+    runtime = home / ".machineroom"
     assert runtime.is_dir() and not runtime.is_symlink()
     assert (runtime / "skills" / "plan-continue" / "SKILL.md").is_file()
-    assert (runtime / ".cursor" / "agents" / "aw-verifier.md").is_file()
-    assert (runtime / "extensions" / "autoworkspace" / "index.ts").is_file()
+    assert (runtime / ".cursor" / "agents" / "mr-verifier.md").is_file()
+    assert (runtime / "extensions" / "machineroom" / "index.ts").is_file()
     assert manifest["origin"] == "sync"
     assert (runtime / ".runtime-manifest.json").is_file()
 
@@ -67,7 +67,7 @@ def test_user_scope_relative_links_from_runtime(tmp_path: Path) -> None:
     assert skill.is_symlink()
     assert not Path(os.readlink(skill)).is_absolute()
     assert skill.resolve() == (runtime / "skills" / "plan-continue").resolve()
-    assert "Work/autoworkspace" not in os.readlink(skill)
+    assert "Work/machineroom" not in os.readlink(skill)
     second = install_full(ROOT, target, user_scope=True)
     assert second["changed"] == 0
     assert second["skipped"] == USER_SCOPE_COMPONENTS
@@ -114,10 +114,10 @@ def test_user_scope_migrates_prior_checkout_manifest(tmp_path: Path) -> None:
         "components": "full",
         "scope": "user",
         "resources": [{"path": "skills/plan-continue", "kind": "symlink"}],
-        "omitted": ["rules/autoworkspace.mdc"],
+        "omitted": ["rules/machineroom.mdc"],
         "version": "7.1.2",
     }
-    (target / ".autoworkspace-full-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (target / ".machineroom-full-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     result = install_full(ROOT, target, user_scope=True)
     assert result["status"] == "ok"
     assert old.resolve() == (runtime / "skills" / "plan-continue").resolve()

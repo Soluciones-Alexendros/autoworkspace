@@ -259,7 +259,7 @@ def test_resume_rejects_stale_patch_digest(tmp_path: Path) -> None:
 
         revision = load_status(repo)["active_plan"]["base_revision"]
         run_id = "stale-run"
-        run_dir = repo / ".autoworkspace" / "runs" / run_id
+        run_dir = repo / ".machineroom" / "runs" / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         patch = run_dir / "task-a.patch"
         manifest = run_dir / "task-a.manifest.json"

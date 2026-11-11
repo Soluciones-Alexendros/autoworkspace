@@ -2,7 +2,7 @@
 
 ### Propósito de este documento
 
-- **Objetivos:** Índice de la documentación del producto autoworkspace y del canon de flota alojado aquí ([ADR-0016](architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)).
+- **Objetivos:** Índice de la documentación del producto machineroom y del canon de flota alojado aquí ([ADR-0016](architecture/decisions/ADR-0016-autoworkspace-host-del-canon.md)).
 - **Estructura:** Esta meta-sección → guías de producto → canon de flota → planes → raíz.
 - **Contenido a integrar según contexto:** El README raíz presenta el producto; este índice solo navega `docs/`.
 

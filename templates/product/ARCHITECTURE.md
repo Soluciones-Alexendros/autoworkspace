@@ -8,7 +8,7 @@
 
 Este repositorio es el **canon de plataforma** de Soluciones-Alexendros: un contrato reutilizable, no un runtime.
 
-Detalle: [`docs/architecture/overview.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/overview.md). Decisiones: [`docs/architecture/decisions/`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/).
+Detalle: [`docs/architecture/overview.md`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/overview.md). Decisiones: [`docs/architecture/decisions/`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/).
 
 ## Qué hay aquí
 
@@ -34,7 +34,7 @@ Orden de fases en la flota:
 
 `quality` → `test` (unit/function + coverage) → `build` → `smoke` → (`e2e` opcional)
 
-`build` solo existe si hay artefacto. El único check **required** es `ci-gate` ([ADR-0013](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)). Auto-merge squash sin revisión ([ADR-0012](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
+`build` solo existe si hay artefacto. El único check **required** es `ci-gate` ([ADR-0013](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/ADR-0013-check-unico-ci-gate.md)). Auto-merge squash sin revisión ([ADR-0012](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/architecture/decisions/ADR-0012-solo-dev-automerge-sin-revision.md)).
 
 En **este** repo no hay artefacto de aplicación: `reusable-static` corre actionlint + `check-structure`, el hook `test` y `smoke`; el caller emite `ci-gate`.
 
@@ -44,4 +44,4 @@ En **este** repo no hay artefacto de aplicación: `reusable-static` corre action
 - El historial ni los nombres de repos existentes.
 - Archivados ni forks externos.
 
-Para aplicar el contrato a un repo que ya existe: [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/autoworkspace/blob/main/docs/REUTILIZACION.md).
+Para aplicar el contrato a un repo que ya existe: [`docs/REUTILIZACION.md`](https://github.com/Soluciones-Alexendros/machineroom/blob/main/docs/REUTILIZACION.md).

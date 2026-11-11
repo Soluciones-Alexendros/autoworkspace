@@ -90,12 +90,12 @@ def static_install_check(target: Path, expected_skills: set[str]) -> Check:  # n
     missing = sorted(expected_skills - found)
     if missing:
         return Check("cursor-static-install", "A", "fail", f"missing skills: {missing}")
-    rules = cursor / "rules" / "autoworkspace.mdc"
+    rules = cursor / "rules" / "machineroom.mdc"
     agents = list((cursor / "agents").glob("*.md")) if (cursor / "agents").is_dir() else []
     hooks = cursor / "hooks.json"
     hook_scripts = list((cursor / "hooks").glob("*.py")) if (cursor / "hooks").is_dir() else []
     if not rules.is_file() and not rules.is_symlink():
-        return Check("cursor-static-install", "A", "fail", "rules/autoworkspace.mdc missing")
+        return Check("cursor-static-install", "A", "fail", "rules/machineroom.mdc missing")
     if not agents:
         return Check("cursor-static-install", "A", "fail", "no agents discovered")
     if not hooks.is_file() and not hooks.is_symlink():
@@ -103,9 +103,9 @@ def static_install_check(target: Path, expected_skills: set[str]) -> Check:  # n
     if not hook_scripts:
         return Check("cursor-static-install", "A", "fail", "hook scripts missing")
     agent_names = {path.name for path in agents}
-    if "aw-verifier.md" not in agent_names:
-        return Check("cursor-static-install", "A", "fail", "aw-verifier.md missing")
-    detail = f"skills={len(found)} agents={sorted(agent_names)} hooks={len(hook_scripts)} rules=autoworkspace.mdc"
+    if "mr-verifier.md" not in agent_names:
+        return Check("cursor-static-install", "A", "fail", "mr-verifier.md missing")
+    detail = f"skills={len(found)} agents={sorted(agent_names)} hooks={len(hook_scripts)} rules=machineroom.mdc"
     return Check("cursor-static-install", "A", "pass", detail)
 
 
@@ -118,13 +118,13 @@ def cursor_discovery_check(target: Path, expected_skills: set[str]) -> Check:
     if static.outcome != "pass":
         return Check("cursor-native-discovery", "B", "fail", f"static precheck failed: {static.detail}")
     root = target.resolve()
-    marker = root / ".autoworkspace-cursor-session-marker"
+    marker = root / ".machineroom-cursor-session-marker"
     marker.unlink(missing_ok=True)
     hooks_json = root / ".cursor" / "hooks.json"
     if not hooks_json.exists():
         return Check("cursor-native-discovery", "B", "fail", "hooks.json missing")
     original_hooks = hooks_json.read_text(encoding="utf-8")
-    probe = root / ".autoworkspace-session-probe.py"
+    probe = root / ".machineroom-session-probe.py"
     original_session = root / ".cursor" / "hooks" / "session_start.py"
     probe.write_text(
         "#!/usr/bin/env python3\n"
@@ -189,11 +189,11 @@ def _policy_probe_source(decisions: Path) -> str:
         f"DECISIONS = Path({str(decisions)!r})\n"
         "payload = json.load(sys.stdin)\n"
         "cmd = str(payload.get('command') or '')\n"
-        "if 'AW_POLICY_DENY' in cmd:\n"
+        "if 'MR_POLICY_DENY' in cmd:\n"
         "    permission = 'deny'\n"
-        "elif 'AW_POLICY_ASK' in cmd:\n"
+        "elif 'MR_POLICY_ASK' in cmd:\n"
         "    permission = 'ask'\n"
-        "elif 'AW_POLICY_ALLOW' in cmd:\n"
+        "elif 'MR_POLICY_ALLOW' in cmd:\n"
         "    permission = 'allow'\n"
         "else:\n"
         "    permission = 'allow'\n"
@@ -237,9 +237,9 @@ def _restore_policy_hooks(hooks_json: Path, original_hooks: str, probe: Path) ->
 def _run_policy_agent(binary: str, root: Path) -> subprocess.CompletedProcess[str]:
     prompt = (
         "You MUST use the Shell tool exactly three times in this workspace. Do not skip any.\n"
-        "1) Run exactly: echo AW_POLICY_ALLOW > .autoworkspace-policy-allow.txt\n"
-        "2) Run exactly: echo AW_POLICY_DENY > .autoworkspace-policy-deny.txt\n"
-        "3) Run exactly: echo AW_POLICY_ASK > .autoworkspace-policy-ask.txt\n"
+        "1) Run exactly: echo MR_POLICY_ALLOW > .machineroom-policy-allow.txt\n"
+        "2) Run exactly: echo MR_POLICY_DENY > .machineroom-policy-deny.txt\n"
+        "3) Run exactly: echo MR_POLICY_ASK > .machineroom-policy-ask.txt\n"
         "After attempting all three, reply with exactly: POLICY_DONE\n"
     )
     argv = [
@@ -289,7 +289,7 @@ def _assert_policy_outcomes(  # noqa: PLR0913  # outcome paths + agent_exit for 
         permission = str(row.get("permission") or "")
         command = str(row.get("command") or "")
         for token in ("ALLOW", "DENY", "ASK"):
-            if f"AW_POLICY_{token}" in command:
+            if f"MR_POLICY_{token}" in command:
                 seen[token.lower()] = permission
     expected = {"allow": "allow", "deny": "deny", "ask": "ask"}
     if seen != expected:
@@ -343,7 +343,7 @@ def policy_check(target: Path, work_dir: Path | None = None) -> Check:
             "agent authentication required for headless policy probe",
         )
     root = target.resolve()
-    policy_root = (work_dir or (root / ".autoworkspace-cursor-policy")).resolve()
+    policy_root = (work_dir or (root / ".machineroom-cursor-policy")).resolve()
     policy_root.mkdir(parents=True, exist_ok=True)
     hooks_json = root / ".cursor" / "hooks.json"
     hooks_dir = root / ".cursor" / "hooks"
@@ -351,11 +351,11 @@ def policy_check(target: Path, work_dir: Path | None = None) -> Check:
         return Check("cursor-native-policy", "C", "fail", "hooks.json missing before policy probe")
     hooks_dir.mkdir(parents=True, exist_ok=True)
     original_hooks = hooks_json.read_text(encoding="utf-8")
-    probe = hooks_dir / "aw_policy_probe.py"
-    decisions = root / ".autoworkspace-policy-decisions.jsonl"
-    allow_effect = root / ".autoworkspace-policy-allow.txt"
-    deny_effect = root / ".autoworkspace-policy-deny.txt"
-    ask_effect = root / ".autoworkspace-policy-ask.txt"
+    probe = hooks_dir / "mr_policy_probe.py"
+    decisions = root / ".machineroom-policy-decisions.jsonl"
+    allow_effect = root / ".machineroom-policy-allow.txt"
+    deny_effect = root / ".machineroom-policy-deny.txt"
+    ask_effect = root / ".machineroom-policy-ask.txt"
     for path in (decisions, allow_effect, deny_effect, ask_effect):
         path.unlink(missing_ok=True)
     _install_policy_probe(root, original_hooks=original_hooks, probe=probe, decisions=decisions)
@@ -396,7 +396,7 @@ def capability_checks(
         return checks
     checks.append(Check("cursor-cli-version", "B", "pass", f"{binary} → {version}"))
     checks.append(cursor_discovery_check(target, expected_skills))
-    policy_dir = work_dir or (target.resolve() / ".autoworkspace-cursor-policy")
+    policy_dir = work_dir or (target.resolve() / ".machineroom-cursor-policy")
     checks.append(policy_check(target, work_dir=policy_dir))
     if require_auth and not agent_authenticated(binary):
         checks.append(
@@ -446,11 +446,11 @@ class CursorSubagentAdapter:
         )
         role = (task.get("roles") or ["role-back"])[0]
         agent_name = {
-            "plan-specification": "aw-planner",
-            "plan-validators": "aw-verifier",
-        }.get(operation.skill, "aw-worker")
-        if operation.skill == "plan-validators" or role == "aw-verifier":
-            agent_name = "aw-verifier"
+            "plan-specification": "mr-planner",
+            "plan-validators": "mr-verifier",
+        }.get(operation.skill, "mr-worker")
+        if operation.skill == "plan-validators" or role == "mr-verifier":
+            agent_name = "mr-verifier"
         write = bool(policy.write_scope)
         prompt = (
             f"You are the {agent_name} subagent. Use skill {operation.skill}. "

@@ -62,7 +62,7 @@ El validador `check_terminology` lee este bloque y recorre `*.md`, `*.yml`, `*.y
     },
     {
       "pattern": "Soluciones-Alexendros/repo-standard(/|\\.git)",
-      "use": "Soluciones-Alexendros/autoworkspace",
+      "use": "Soluciones-Alexendros/machineroom",
       "allow_paths": [
         "docs/plans/**",
         "docs/archives/**",

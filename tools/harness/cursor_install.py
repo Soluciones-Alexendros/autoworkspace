@@ -4,7 +4,7 @@ Cursor scopes differ, so the component set is scope-aware:
 
 * Project scope (``<project>/.cursor``): hooks, rules and agents are read from the
   repository, so every component is an absolute symlink into the checkout catalog.
-* User scope (``~/.cursor``): the catalog is ``$HOME/.autoworkspace``. Every owned
+* User scope (``~/.cursor``): the catalog is ``$HOME/.machineroom``. Every owned
   path is a relative symlink into that runtime. ``hooks.json`` is rewritten in the
   runtime for user cwd semantics, then linked. The project rule is omitted.
 """
@@ -23,15 +23,17 @@ TOOLS = Path(__file__).resolve().parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
+from harness import naming  # noqa: E402
 from harness.runtime import InstallFailure, format_failure, make_relative_symlink, write_user_hooks_config  # noqa: E402
 
-MANIFEST_NAME = ".autoworkspace-full-manifest.json"
-JOURNAL_NAME = ".autoworkspace-full-journal.json"
+MANIFEST_NAME = ".machineroom-full-manifest.json"
+JOURNAL_NAME = ".machineroom-full-journal.json"
+LEGACY_MANIFEST_NAME = ".machineroom-full-manifest.json"
 SCHEMA_VERSION = 2
-RULE_RELATIVE = "rules/autoworkspace.mdc"
+RULE_RELATIVE = "rules/machineroom.mdc"
 USER_RULE_NOTE = (
     "Cursor reads project rules only from <project>/.cursor/rules and keeps user rules in "
-    "Customize -> Rules, so rules/autoworkspace.mdc is omitted at user scope. "
+    "Customize -> Rules, so rules/machineroom.mdc is omitted at user scope. "
     "Paste it into Customize -> Rules if you want the contract globally."
 )
 
@@ -332,7 +334,7 @@ def install_full(  # noqa: C901  # user/project scope + link/verify branches
                 "install_full",
                 f"user scope target must be a .cursor directory, got: {target}",
             )
-        sibling = target.parent / ".autoworkspace"
+        sibling = target.parent / naming.RUNTIME_DIRNAME
         if sibling.is_symlink() or not sibling.is_dir():
             raise InstallFailure(
                 "runtime",
@@ -438,7 +440,7 @@ def uninstall_full(  # noqa: C901  # owned/foreign/generated cleanup branches
     dry_run: bool = False,
 ) -> dict[str, Any]:
     if target.name == ".cursor":
-        sibling = target.resolve().parent / ".autoworkspace"
+        sibling = target.resolve().parent / naming.RUNTIME_DIRNAME
         if sibling.is_dir() and (target / MANIFEST_NAME).is_file():
             manifest_peek = json.loads((target / MANIFEST_NAME).read_text(encoding="utf-8"))
             if manifest_peek.get("scope") == "user":
@@ -492,7 +494,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--user",
         action="store_true",
-        help="User scope (~/.cursor): relative links from $HOME/.autoworkspace",
+        help="User scope (~/.cursor): relative links from $HOME/.machineroom",
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--uninstall", action="store_true")

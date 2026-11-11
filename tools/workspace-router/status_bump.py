@@ -1,4 +1,4 @@
-"""Declarative status bump for .autoworkspace/status.yaml — transactional."""
+"""Declarative status bump for .machineroom/status.yaml — transactional."""
 
 from __future__ import annotations
 
@@ -13,6 +13,12 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from contracts.plan import PlanDocument
 
+_TOOLS = Path(__file__).resolve().parents[1]
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+
+from state_paths import state_file as _state_file  # noqa: E402
+
 try:
     import yaml
 except ImportError as exc:  # pragma: no cover
@@ -25,7 +31,8 @@ PHASE_INDEX = {p: i for i, p in enumerate(PHASES)}
 
 
 def status_path(repo: Path) -> Path:
-    return Path(repo).resolve() / ".autoworkspace" / "status.yaml"
+    root = Path(repo).resolve()
+    return _state_file(root, "status.yaml")
 
 
 def _default_status() -> dict[str, Any]:

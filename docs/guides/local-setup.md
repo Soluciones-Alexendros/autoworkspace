@@ -9,8 +9,8 @@
 ## Este canon
 
 ```bash
-git clone https://github.com/Soluciones-Alexendros/autoworkspace.git
-cd autoworkspace
+git clone https://github.com/Soluciones-Alexendros/machineroom.git
+cd machineroom
 uv sync --project tools
 npm ci
 make validate

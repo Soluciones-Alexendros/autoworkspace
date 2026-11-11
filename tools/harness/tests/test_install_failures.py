@@ -28,19 +28,19 @@ def _minimal_source(tmp_path: Path) -> Path:
     src = tmp_path / "src"
     (src / "skills" / "fixture").mkdir(parents=True)
     (src / "skills" / "fixture" / "SKILL.md").write_text("---\nname: fixture\n---\n")
-    for relative in (".cursor/agents", ".cursor/hooks", ".cursor/rules", "extensions/autoworkspace"):
+    for relative in (".cursor/agents", ".cursor/hooks", ".cursor/rules", "extensions/machineroom"):
         (src / relative).mkdir(parents=True)
     (src / ".cursor" / "hooks.json").write_text(
         '{"version":1,"hooks":{"sessionStart":[{"command":"python3 .cursor/hooks/session_start.py"}]}}\n'
     )
-    (src / "extensions" / "autoworkspace" / "index.ts").write_text("export {}\n")
+    (src / "extensions" / "machineroom" / "index.ts").write_text("export {}\n")
     # deliberately no package.json
     return src
 
 
 def test_sync_missing_package_json_names_component(tmp_path: Path) -> None:
     src = _minimal_source(tmp_path)
-    dest = tmp_path / "home" / ".autoworkspace"
+    dest = tmp_path / "home" / ".machineroom"
     dest.parent.mkdir()
     with pytest.raises(InstallFailure) as caught:
         sync_payload(src, dest, origin="sync")
@@ -65,7 +65,7 @@ def test_require_runtime_missing_names_component(tmp_path: Path) -> None:
 
 
 def test_write_user_hooks_invalid_json_names_function(tmp_path: Path) -> None:
-    runtime = tmp_path / ".autoworkspace"
+    runtime = tmp_path / ".machineroom"
     (runtime / ".cursor").mkdir(parents=True)
     (runtime / ".cursor" / "hooks.json").write_text("{not-json", encoding="utf-8")
     with pytest.raises(InstallFailure) as caught:
@@ -93,7 +93,7 @@ def test_install_full_cli_json_includes_failures(tmp_path: Path, monkeypatch: py
 def test_install_full_post_link_validation_names_component(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    sync_payload(ROOT, home / ".autoworkspace", origin="sync")
+    sync_payload(ROOT, home / ".machineroom", origin="sync")
     target = home / ".cursor"
 
     def absolute_instead(source: Path, destination: Path) -> None:
@@ -113,7 +113,7 @@ def test_install_full_post_link_validation_names_component(tmp_path: Path, monke
 def test_install_full_conflict_json_lists_failures(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    sync_payload(ROOT, home / ".autoworkspace", origin="sync")
+    sync_payload(ROOT, home / ".machineroom", origin="sync")
     target = home / ".cursor"
     target.mkdir()
     (target / "hooks.json").write_text('{"version": 1, "hooks": {}}', encoding="utf-8")
@@ -147,7 +147,7 @@ def test_link_skills_user_without_runtime_json_failures(tmp_path: Path) -> None:
 def test_pi_extension_foreign_conflict_names_component(tmp_path: Path) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    sync_payload(ROOT, home / ".autoworkspace", origin="sync")
+    sync_payload(ROOT, home / ".machineroom", origin="sync")
     # Install skills first
     proc = subprocess.run(
         ["bash", str(ROOT / "scripts" / "install-pi.sh"), "--user", "--yes", "--json"],
@@ -158,7 +158,7 @@ def test_pi_extension_foreign_conflict_names_component(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, proc.stderr
-    ext = home / ".pi" / "agent" / "extensions" / "autoworkspace.ts"
+    ext = home / ".pi" / "agent" / "extensions" / "machineroom.ts"
     if ext.is_symlink() or ext.exists():
         ext.unlink()
     ext.write_text("// foreign\n", encoding="utf-8")
@@ -173,5 +173,5 @@ def test_pi_extension_foreign_conflict_names_component(tmp_path: Path) -> None:
     )
     assert proc2.returncode != 0
     # Skills JSON may print ok on stdout before extension fails — prefer stderr FAIL line
-    assert "extensions/autoworkspace.ts" in proc2.stderr
+    assert "extensions/machineroom.ts" in proc2.stderr
     assert "FAIL" in proc2.stderr

@@ -24,7 +24,7 @@ FIXTURE = ROOT / "scripts" / "tests" / "fixtures" / "plans" / "minimal.md"
 
 
 def _legacy(root: Path) -> None:
-    (root / ".autoworkspace").mkdir()
+    (root / ".machineroom").mkdir()
     status_path(root).write_text(
         yaml.safe_dump(
             {

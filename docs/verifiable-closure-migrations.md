@@ -1,6 +1,6 @@
 # Migrations — verifiable closure
 
-Increment: `autoworkspace-verifiable-closure-v2` (see `tasks/plan-verifiable-closure.md`).
+Increment: `machineroom-verifiable-closure-v2` (see `tasks/plan-verifiable-closure.md`).
 
 ## CLI / API
 
@@ -25,7 +25,7 @@ Increment: `autoworkspace-verifiable-closure-v2` (see `tasks/plan-verifiable-clo
 
 - `shared_dependencies` (e.g. `tools/execution`) must resolve under skill root, `vendor/execution`, or workspace `../../tools/…`.
 - Package for true standalone: `bash scripts/package-standalone-skill.sh --skill local-maintenance`.
-- Hard `network: true` without `AUTOWORKSPACE_ALLOW_NETWORK=1` → preflight **blocked** (not optional success).
+- Hard `network: true` without `MACHINEROOM_ALLOW_NETWORK=1` → preflight **blocked** (not optional success).
 - `clean_routine` effective plan includes `keep_versions`, `journal_time`, `journal_size`, `pkg_mgr`; handlers apply approved params before acting (not stale globals).
 
 ## Historical GO

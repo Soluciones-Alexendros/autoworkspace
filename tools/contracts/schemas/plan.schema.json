@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://autoworkspace.local/schemas/plan.schema.json",
-  "title": "Autoworkspace structured plan",
+  "$id": "https://machineroom.local/schemas/plan.schema.json",
+  "title": "Machineroom structured plan",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "plan_id", "base_revision", "tasks"],

@@ -8,7 +8,7 @@
     {
       "id": "D01",
       "type": "architecture",
-      "title": "Capas de autoworkspace",
+      "title": "Capas de machineroom",
       "source": "docs/architecture/diagrams/sources/D01.architecture.json",
       "adr": "ADR-0016"
     },

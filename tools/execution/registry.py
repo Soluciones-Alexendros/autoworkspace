@@ -180,7 +180,7 @@ def load_execution_contract_for_skill(skill: str) -> dict[str, Any]:
         raise KeyError(f"no registry entry for skill: {skill}")
     raw = dict(tool.raw)
     raw["schema_version"] = 1
-    raw["dialect"] = "autoworkspace.execution"
+    raw["dialect"] = "machineroom.execution"
     raw["skill"] = tool.skill
     return raw
 

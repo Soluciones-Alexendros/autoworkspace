@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://autoworkspace.local/schemas/verified-execution.schema.json",
-  "title": "Autoworkspace verified execution evidence",
+  "$id": "https://machineroom.local/schemas/verified-execution.schema.json",
+  "title": "Machineroom verified execution evidence",
   "type": "object",
   "additionalProperties": false,
   "required": [

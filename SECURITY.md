@@ -8,7 +8,7 @@
 
 Report a vulnerability in a skill, a bundled script, the validators, or the fleet canon of this repository through GitHub private vulnerability reporting:
 
-https://github.com/Soluciones-Alexendros/autoworkspace/security/advisories/new
+https://github.com/Soluciones-Alexendros/machineroom/security/advisories/new
 
 Alternatively write to **operaciones@alexendros.dev** with description, impact, reproduction, and version (`package.json` or skill `metadata.version`).
 

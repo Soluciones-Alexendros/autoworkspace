@@ -46,7 +46,8 @@ from pathlib import Path
 vendor = Path("local-maintenance/vendor").resolve()
 sys.path.insert(0, str(vendor))
 # Ensure repo tools not accidentally present
-sys.path = [p for p in sys.path if "autoworkspace/tools" not in p.replace("\\", "/")]
+checkout = os.environ.get("CHECKOUT_NAME", "machineroom")
+sys.path = [p for p in sys.path if f"{checkout}/tools" not in p.replace("\\", "/")]
 from execution.ops import run_registered
 from execution.approval import DenyProvider
 import execution.ops as ops

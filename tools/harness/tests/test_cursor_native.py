@@ -42,7 +42,7 @@ def test_static_install_after_full_install(tmp_path: Path) -> None:
     expected = {path.name for path in (ROOT / "skills").iterdir() if path.is_dir() and (path / "SKILL.md").is_file()}
     check = static_install_check(target, expected)
     assert check.outcome == "pass", check
-    assert "aw-verifier.md" in check.detail
+    assert "mr-verifier.md" in check.detail
 
 
 def test_agent_binary_resolvable_when_on_path() -> None:

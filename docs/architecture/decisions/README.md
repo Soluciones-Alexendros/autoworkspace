@@ -4,7 +4,7 @@
 
 - **Objetivos:** Índice del registro de ADRs del canon (y, en un producto, de las decisiones de _ese_ sistema).
 - **Estructura:** Esta meta-sección → estados del ciclo → tabla ID/título/estado/prioridad → cómo añadir una.
-- **Contenido a integrar según contexto:** En producto, vacía la tabla y lista solo ADRs del producto. Enlaza los ADRs del canon que adoptes (`canon autoworkspace ≥x.y`). No copies el contenido de ADR-0001…0016: son del meta-estándar.
+- **Contenido a integrar según contexto:** En producto, vacía la tabla y lista solo ADRs del producto. Enlaza los ADRs del canon que adoptes (`canon machineroom ≥8.0.0`). No copies el contenido de ADR-0001…0016: son del meta-estándar.
 
 Registro de decisiones del canon. Estados: **Proposed** → **Accepted** → **Superseded** / **Deprecated**.
 
@@ -31,6 +31,7 @@ Prioridad: **P0** (hacer pronto) · **P1** (después de P0). Un ADR puede estar 
 | ADR-0015                                                       | Flujo plan/* en dos fases                       | pendiente (P10)                | P0        |
 | [ADR-0016](./ADR-0016-autoworkspace-host-del-canon.md)         | autoworkspace es el host del canon              | Accepted                       | P0        |
 | [ADR-0017](./ADR-0017-centralizacion-execution-min-priv.md)    | Centralización de execution y mínimo privilegio | Accepted                       | P1        |
+| [ADR-0018](./ADR-0018-rename-a-machineroom.md)                 | Rename a machineroom y compatibilidad legacy    | Accepted                       | P1        |
 
 ## Cómo añadir una
 

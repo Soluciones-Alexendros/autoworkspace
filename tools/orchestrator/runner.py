@@ -13,6 +13,7 @@ from typing import Any
 from execution.evidence import work_digest
 from execution.ops import OpResult, verify_and_store
 from execution.registry import get_operation
+from state_paths import state_file
 
 from orchestrator.model import RunContext
 from orchestrator.ports import AdapterResult, SubagentAdapter
@@ -48,7 +49,7 @@ class WorktreeAdapter:
         workspace = self._require_workspace(context)
         input_digest = work_digest(self.repo)
         write_scope = list(task.get("write_scope") or [])
-        run_dir = self.repo / ".autoworkspace" / "runs" / context.run_id
+        run_dir = state_file(self.repo, "runs", context.run_id)
         run_dir.mkdir(parents=True, exist_ok=True)
 
         if not write_scope:

@@ -19,7 +19,9 @@ try:
 except ImportError as exc:  # pragma: no cover
     raise SystemExit("jsonschema required: uv sync --frozen") from exc
 
-DIALECT = "autoworkspace.execution"
+DIALECT = "machineroom.execution"
+# Pre-8.0 plans and fixtures keep the old dialect; accepted read-only (D3/H2).
+LEGACY_DIALECTS = ("autoworkspace.execution",)
 MAX_SCHEMA_BYTES = 200_000
 SHA256_HEX_LEN = 64
 SCHEMA_VERSION = 1
@@ -144,8 +146,9 @@ def _check_critical_fields(data: dict[str, Any], errors: list[str]) -> None:
         errors.append(f"unknown fields (reject critical unknown): {unknown_critical}")
     if data.get("schema_version") != SCHEMA_VERSION:
         errors.append(f"unsupported schema_version: {data.get('schema_version')}")
-    if data.get("dialect", DIALECT) != DIALECT:
-        errors.append(f"unsupported dialect: {data.get('dialect')}")
+    dialect = data.get("dialect", DIALECT)
+    if dialect != DIALECT and dialect not in LEGACY_DIALECTS:
+        errors.append(f"unsupported dialect: {dialect}")
 
 
 def _check_identity(data: dict[str, Any], skill_dir: str, errors: list[str]) -> None:

@@ -59,21 +59,21 @@ class TestStatusBump(unittest.TestCase):
     def test_refuse_without_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / ".autoworkspace").mkdir()
+            (root / ".machineroom").mkdir()
             with self.assertRaises(ValueError):
                 advance_status(root, phase="DEFINE", skill="plan-specification")
 
     def test_refuse_evidence_ok_without_run_id(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / ".autoworkspace").mkdir()
+            (root / ".machineroom").mkdir()
             with self.assertRaises(ValueError):
                 advance_status(root, phase="DEFINE", skill="plan-specification", evidence_ok=True)
 
     def test_define_to_integrate_invalid(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / ".autoworkspace").mkdir()
+            (root / ".machineroom").mkdir()
             rid = _ok_run(root)
             advance_status(
                 root,
@@ -120,7 +120,7 @@ class TestStatusBump(unittest.TestCase):
     def test_advance_state_revision_without_product_semver(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / ".autoworkspace").mkdir()
+            (root / ".machineroom").mkdir()
             rid = _ok_run(root)
             s1 = advance_status(
                 root,
@@ -151,7 +151,7 @@ class TestStatusBump(unittest.TestCase):
     def test_awaiting_agent_without_complete(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / ".autoworkspace").mkdir()
+            (root / ".machineroom").mkdir()
             data = advance_status(root, phase="IMPLEMENT", evidence_ok=False, allow_awaiting=True)
             self.assertTrue(data.get("awaiting_agent"))
             self.assertEqual(data.get("phase", "DEFINE"), "DEFINE")  # not completed
@@ -159,7 +159,7 @@ class TestStatusBump(unittest.TestCase):
     def test_validate_snapshot_cannot_define(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / ".autoworkspace").mkdir()
+            (root / ".machineroom").mkdir()
             rid = _ok_run(root, op="validate_snapshot", phase="DEFINE")
             with self.assertRaises(ValueError):
                 advance_status(

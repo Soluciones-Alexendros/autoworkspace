@@ -13,7 +13,10 @@
   ],
   "properties": {
     "schema_version": { "type": "integer", "const": 1 },
-    "dialect": { "type": "string", "const": "autoworkspace.execution" },
+    "dialect": {
+      "type": "string",
+      "enum": ["machineroom.execution", "autoworkspace.execution"]
+    },
     "skill": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
     "skill_version": {
       "type": "string",
