@@ -6,7 +6,7 @@ if ! command -v pi >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
   echo "not_run: Pi or npm binary not found" >&2
   exit 3
 fi
-TMP=$(mktemp -d /tmp/autoworkspace-pi-native-XXXXXX)
+TMP=$(mktemp -d /tmp/machineroom-pi-native-XXXXXX)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/home" "$TMP/project" "$TMP/home/.pi/agent/skills/foreign-skill"
 cat >"$TMP/home/.pi/agent/skills/foreign-skill/SKILL.md" <<'EOF'
@@ -49,9 +49,9 @@ root = Path(sys.argv[2])
 manifest = json.loads((root / "package.json").read_text())
 commands = rpc_commands(Path(sys.argv[1]))
 if manifest.get("pi", {}).get("extensions"):
-    status = [c for c in commands if c.get("name") == "aw-status" and c.get("source") == "extension"]
+    status = [c for c in commands if c.get("name") == "mr-status" and c.get("source") == "extension"]
     assert len(status) == 1, status
-    print("Pi packaged extension loaded: aw-status")
+    print("Pi packaged extension loaded: mr-status")
 PY
 
 pi remove "$ROOT"
@@ -67,14 +67,14 @@ assert "skill:plan-continue" not in names, names
 print("Pi uninstall preserved foreign skill and removed package skills")
 PY
 
-if [[ "${AW_PI_GIT_SMOKE:-0}" == "1" ]]; then
-  FROM_TAG="${AW_PI_GIT_FROM_TAG:-v7.0.3}"
-  TO_TAG="${AW_PI_GIT_TO_TAG:?set AW_PI_GIT_TO_TAG to the newly published release}"
+if [[ "${MR_PI_GIT_SMOKE:-0}" == "1" ]]; then
+  FROM_TAG="${MR_PI_GIT_FROM_TAG:-v7.0.3}"
+  TO_TAG="${MR_PI_GIT_TO_TAG:?set MR_PI_GIT_TO_TAG to the newly published release}"
   export HOME="$TMP/git-home"
   mkdir -p "$HOME" "$TMP/git-project"
-  pi install "git:github.com/Soluciones-Alexendros/autoworkspace@${FROM_TAG}"
+  pi install "git:github.com/Soluciones-Alexendros/machineroom@${FROM_TAG}"
   uv run --project "$ROOT/tools" --frozen python "$ROOT/tools/harness/pi.py" --cwd "$TMP/git-project" --catalog "$ROOT" --json >"$TMP/from-tag.json"
-  pi install "git:github.com/Soluciones-Alexendros/autoworkspace@${TO_TAG}"
+  pi install "git:github.com/Soluciones-Alexendros/machineroom@${TO_TAG}"
   uv run --project "$ROOT/tools" --frozen python "$ROOT/tools/harness/pi.py" --cwd "$TMP/git-project" --catalog "$ROOT" --json >"$TMP/to-tag.json"
   python3 - "$TMP/from-tag.json" "$TMP/to-tag.json" <<'PY'
 import json, sys
@@ -83,7 +83,7 @@ for path in sys.argv[1:]:
     assert report["outcome"] == "pass", report
 print("Pi Git from/to tags discovered the full package catalog")
 PY
-  pi remove "git:github.com/Soluciones-Alexendros/autoworkspace@${TO_TAG}"
+  pi remove "git:github.com/Soluciones-Alexendros/machineroom@${TO_TAG}"
 fi
 
 echo "Pi native lifecycle OK"

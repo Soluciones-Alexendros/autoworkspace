@@ -13,11 +13,11 @@ USER_INSTALL=0
 INSTALLER="scripts/lib/link-skills.sh"
 DEFAULT_TARGET=""
 USER_TARGET=""
-MANIFEST_NAME=".autoworkspace-install-manifest.json"
+MANIFEST_NAME=".machineroom-install-manifest.json"
 YES=0
 JSON_OUT=0
 HARNESS="cursor"
-RUNTIME_HOME="${HOME}/.autoworkspace"
+RUNTIME_HOME="${HOME}/.machineroom"
 # Single source of truth for the release version (avoids drift with package.json).
 VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$ROOT/package.json")"
 INSTALLED=0
@@ -31,7 +31,7 @@ Usage: bash $INSTALLER [--target DIR] [--user] [--dry-run] [--uninstall] [--yes]
   --target DIR   Destination skills directory. '.' is this script's checkout (\$ROOT), not the cwd.
                  A path ending in .cursor/skills, .pi/skills, or .pi/agent/skills is used as-is.
   --user         Destination is the harness user directory. Overrides --target.
-                 Reads the catalog from \$HOME/.autoworkspace (relative symlinks).
+                 Reads the catalog from \$HOME/.machineroom (relative symlinks).
   --dry-run      Preflight only — no mkdir, no links, no manifest.
   --uninstall    Remove only resources listed in the manifest under the destination.
   --yes          Non-interactive; does not overwrite foreign/real-dir conflicts.
@@ -438,7 +438,7 @@ if [ "$DRY_RUN" = 1 ]; then
   finish_ok
 fi
 
-JOURNAL="$TARGET/.autoworkspace-install-journal.json"
+JOURNAL="$TARGET/.machineroom-install-journal.json"
 rollback() {
   echo "ROLLBACK: restoring prior link state from journal" >&2
   if ! python3 - "$JOURNAL" <<'PY'
@@ -510,7 +510,7 @@ def link_text(source: Path, dest: Path) -> str:
     return str(source)
 
 
-doc = {"schema_version": 1, "run_id": os.environ.get("AW_INSTALL_RUN", ""), "entries": []}
+doc = {"schema_version": 1, "run_id": os.environ.get("MR_INSTALL_RUN", ""), "entries": []}
 persist(doc)
 changed = skipped = 0
 

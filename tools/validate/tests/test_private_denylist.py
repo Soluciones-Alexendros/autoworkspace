@@ -16,7 +16,7 @@ import pytest
 CLI = Path(__file__).resolve().parents[1] / "private_denylist.py"
 SYNTH_PATTERN = r"CI_BACKLOG_01_SYNTH_TOKEN_[A-Z]+"
 SYNTH_MATCH_VALUE = "CI_BACKLOG_01_SYNTH_TOKEN_ALPHA"
-ENV_KEY = "AUTOWORKSPACE_PRIVATE_PATTERNS"
+ENV_KEY = "MACHINEROOM_PRIVATE_PATTERNS"
 
 
 def _run(

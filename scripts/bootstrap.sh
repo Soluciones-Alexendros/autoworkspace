@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Download, authenticate, install and verify an immutable autoworkspace release.
+# Download, authenticate, install and verify an immutable machineroom release.
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 VERSION=""
@@ -7,7 +7,7 @@ HARNESS=""
 TARGET_INPUT=""
 DRY_RUN=false
 JSON_OUT=false
-REPOSITORY="${AW_BOOTSTRAP_REPOSITORY:-Soluciones-Alexendros/autoworkspace}"
+REPOSITORY="${MR_BOOTSTRAP_REPOSITORY:-${AW_BOOTSTRAP_REPOSITORY:-Soluciones-Alexendros/machineroom}}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -49,7 +49,7 @@ if [[ "$DRY_RUN" == true ]]; then
   if [[ "$JSON_OUT" == true ]]; then
     printf '{"status":"simulated","dry_run":true,"version":"%s","harness":"%s","target":"%s"}\n' "$VERSION" "$HARNESS" "$TARGET"
   else
-    echo "dry-run: would download, verify and install autoworkspace $VERSION into $TARGET for $HARNESS"
+    echo "dry-run: would download, verify and install machineroom $VERSION into $TARGET for $HARNESS"
   fi
   exit 0
 fi
@@ -65,7 +65,7 @@ if [[ "$HARNESS" == "pi" ]] && ! command -v pi >/dev/null 2>&1; then
   exit 3
 fi
 
-WORK=$(mktemp -d /tmp/autoworkspace-bootstrap-XXXXXX)
+WORK=$(mktemp -d /tmp/machineroom-bootstrap-XXXXXX)
 chmod 700 "$WORK"
 INSTALLED=""
 on_exit() {
@@ -87,7 +87,7 @@ on_exit() {
     if [[ "$JSON_OUT" == true ]]; then
       printf '{"status":"installed","doctor":"pass","version":"%s","harness":"%s","target":"%s"}\n' "$VERSION" "$HARNESS" "$TARGET"
     else
-      echo "Installed and verified autoworkspace $VERSION ($HARNESS) at $TARGET"
+      echo "Installed and verified machineroom $VERSION ($HARNESS) at $TARGET"
     fi
   fi
   rm -rf "$WORK"
@@ -95,9 +95,9 @@ on_exit() {
 }
 trap 'on_exit $?' EXIT
 
-ARCHIVE="$WORK/autoworkspace-${VERSION}.tar.gz"
+ARCHIVE="$WORK/machineroom-${VERSION}.tar.gz"
 gh release download "v${VERSION}" --repo "$REPOSITORY" \
-  --pattern "autoworkspace-${VERSION}.tar.gz" --pattern "SHA256SUMS" --dir "$WORK" \
+  --pattern "machineroom-${VERSION}.tar.gz" --pattern "SHA256SUMS" --dir "$WORK" \
   >"$WORK/download.log" 2>&1
 [[ -f "$ARCHIVE" && -f "$WORK/SHA256SUMS" ]]
 (
@@ -106,7 +106,7 @@ gh release download "v${VERSION}" --repo "$REPOSITORY" \
 ) >"$WORK/checksum.log" 2>&1
 gh attestation verify "$ARCHIVE" -R "$REPOSITORY" >"$WORK/attestation.log" 2>&1
 PYTHONPATH="$ROOT/tools" python3 -m harness.bootstrap "$ARCHIVE" "$WORK/extracted" >"$WORK/extract.log" 2>&1
-PACKAGE="$WORK/extracted/autoworkspace-${VERSION}"
+PACKAGE="$WORK/extracted/machineroom-${VERSION}"
 [[ -d "$PACKAGE" && ! -L "$PACKAGE" ]]
 mkdir -p "$TARGET"
 

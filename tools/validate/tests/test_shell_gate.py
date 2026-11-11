@@ -127,7 +127,7 @@ def test_deny_families_point_at_run_registered(command: str, skill_hint: str) ->
     [
         "rm -rf /tmp/ai-cursor",
         "rm -rf /tmp/test-cursor /tmp/test-pi",
-        "rm -rf /tmp/autoworkspace-install-cursor-1.log",
+        "rm -rf /tmp/machineroom-install-cursor-1.log",
     ],
 )
 def test_rm_rf_allowed_tmp_prefixes_is_allow(command: str) -> None:

@@ -1,9 +1,17 @@
-"""Load and validate .autoworkspace/project.yaml."""
+"""Load and validate .machineroom/project.yaml (legacy .machineroom fallback)."""
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
+
+_TOOLS = Path(__file__).resolve().parents[1]
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+
+from state_paths import state_dir as _state_dir  # noqa: E402
+from state_paths import state_file as _state_file  # noqa: E402
 
 try:
     import yaml
@@ -19,7 +27,7 @@ class ProjectConfigError(ValueError):
 
 
 def find_project_file(repo: Path) -> Path | None:
-    candidate = repo / ".autoworkspace" / "project.yaml"
+    candidate = _state_file(repo, "project.yaml")
     return candidate if candidate.is_file() else None
 
 
@@ -27,7 +35,7 @@ def load_project(repo: Path | str) -> dict[str, Any]:
     root = Path(repo).resolve()
     path = find_project_file(root)
     if path is None:
-        raise ProjectConfigError(f"missing {root / '.autoworkspace' / 'project.yaml'}")
+        raise ProjectConfigError(f"missing {_state_dir(root) / 'project.yaml'}")
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
         raise ProjectConfigError("project.yaml must be a mapping")

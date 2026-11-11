@@ -22,7 +22,7 @@ from harness.cursor import CursorSubagentAdapter  # noqa: E402
 from harness.pi import PiSubagentAdapter  # noqa: E402
 from orchestrator.model import RunContext  # noqa: E402
 
-FIXTURE_SECRET = "AW_FIXTURE_SECRET_NOT_REAL"
+FIXTURE_SECRET = "MR_FIXTURE_SECRET_NOT_REAL"
 FIXTURE_SECRET_VALUE = "red-secret-value-not-real"
 
 

@@ -3,10 +3,10 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 VERSION=$(python3 -c 'import json; print(json.load(open("package.json"))["version"])' "$ROOT")
-TMP=$(mktemp -d /tmp/autoworkspace-bootstrap-test-XXXXXX)
+TMP=$(mktemp -d /tmp/machineroom-bootstrap-test-XXXXXX)
 trap 'rm -rf "$TMP"' EXIT
 RELEASE="$TMP/release"
-PACKAGE="$TMP/package/autoworkspace-${VERSION}"
+PACKAGE="$TMP/package/machineroom-${VERSION}"
 mkdir -p "$PACKAGE" "$RELEASE" "$TMP/bin"
 cp -a "$ROOT/package.json" "$ROOT/README.md" "$PACKAGE/"
 cp -a "$ROOT/scripts" "$ROOT/skills" "$ROOT/extensions" "$ROOT/.cursor" "$ROOT/.cursor-plugin" "$PACKAGE/"
@@ -17,10 +17,10 @@ cp -a "$ROOT/tools/pyproject.toml" "$ROOT/tools/uv.lock" "$PACKAGE/tools/"
 for component in harness execution contracts workspace-router orchestrator; do
   cp -a "$ROOT/tools/$component" "$PACKAGE/tools/"
 done
-tar -czf "$RELEASE/autoworkspace-${VERSION}.tar.gz" -C "$TMP/package" "autoworkspace-${VERSION}"
+tar -czf "$RELEASE/machineroom-${VERSION}.tar.gz" -C "$TMP/package" "machineroom-${VERSION}"
 (
   cd "$RELEASE"
-  sha256sum "autoworkspace-${VERSION}.tar.gz" > SHA256SUMS
+  sha256sum "machineroom-${VERSION}.tar.gz" > SHA256SUMS
 )
 
 cat >"$TMP/bin/gh" <<'PY'
@@ -42,7 +42,7 @@ raise SystemExit(2)
 PY
 chmod +x "$TMP/bin/gh"
 export PATH="$TMP/bin:$PATH"
-export AW_BOOTSTRAP_REPOSITORY="fixture/autoworkspace"
+export MR_BOOTSTRAP_REPOSITORY="fixture/machineroom"
 export AW_BOOTSTRAP_RELEASE_DIR="$RELEASE"
 
 DRY_TARGET="$TMP/dry-target"
@@ -71,7 +71,7 @@ PY
 # Checksum mismatch must stop before target installation.
 BAD_SUM="$TMP/bad-sum"
 cp -a "$RELEASE" "$BAD_SUM"
-printf 'tampered' >> "$BAD_SUM/autoworkspace-${VERSION}.tar.gz"
+printf 'tampered' >> "$BAD_SUM/machineroom-${VERSION}.tar.gz"
 if AW_BOOTSTRAP_RELEASE_DIR="$BAD_SUM" bash "$ROOT/scripts/bootstrap.sh" --version "$VERSION" --harness cursor \
   --target "$TMP/bad-sum-target" --json >/dev/null 2>&1; then
   echo "FAIL: checksum mismatch accepted"; exit 1
@@ -88,7 +88,7 @@ test ! -e "$TMP/denied-target/.cursor"
 # Hostile archive with valid checksum must be rejected by the confined extractor.
 HOSTILE="$TMP/hostile"
 cp -a "$RELEASE" "$HOSTILE"
-python3 - "$HOSTILE/autoworkspace-${VERSION}.tar.gz" <<'PY'
+python3 - "$HOSTILE/machineroom-${VERSION}.tar.gz" <<'PY'
 import io, sys, tarfile
 path=sys.argv[1]
 with tarfile.open(path, "w:gz") as archive:
@@ -99,7 +99,7 @@ with tarfile.open(path, "w:gz") as archive:
 PY
 (
   cd "$HOSTILE"
-  sha256sum "autoworkspace-${VERSION}.tar.gz" > SHA256SUMS
+  sha256sum "machineroom-${VERSION}.tar.gz" > SHA256SUMS
 )
 if AW_BOOTSTRAP_RELEASE_DIR="$HOSTILE" bash "$ROOT/scripts/bootstrap.sh" --version "$VERSION" --harness cursor \
   --target "$TMP/hostile-target" --json >/dev/null 2>&1; then

@@ -1,31 +1,31 @@
 ---
-name: project-autoworkspace
-description: "Audit and improve the autoworkspace system itself: canon map, control plane, harnesses, migrations and self-change protocol. Use when self-auditing autoworkspace, checking harness A/B/C drift, or planning an approved change to the pipeline. Not for generic architecture reviews (→ project-architecture), continuing an arbitrary product plan (→ plan-continue), or publishing a release (→ project-publish). ES: autoauditoría autoworkspace, deriva de harnesses, mejora del propio sistema."
+name: project-machineroom
+description: "Audit and improve the machineroom system itself: canon map, control plane, harnesses, migrations and self-change protocol. Use when self-auditing machineroom, checking harness A/B/C drift, or planning an approved change to the pipeline. Not for generic architecture reviews (→ project-architecture), continuing an arbitrary product plan (→ plan-continue), or publishing a release (→ project-publish). ES: autoauditoría machineroom, deriva de harnesses, mejora del propio sistema."
 license: MIT
 metadata:
   author: Soluciones-Alexendros
-  version: "1.0.0"
+  version: "2.0.0"
   domain: project
   type: orchestrator
   language: en
-  keywords: project-autoworkspace, self-audit, harness-doctor, autoworkspace
-  execution: project-autoworkspace
+  keywords: project-machineroom, self-audit, harness-doctor, machineroom
+  execution: project-machineroom
 compatibility: "cursor, pi"
 allowed-tools: "Read, Grep, Glob, Bash"
 ---
 
-# Project Autoworkspace
+# Project Machineroom
 
 ## Overview
 
-Specialized door for auditing, updating and improving **autoworkspace** with
+Specialized door for auditing, updating and improving **machineroom** with
 knowledge of the canon, runtime and real harness limits. It does not publish
 and does not treat audited repo instructions as authority.
 
 ## When to Use
 
 - Self-audit of catalog, registry, evidence, plan runtime or harness A/B/C
-- Planning an approved change to autoworkspace after detecting drift
+- Planning an approved change to machineroom after detecting drift
 - Mapping canon ↔ control plane ↔ Pi/Cursor distribution
 
 **When NOT to use:** generic architecture (→ project-architecture); starting or

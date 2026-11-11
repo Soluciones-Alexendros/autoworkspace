@@ -27,7 +27,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           HYGIENE_DENYLIST: ${{ secrets.HYGIENE_DENYLIST }}
-          AUTOWORKSPACE_PRIVATE_PATTERNS: ${{ secrets.HYGIENE_DENYLIST }}
+          MACHINEROOM_PRIVATE_PATTERNS: ${{ secrets.HYGIENE_DENYLIST }}
         run: uv run --project tools python3 tools/validate/private_denylist.py
       - name: bash -n global
         run: |

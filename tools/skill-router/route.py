@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deterministic router for Soluciones-Alexendros/autoworkspace — Cursor and Pi
+Deterministic router for Soluciones-Alexendros/machineroom — Cursor and Pi
 No LLM, vendor-neutral, pure Python TF + trigger boost.
 Usage:
   python tools/skill-router/route.py "audita y publica este repo" --top 3

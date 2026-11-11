@@ -1,4 +1,4 @@
-"""Autoworkspace execution contracts and result schemas."""
+"""Machineroom execution contracts and result schemas."""
 
 from .env import env_or, require_env
 

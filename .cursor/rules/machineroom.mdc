@@ -1,9 +1,9 @@
 ---
-description: Enforce autoworkspace execution contract in Cursor — mutations only through tools/execution and run_registered, evidence-bound gates, and explicit operator consent for host-mutating skills
+description: Enforce machineroom execution contract in Cursor — mutations only through tools/execution and run_registered, evidence-bound gates, and explicit operator consent for host-mutating skills
 alwaysApply: true
 ---
 
-# Contrato de ejecución de autoworkspace
+# Contrato de ejecución de machineroom
 
 Habla en español con el operador. Los contratos técnicos (ids de skill, rutas, comandos, `run_registered`, fases) van en inglés.
 

@@ -5,12 +5,12 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
 export PATH="${HOME}/.local/bin:${PATH}"
 
-if [[ "${AW_NATIVE_OPT_IN:-}" != "1" ]]; then
-  echo "not_run: set AW_NATIVE_OPT_IN=1 to authorize Cursor model orchestration" >&2
+if [[ "${MR_NATIVE_OPT_IN:-}" != "1" ]]; then
+  echo "not_run: set MR_NATIVE_OPT_IN=1 to authorize Cursor model orchestration" >&2
   exit 3
 fi
-if [[ "${AW_CURSOR_FORCE:-0}" == "1" ]]; then
-  echo "blocked: AW_CURSOR_FORCE is forbidden for acceptance" >&2
+if [[ "${MR_CURSOR_FORCE:-0}" == "1" ]]; then
+  echo "blocked: MR_CURSOR_FORCE is forbidden for acceptance" >&2
   exit 3
 fi
 if ! command -v agent >/dev/null 2>&1; then
@@ -19,12 +19,12 @@ if ! command -v agent >/dev/null 2>&1; then
 fi
 VERSION=$(agent --version)
 echo "agent --version → ${VERSION}"
-if ! agent --list-models >/tmp/aw-cursor-models.txt 2>&1; then
+if ! agent --list-models >/tmp/mr-cursor-models.txt 2>&1; then
   echo "not_run: agent authentication required for headless model run" >&2
   exit 3
 fi
 
-TMP=$(mktemp -d /tmp/autoworkspace-cursor-orch-XXXXXX)
+TMP=$(mktemp -d /tmp/machineroom-cursor-orch-XXXXXX)
 trap 'git -C "$ROOT" worktree prune >/dev/null 2>&1 || true; rm -rf "$TMP"' EXIT
 REPO="$TMP/repo"
 git worktree add --detach "$REPO" HEAD >/dev/null
@@ -112,9 +112,9 @@ evidence = load_evidence(
 )
 assert evidence["plan_id"] == "cursor-native-orchestration"
 assert not (repo / "cursor-orchestration-sentinel.txt").exists()
-patches = list((repo / ".autoworkspace" / "runs").glob("*/*.patch"))
+patches = list((repo / ".machineroom" / "runs").glob("*/*.patch"))
 assert patches
-verify = repo / ".autoworkspace" / "verify-tree"
+verify = repo / ".machineroom" / "verify-tree"
 subprocess.run(["git", "worktree", "add", "--detach", str(verify), "HEAD"], cwd=repo, check=True, capture_output=True)
 subprocess.run(["git", "apply", str(patches[0])], cwd=verify, check=True, capture_output=True)
 content = (verify / "cursor-orchestration-sentinel.txt").read_text(encoding="utf-8")

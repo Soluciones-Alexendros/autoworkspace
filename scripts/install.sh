@@ -164,7 +164,7 @@ if [[ "$COMPONENTS" == "full" ]]; then
     FULL_TARGET="$(resolve_project_root "$TARGET")" || exit $?
   fi
   if [[ "$USER_MODE" == true ]]; then
-    RUNTIME_SOURCE="${HOME}/.autoworkspace"
+    RUNTIME_SOURCE="${HOME}/.machineroom"
     if [[ ! -d "$RUNTIME_SOURCE/skills" ]]; then
       echo "ERROR: runtime missing: $RUNTIME_SOURCE (run scripts/runtime-sync.sh sync first)" >&2
       exit 1

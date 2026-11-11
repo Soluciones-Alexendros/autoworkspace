@@ -17,7 +17,7 @@ help:
 	@echo "  make e2e-orchestration — core + Pi/Cursor native orchestration"
 	@echo "  make readiness — validate+test+smoke+typecheck+lint+native+e2e (blocks on exit 3)"
 	@echo "  make new-product DEST=dir — copy templates/product/"
-	@echo "  make new-harness DEST=dir — copy harness yaml into DEST/.autoworkspace/"
+	@echo "  make new-harness DEST=dir — copy harness yaml into DEST/.machineroom/"
 
 quality:
 	uv run --project tools python3 tools/validate/hygiene.py
@@ -51,7 +51,7 @@ e2e-orchestration:
 	bash scripts/tests/test_cursor_orchestration.sh || cstatus=$$?; \
 	if [ $$cstatus -ne 0 ] && [ $$cstatus -ne 3 ]; then exit $$cstatus; fi; \
 	if [ $$status -eq 3 ] || [ $$cstatus -eq 3 ]; then \
-	  echo "e2e-orchestration: core pass; native lanes not_run/blocked (need AW_NATIVE_OPT_IN=1)" >&2; \
+	  echo "e2e-orchestration: core pass; native lanes not_run/blocked (need MR_NATIVE_OPT_IN=1)" >&2; \
 	  exit 3; \
 	fi
 
@@ -76,5 +76,5 @@ new-product:
 
 new-harness:
 	@test -n "$(DEST)" || (echo "DEST is required" && exit 2)
-	mkdir -p "$(DEST)/.autoworkspace"
-	cp -a templates/harness/project.yaml templates/harness/status.yaml "$(DEST)/.autoworkspace/"
+	mkdir -p "$(DEST)/.machineroom"
+	cp -a templates/harness/project.yaml templates/harness/status.yaml "$(DEST)/.machineroom/"

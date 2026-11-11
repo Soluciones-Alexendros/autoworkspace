@@ -140,18 +140,18 @@ def check_uv_lock_version(root: Path, version: str | None) -> None:
         return
     lines = path.read_text(encoding="utf-8").splitlines()
     for i, line in enumerate(lines):
-        if line.strip() == 'name = "autoworkspace"':
+        if line.strip() == 'name = "machineroom"':
             if i + 1 >= len(lines):
-                err("uv.lock: autoworkspace sin version")
+                err("uv.lock: machineroom sin version")
                 return
             m = re.match(r'version\s*=\s*"([^"]+)"', lines[i + 1].strip())
             if not m:
-                err("uv.lock: version de autoworkspace ilegible")
+                err("uv.lock: version de machineroom ilegible")
                 return
             if not versions_equal(m.group(1), version):
-                err(f"uv.lock autoworkspace version {m.group(1)} != package.json.version {version}")
+                err(f"uv.lock machineroom version {m.group(1)} != package.json.version {version}")
             return
-    err("uv.lock sin paquete autoworkspace")
+    err("uv.lock sin paquete machineroom")
 
 
 def changelog_sections(text: str) -> dict[str, dict[str, object]]:

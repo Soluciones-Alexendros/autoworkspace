@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Control privado de patrones (denylist) fail-closed y sin filtraciones.
 
-Lee patrones desde AUTOWORKSPACE_PRIVATE_PATTERNS (o HYGIENE_DENYLIST como alias
+Lee patrones desde MACHINEROOM_PRIVATE_PATTERNS (o HYGIENE_DENYLIST como alias
 de entrada). Nunca imprime patrones, valores coincidentes ni rutas del hallazgo.
 
 Uso: python3 tools/validate/private_denylist.py [--root DIR]
@@ -36,7 +36,7 @@ def _load_enumerate_tracked() -> Callable[..., Any]:
 
 
 enumerate_tracked = _load_enumerate_tracked()
-ENV_KEYS = ("AUTOWORKSPACE_PRIVATE_PATTERNS", "HYGIENE_DENYLIST")
+ENV_KEYS = ("MACHINEROOM_PRIVATE_PATTERNS", "HYGIENE_DENYLIST")
 FILE_READ_MAX = 1_000_000
 SCAN_TIMEOUT_SEC = 60.0
 # Cap de complejidad: re DIGIT_LIMIT + timeout de motor no disponible de forma

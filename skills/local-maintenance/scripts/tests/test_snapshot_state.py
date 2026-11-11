@@ -118,7 +118,7 @@ def test_snapshot_create_basic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 def test_snapshot_create_cli_always_blocked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Env/flag never authorizes CLI create (V13/C05)."""
-    monkeypatch.setenv("AUTOWORKSPACE_EXECUTION_APPROVED", "1")
+    monkeypatch.setenv("MACHINEROOM_EXECUTION_APPROVED", "1")
     snap_dir = tmp_path / "snapshots"
     snap_dir.mkdir()
     rc = snapshot_state.main(["snap-test", "--snapshot-dir", str(snap_dir)])

@@ -1,10 +1,10 @@
 ---
 name: plan-continue
-description: "Autoworkspace orchestrator: continue from roadmap or .autoworkspace status; when missing, audit the repo, scaffold project.yaml/status.yaml, and route DEFINE→SCHEMAS→IMPLEMENT→VALIDATE→INTEGRATE→STATUS. Use when asking where to start, plan mode, repo starting, or bringing a project up to date. Not for release close or version publication (→ project-publish). Uses Write/Bash to scaffold .autoworkspace and run phase routing."
+description: "Machineroom orchestrator: continue from roadmap or .machineroom status; when missing, audit the repo, scaffold project.yaml/status.yaml, and route DEFINE→SCHEMAS→IMPLEMENT→VALIDATE→INTEGRATE→STATUS. Use when asking where to start, plan mode, repo starting, or bringing a project up to date. Not for release close or version publication (→ project-publish). Uses Write/Bash to scaffold .machineroom and run phase routing."
 license: MIT
 metadata:
   author: "Soluciones-Alexendros (adapted)"
-  version: "7.1.0"
+  version: "8.0.0"
   domain: plan
   type: orchestrator
   language: en
@@ -18,8 +18,8 @@ allowed-tools: "Read, Grep, Glob, Bash, Write"
 
 ## Overview
 
-Continue according to the planned roadmap and the declarative Autoworkspace
-status. When none exists, analyze the repository, scaffold `.autoworkspace/`,
+Continue according to the planned roadmap and the declarative Machineroom
+status. When none exists, analyze the repository, scaffold `.machineroom/`,
 and reason the next pipeline phase. Framework-specific decisions cite official
 documentation.
 
@@ -27,20 +27,20 @@ documentation.
 
 - Operator asks where to start or opens plan mode
 - Repo starting / bring a project up to date
-- Drive work from `.autoworkspace/status.yaml`, `tasks/`, or a roadmap
+- Drive work from `.machineroom/status.yaml`, `tasks/`, or a roadmap
 - Mix of audit then continue implementation
 
 **When NOT to use:** Release close or version publication (→ project-publish);
 writing a fresh multi-module spec from scratch without orchestration
 (→ plan-specification alone).
 
-## Autoworkspace pipeline
+## Machineroom pipeline
 
 ```text
 DEFINE → SCHEMAS → IMPLEMENT → VALIDATE → INTEGRATE → STATUS
 ```
 
-1. Ensure `.autoworkspace/project.yaml` and `status.yaml` exist (copy from
+1. Ensure `.machineroom/project.yaml` and `status.yaml` exist (copy from
    `templates/harness/` or run the router once).
 2. Route the current phase:
 
@@ -54,14 +54,14 @@ python tools/workspace-router/run.py --init --repo .
 3. Invoke the skill returned (`skill` field). Route does not execute the skill.
    Completing a phase requires verified evidence (see tools/execution/registry.yaml); legacy `--bump` is rejected.
 
-| Phase     | Typical skill                                          | Output                                 |
-| --------- | ------------------------------------------------------ | -------------------------------------- |
-| DEFINE    | plan-specification                                     | Spec + tasks                           |
-| SCHEMAS   | plan-continue (acceptance schemas)                     | `.autoworkspace/schemas/` + test stubs |
-| IMPLEMENT | role-front / role-back / role-design / role-clean-code | Code                                   |
-| VALIDATE  | plan-validators                                        | Red-green-refactor + integrated tests  |
-| INTEGRATE | project-publish                                        | Local gates / CI / release handoff     |
-| STATUS    | plan-continue                                          | `status.yaml` bump + ESTADO board      |
+| Phase     | Typical skill                                          | Output                                |
+| --------- | ------------------------------------------------------ | ------------------------------------- |
+| DEFINE    | plan-specification                                     | Spec + tasks                          |
+| SCHEMAS   | plan-continue (acceptance schemas)                     | `.machineroom/schemas/` + test stubs  |
+| IMPLEMENT | role-front / role-back / role-design / role-clean-code | Code                                  |
+| VALIDATE  | plan-validators                                        | Red-green-refactor + integrated tests |
+| INTEGRATE | project-publish                                        | Local gates / CI / release handoff    |
+| STATUS    | plan-continue                                          | `status.yaml` bump + ESTADO board     |
 
 The phase router returns one typical skill as a fallback; it never replaces
 per-task role selection. At plan start and before every task or independent
@@ -75,11 +75,11 @@ Mixed work requires explicit contracts and handoffs between all matching roles.
 
 ### 1. Detect existing plan / status
 
-Look for `.autoworkspace/status.yaml`, `tasks/plan.md`, `tasks/todo.md`,
+Look for `.machineroom/status.yaml`, `tasks/plan.md`, `tasks/todo.md`,
 `ESTADO.md`, roadmap docs, or an active work branch.
 
 - **Status/roadmap present** → route the current `phase` and continue.
-- **None** → repository analysis, then scaffold `.autoworkspace/` and DEFINE.
+- **None** → repository analysis, then scaffold `.machineroom/` and DEFINE.
 
 ### 2. Repository analysis (when no roadmap)
 
@@ -93,7 +93,7 @@ Detail: [inicio-plan.md](references/inicio-plan.md).
 ### 3. SCHEMAS after approved spec
 
 From the approved spec, write acceptance schemas and failing test stubs under
-`.autoworkspace/schemas/` (and the project's test tree). Then IMPLEMENT with
+`.machineroom/schemas/` (and the project's test tree). Then IMPLEMENT with
 recurrent role routing and VALIDATE with → plan-validators.
 
 ### 4. Source-backed decisions

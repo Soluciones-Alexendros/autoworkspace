@@ -41,7 +41,7 @@ def fixture_root(
         "packages": {"": {"name": "t", "version": lk_ver}},
     }
     (tmp_path / "package-lock.json").write_text(json.dumps(lock_doc), encoding="utf-8")
-    uv_text = f'version = 1\n\n[[package]]\nname = "autoworkspace"\nversion = "{uv_ver}"\n'
+    uv_text = f'version = 1\n\n[[package]]\nname = "machineroom"\nversion = "{uv_ver}"\n'
     (tmp_path / "uv.lock").write_text(uv_text, encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text(
         f"# Changelog\n\n## [Unreleased]\n\n- pending\n\n## [{package_version}] - 2026-10-26\n\n- x\n",

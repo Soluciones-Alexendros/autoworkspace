@@ -42,7 +42,7 @@ make validate   # el Makefile carga `.env` cuando está presente
 
 Variables obligatorias para una operación concreta deben fallar con
 `Falta la variable X: <ayuda>; ver .env.example` (`tools/contracts/env.py:require_env`).
-Patrones privados locales: `AUTOWORKSPACE_PRIVATE_PATTERNS`. En CI, el secreto
+Patrones privados locales: `MACHINEROOM_PRIVATE_PATTERNS`. En CI, el secreto
 `HYGIENE_DENYLIST` (si no existe → paso `not_run` con aviso, nunca verde falso).
 
 ## Versioning

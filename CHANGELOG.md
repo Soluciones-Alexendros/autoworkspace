@@ -6,6 +6,46 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-11-10
+
+BREAKING: the product, repository, machine runtime and project state directory
+are renamed to **machineroom**. The old names survive only as explicit legacy
+constants, fallbacks and history.
+
+### Changed
+
+- Brand, package name, plugin manifest and docs use `machineroom` / `mr-`
+  prefixes (`mr-planner`, `mr-verifier`, `mr-worker`, `mr_subagent`,
+  `/mr-status`).
+- Machine runtime moves from `~/.autoworkspace` to `~/.machineroom`;
+  `scripts/runtime-sync.sh` migrates once and refuses two runtimes.
+- Project state moves from `.autoworkspace/` to `.machineroom/`; the router,
+  executor and orchestrator read the new directory with a deprecation warning on
+  the legacy one and expose `--migrate`. Removal is scheduled for 9.0.0.
+- `project-autoworkspace` becomes `project-machineroom` (frontmatter, keywords,
+  execution id, registry and intent map).
+- Release assets are published as `machineroom-<version>.tar.gz`; manifests are
+  `.machineroom-install-manifest.json`, `.machineroom-full-manifest.json` and
+  `.machineroom-install-journal.json`.
+
+### Added
+
+- `tools/state_paths.py` and `tools/harness/naming.py` as single sources for the
+  state directory and the brand/prefix map.
+- Shared shell-gate policy `extensions/machineroom/deny-list.json`, consumed by
+  the Cursor hook and by a new Pi gate (`extensions/machineroom/gates.ts`) that
+  blocks `bash` tool calls and `!` commands.
+- `extensions/machineroom/path-guard.ts` is versioned and fail-closed outside
+  `~/Work`, and protects the machineroom runtime.
+- `tools/validate/contract_parity.py` binds the Cursor rule (SSOT) to the
+  `sessionStart` pointer by digest; `session_start.py` no longer duplicates the
+  contract text.
+
+### Removed
+
+- The duplicated shell-gate regexes in `.cursor/hooks/shell_gate.py` (now loaded
+  from the shared policy file).
+
 ## [7.1.4] - 2026-11-10
 
 ### Changed

@@ -50,7 +50,7 @@ def _store(repo: Path, phase: str = "DEFINE", op: str = "specify", **kw: Any) ->
 
 
 def test_v26_concurrent_no_lost_update(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     (tmp_path / "c").write_text("z")
     rids = [_store(tmp_path) for _ in range(2)]
     results, errors = [], []
@@ -81,10 +81,10 @@ def test_v26_concurrent_no_lost_update(tmp_path: Path) -> None:
 
 
 def test_v28_resolve_awaiting_public(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     (tmp_path / "c").write_text("z")
     advance_status(tmp_path, phase="DEFINE", allow_awaiting=True, evidence_ok=False)
-    st = yaml.safe_load((tmp_path / ".autoworkspace" / "status.yaml").read_text())
+    st = yaml.safe_load((tmp_path / ".machineroom" / "status.yaml").read_text())
     assert st.get("awaiting_agent") is True
     rid = _store(tmp_path)
     resolved = resolve_awaiting_agent(
@@ -103,7 +103,7 @@ def test_v28_resolve_awaiting_public(tmp_path: Path) -> None:
 
 
 def test_v29_receipt_survives_compaction(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     (tmp_path / "c").write_text("z")
     # Seed >200 fake completions then replay original
     rid = _store(tmp_path)
@@ -117,7 +117,7 @@ def test_v29_receipt_survives_compaction(tmp_path: Path) -> None:
     )
     assert s["state_revision"] == 1
     # Simulate compaction of completed_run_ids while receipt remains
-    path = tmp_path / ".autoworkspace" / "status.yaml"
+    path = tmp_path / ".machineroom" / "status.yaml"
     data = yaml.safe_load(path.read_text())
     data["completed_run_ids"] = [str(uuid.uuid4()) for _ in range(200)]
     assert rid not in data["completed_run_ids"]

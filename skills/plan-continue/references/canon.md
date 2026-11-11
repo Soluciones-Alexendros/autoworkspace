@@ -10,4 +10,4 @@ Fuente de verdad **en este repo** (host: [ADR-0016](../../../docs/architecture/d
 | Callers CI | [`stacks/`](../../../stacks/) |
 | Reusables | [`.github/workflows/reusable-*.yml`](../../../.github/workflows/) |
 
-No copies este resumen a un producto: enlaza las rutas del checkout de autoworkspace.
+No copies este resumen a un producto: enlaza las rutas del checkout de machineroom.

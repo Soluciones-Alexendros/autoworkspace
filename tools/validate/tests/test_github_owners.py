@@ -38,7 +38,7 @@ def test_foreign_owner_fails(tmp_path: Path) -> None:
 def test_canon_owner_passes(tmp_path: Path) -> None:
     root = _fixture(
         tmp_path,
-        "Ver https://github.com/Soluciones-Alexendros/autoworkspace y "
+        "Ver https://github.com/Soluciones-Alexendros/machineroom y "
         "https://github.com/Alexendros/alexendrosdev y "
         "https://github.com/tt-a1i/archify.\n",
     )

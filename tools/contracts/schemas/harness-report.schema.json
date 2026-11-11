@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://autoworkspace.local/schemas/harness-report.schema.json",
-  "title": "Autoworkspace harness doctor report",
+  "$id": "https://machineroom.local/schemas/harness-report.schema.json",
+  "title": "Machineroom harness doctor report",
   "type": "object",
   "additionalProperties": false,
   "required": [

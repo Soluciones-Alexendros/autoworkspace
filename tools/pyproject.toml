@@ -1,7 +1,7 @@
 [project]
-name = "autoworkspace"
-version = "7.1.4"
-description = "Autoworkspace — agentic pipeline and fleet canon host"
+name = "machineroom"
+version = "8.0.0"
+description = "Machineroom — agentic pipeline and fleet canon host"
 requires-python = ">=3.12"
 dependencies = []
 

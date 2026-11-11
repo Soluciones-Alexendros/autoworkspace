@@ -2,6 +2,7 @@
 skill-index.json
 # Frozen catalog bytes must match `generate.py --json` exactly.
 docs/architecture/skill-index-7.0.0.json
+docs/architecture/skill-index-8.0.0.json
 
 # Untracked migration-pack scaffolding (source of the v3.0 migration).
 docs/NuevoPlan/

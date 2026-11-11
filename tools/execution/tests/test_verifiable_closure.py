@@ -178,10 +178,10 @@ def test_a18_new_file_changes(tmp_path: Path) -> None:
 def test_a19_evidence_excluded(tmp_path: Path) -> None:
     (tmp_path / "code.py").write_text("print(1)")
     d1 = work_digest(tmp_path)
-    ed = tmp_path / ".autoworkspace" / "evidence"
+    ed = tmp_path / ".machineroom" / "evidence"
     ed.mkdir(parents=True)
     (ed / "x.json").write_text("{}")
-    (tmp_path / ".autoworkspace" / "status.yaml").write_text("phase: DEFINE\n")
+    (tmp_path / ".machineroom" / "status.yaml").write_text("phase: DEFINE\n")
     d2 = work_digest(tmp_path)
     assert d1 == d2
 
@@ -246,7 +246,7 @@ def _store_ok(tmp_path: Path, op: str = "local_gates", phase: str = "VALIDATE", 
 
 
 def test_a20_run_id_traversal_rejected(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     with pytest.raises(ValueError, match=r"UUID|traversal|run_id"):
         store_result(
             tmp_path,
@@ -268,14 +268,14 @@ def test_a20_run_id_traversal_rejected(tmp_path: Path) -> None:
 
 def test_a21_uuid_unique(tmp_path: Path) -> None:
     (tmp_path / "f.txt").write_text("x")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     r1 = _store_ok(tmp_path, phase="VALIDATE")
     r2 = _store_ok(tmp_path, phase="VALIDATE")
     assert r1 != r2
 
 
 def test_a22_failed_action_not_succeeded(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     with pytest.raises(ValueError):
         store_result(
             tmp_path,
@@ -298,7 +298,7 @@ def test_a22_failed_action_not_succeeded(tmp_path: Path) -> None:
 def test_a23_artifact_content_mismatch(tmp_path: Path) -> None:
     art = tmp_path / "out.bin"
     art.write_bytes(b"payload")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     with pytest.raises(ValueError, match=r"mismatch|artifact"):
         store_result(
             tmp_path,
@@ -312,7 +312,7 @@ def test_a23_artifact_content_mismatch(tmp_path: Path) -> None:
 
 
 def test_a24_stale_content_blocks_complete(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", skill="project-publish")
     # Stale means the declared artifact bytes changed, not an unrelated sibling file.
     (tmp_path / "artifact.txt").write_text("mutated")
@@ -327,7 +327,7 @@ def test_a24_stale_content_blocks_complete(tmp_path: Path) -> None:
 
 
 def test_a24b_sibling_write_does_not_invalidate_artifact_evidence(tmp_path: Path) -> None:
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", skill="project-publish")
     (tmp_path / "sibling.txt").write_text("parallel writer")
     data = load_evidence(tmp_path, rid, revalidate_content=True, expected_phase="VALIDATE")
@@ -337,16 +337,16 @@ def test_a24b_sibling_write_does_not_invalidate_artifact_evidence(tmp_path: Path
 def test_a25_admin_only_ok(tmp_path: Path) -> None:
     code = tmp_path / "app.py"
     code.write_text("stable")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE")
-    (tmp_path / ".autoworkspace" / "status.yaml").write_text("phase: DEFINE\n")
+    (tmp_path / ".machineroom" / "status.yaml").write_text("phase: DEFINE\n")
     data = load_evidence(tmp_path, rid, revalidate_content=True, expected_phase="VALIDATE")
     assert data["outcome"] == "succeeded"
 
 
 def test_a26_validate_snapshot_cannot_complete_define(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     # Store with DEFINE bindings but wrong op — load/complete must reject
     art = tmp_path / "artifact.txt"
     art.write_text("ok")
@@ -371,7 +371,7 @@ def test_a26_validate_snapshot_cannot_complete_define(tmp_path: Path) -> None:
 
 def test_a27_wrong_target_rejected(tmp_path: Path) -> None:
     (tmp_path / "x").write_text("1")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     rid = _store_ok(tmp_path, op="local_gates", phase="VALIDATE", target="/a")
     with pytest.raises(ValueError, match="target"):
         load_evidence(tmp_path, rid, expected_target="/b", revalidate_content=True)
@@ -382,7 +382,7 @@ def test_a27_wrong_target_rejected(tmp_path: Path) -> None:
 
 def test_a28_concurrent_writers(tmp_path: Path) -> None:
     (tmp_path / "c").write_text("z")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     errors = []
     results = []
 
@@ -431,7 +431,7 @@ def test_a28_concurrent_writers(tmp_path: Path) -> None:
 
 def test_a30_status_to_define_rejected(tmp_path: Path) -> None:
     (tmp_path / "c").write_text("z")
-    aw = tmp_path / ".autoworkspace"
+    aw = tmp_path / ".machineroom"
     aw.mkdir()
     # Seed STATUS phase
     (aw / "status.yaml").write_text(
@@ -459,7 +459,7 @@ def test_a30_status_to_define_rejected(tmp_path: Path) -> None:
 
 def test_a32_idempotent_complete(tmp_path: Path) -> None:
     (tmp_path / "c").write_text("z")
-    (tmp_path / ".autoworkspace").mkdir()
+    (tmp_path / ".machineroom").mkdir()
     rid = _store_ok(tmp_path, op="specify", phase="DEFINE")
     s1 = advance_status(tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid)
     s2 = advance_status(tmp_path, phase="DEFINE", skill="plan-specification", evidence_ok=True, run_id=rid)

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from contracts.result import new_run_id as _canonical_run_id
+from state_paths import excluded_prefixes, state_dir
 
 from execution.ops import NON_TERMINAL, OpResult
 from execution.registry import OpSpec, get_operation, known_operation_ids
@@ -36,15 +37,7 @@ _EXCLUDE_DIR_NAMES = frozenset(
         ".eggs",
     }
 )
-_EXCLUDE_PREFIXES = (
-    ".autoworkspace/evidence/",
-    ".autoworkspace/status.yaml",
-    ".autoworkspace/status.yaml.lock",
-    ".autoworkspace/status.yaml.tmp",
-    ".autoworkspace/journal/",
-    ".autoworkspace/diary/",
-    ".autoworkspace/runs/",
-)
+_EXCLUDE_PREFIXES = excluded_prefixes()
 
 _RUN_ID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -209,7 +202,7 @@ def artifacts_digest(root: Path, artifacts: list[str | dict[str, Any]]) -> str:
 
 
 def evidence_dir(repo: Path) -> Path:
-    return Path(repo).resolve() / ".autoworkspace" / "evidence"
+    return Path(state_dir(repo)) / "evidence"
 
 
 def _validate_run_id(run_id: str) -> str:

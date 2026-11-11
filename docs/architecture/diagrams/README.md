@@ -42,7 +42,7 @@ agente las edite; el repositorio no depende de esa instalación.
 
 | Id  | Tipo           | Título                  | ADR      |
 | --- | -------------- | ----------------------- | -------- |
-| D01 | `architecture` | Capas de autoworkspace  | ADR-0016 |
+| D01 | `architecture` | Capas de machineroom    | ADR-0016 |
 | D02 | `workflow`     | Flujo en dos fases      | ADR-0013 |
 | D03 | `sequence`     | Agregación de `ci-gate` | ADR-0013 |
 | D04 | `lifecycle`    | Ciclo de vida de un ADR | ADR-0002 |

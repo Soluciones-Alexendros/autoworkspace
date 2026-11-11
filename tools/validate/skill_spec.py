@@ -253,8 +253,8 @@ def check_headings(skill: str, body: str, needs_tools: bool) -> None:
             err(skill, f"H2 prohibido: {heading}")
     if "sudoers.d" in body:
         err(skill, "SKILL.md no puede documentar sudoers.d")
-    # Patrones privados: AUTOWORKSPACE_PRIVATE_PATTERNS (local) o secreto CI HYGIENE_DENYLIST.
-    patterns_raw = os.environ.get("AUTOWORKSPACE_PRIVATE_PATTERNS", "").strip()
+    # Patrones privados: MACHINEROOM_PRIVATE_PATTERNS (local) o secreto CI HYGIENE_DENYLIST.
+    patterns_raw = os.environ.get("MACHINEROOM_PRIVATE_PATTERNS", "").strip()
     for raw in patterns_raw.replace(",", "\n").splitlines():
         pat = raw.strip()
         if not pat:

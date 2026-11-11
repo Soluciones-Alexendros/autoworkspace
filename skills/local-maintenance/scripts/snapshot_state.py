@@ -315,8 +315,8 @@ def _rollback_dry_run(snapshot_id: str, tarball: str) -> int:
 def _claim_staging() -> tuple[str, int | None]:
     """Create the private staging directory and its ownership marker."""
 
-    restore_root = tempfile.mkdtemp(prefix="aw-restore-")
-    owned_marker = os.path.join(restore_root, ".aw-owned-staging")
+    restore_root = tempfile.mkdtemp(prefix="mr-restore-")
+    owned_marker = os.path.join(restore_root, ".mr-owned-staging")
     try:
         os.chmod(restore_root, 0o700)
         with open(owned_marker, "w", encoding="utf-8") as fh:
@@ -418,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     # CLI create is never consent. Env/flag/hash cannot authorize (H05/C05).
     # Backend is reachable only via create_snapshot_backend after run_registered.
-    _ = os.environ.pop("AUTOWORKSPACE_EXECUTION_APPROVED", None)
+    _ = os.environ.pop("MACHINEROOM_EXECUTION_APPROVED", None)
     logger.error("create_snapshot CLI blocked; use run_registered('create_snapshot', …)")
     print(
         "ERROR: snapshot create via CLI rejected; use run_registered('create_snapshot', …)",

@@ -139,7 +139,7 @@ def test_complete_flow_closes_without_applying_to_operator_checkout(tmp_path: Pa
             assert evidence["plan_id"] == "worktree-full-flow"
         for produced in ("spec.md", "implementation.txt", "validation.txt"):
             assert not (repo / produced).exists()
-        runs = list((repo / ".autoworkspace" / "runs").glob("*/*.patch"))
+        runs = list((repo / ".machineroom" / "runs").glob("*/*.patch"))
         assert len(runs) == 3  # noqa: PLR2004  # three-phase fixture patches
     finally:
         _cleanup_fixture(repo)

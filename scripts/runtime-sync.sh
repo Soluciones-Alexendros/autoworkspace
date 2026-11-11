@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Materialize the machine runtime at $HOME/.autoworkspace (real directory, not a symlink).
+# Materialize the machine runtime at $HOME/.machineroom (real directory, not a symlink).
+# Migrates a legacy $HOME/.autoworkspace once (D2/H2: no two runtimes).
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CMD="${1:-}"
@@ -9,7 +10,9 @@ VERSION=""
 DRY_RUN=false
 JSON_OUT=false
 HOME_DIR="${HOME}"
-REPOSITORY="${AW_BOOTSTRAP_REPOSITORY:-Soluciones-Alexendros/autoworkspace}"
+REPOSITORY="${MR_BOOTSTRAP_REPOSITORY:-${AW_BOOTSTRAP_REPOSITORY:-Soluciones-Alexendros/machineroom}}"
+RUNTIME_NAME=".machineroom"
+LEGACY_RUNTIME_NAME=".autoworkspace"
 
 usage() {
   cat <<EOF
@@ -30,7 +33,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-RUNTIME="${HOME_DIR}/.autoworkspace"
+RUNTIME="${HOME_DIR}/${RUNTIME_NAME}"
+LEGACY_RUNTIME="${HOME_DIR}/${LEGACY_RUNTIME_NAME}"
 
 if [[ "$CMD" != "sync" && "$CMD" != "install" ]]; then
   usage
@@ -42,6 +46,27 @@ if [[ -L "$RUNTIME" ]]; then
   exit 1
 fi
 
+migrate_legacy() {
+  if [[ -e "$LEGACY_RUNTIME" || -L "$LEGACY_RUNTIME" ]]; then
+    if [[ -e "$RUNTIME" || -L "$RUNTIME" ]]; then
+      echo "ERROR: two runtimes present: $LEGACY_RUNTIME and $RUNTIME; remove one" >&2
+      exit 1
+    fi
+    if [[ -L "$LEGACY_RUNTIME" ]]; then
+      echo "ERROR: legacy runtime must be a real directory, not a symlink: $LEGACY_RUNTIME" >&2
+      exit 1
+    fi
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "dry-run: would move $LEGACY_RUNTIME -> $RUNTIME" >&2
+      return 0
+    fi
+    mv -- "$LEGACY_RUNTIME" "$RUNTIME"
+    echo "Migrated legacy runtime: $LEGACY_RUNTIME -> $RUNTIME" >&2
+  fi
+}
+
+migrate_legacy
+
 if [[ "$CMD" == "sync" ]]; then
   FROM=$(cd "$FROM" && pwd)
   if [[ "$DRY_RUN" == true ]]; then
@@ -52,8 +77,8 @@ if [[ "$CMD" == "sync" ]]; then
     fi
     exit 0
   fi
-  export AW_SYNC_FROM="$FROM"
-  export AW_SYNC_RUNTIME="$RUNTIME"
+  export MR_SYNC_FROM="$FROM"
+  export MR_SYNC_RUNTIME="$RUNTIME"
   set +e
   RESULT=$(PYTHONPATH="$ROOT/tools" JSON_OUT="$JSON_OUT" python3 - <<'PY'
 import json
@@ -62,8 +87,8 @@ import sys
 from pathlib import Path
 from harness.runtime import InstallFailure, format_failure, sync_payload
 
-from_path = Path(os.environ["AW_SYNC_FROM"])
-runtime = Path(os.environ["AW_SYNC_RUNTIME"])
+from_path = Path(os.environ["MR_SYNC_FROM"])
+runtime = Path(os.environ["MR_SYNC_RUNTIME"])
 json_out = os.environ.get("JSON_OUT") == "true"
 try:
     manifest = sync_payload(from_path, runtime, origin="sync")
@@ -112,19 +137,19 @@ for dependency in gh python3; do
   fi
 done
 
-WORK=$(mktemp -d /tmp/autoworkspace-runtime-XXXXXX)
+WORK=$(mktemp -d /tmp/machineroom-runtime-XXXXXX)
 chmod 700 "$WORK"
 trap 'rm -rf "$WORK"' EXIT
-ARCHIVE="$WORK/autoworkspace-${VERSION}.tar.gz"
+ARCHIVE="$WORK/machineroom-${VERSION}.tar.gz"
 gh release download "v${VERSION}" --repo "$REPOSITORY" \
-  --pattern "autoworkspace-${VERSION}.tar.gz" --pattern "SHA256SUMS" --dir "$WORK"
+  --pattern "machineroom-${VERSION}.tar.gz" --pattern "SHA256SUMS" --dir "$WORK"
 (
   cd "$WORK"
   sha256sum -c SHA256SUMS
 )
 gh attestation verify "$ARCHIVE" -R "$REPOSITORY"
 PYTHONPATH="$ROOT/tools" python3 -m harness.bootstrap "$ARCHIVE" "$WORK/extracted"
-PACKAGE="$WORK/extracted/autoworkspace-${VERSION}"
+PACKAGE="$WORK/extracted/machineroom-${VERSION}"
 [[ -d "$PACKAGE" && ! -L "$PACKAGE" ]]
 RESULT=$(PYTHONPATH="$ROOT/tools" python3 - <<PY
 from pathlib import Path

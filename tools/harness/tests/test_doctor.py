@@ -114,7 +114,7 @@ def test_cursor_full_check_accepts_project_and_user_scope(tmp_path: Path) -> Non
     assert cursor_full_check(project).outcome == "pass"
     user_home = tmp_path / "home"
     user_home.mkdir()
-    sync_payload(ROOT, user_home / ".autoworkspace", origin="sync")
+    sync_payload(ROOT, user_home / ".machineroom", origin="sync")
     install_full(ROOT, user_home / ".cursor", user_scope=True)
     check = cursor_full_check(user_home)
     assert check.outcome == "pass", check.detail
@@ -124,7 +124,7 @@ def test_cursor_full_check_accepts_project_and_user_scope(tmp_path: Path) -> Non
 def test_cursor_full_check_rejects_missing_generated_hooks(tmp_path: Path) -> None:
     user_home = tmp_path / "home"
     user_home.mkdir()
-    sync_payload(ROOT, user_home / ".autoworkspace", origin="sync")
+    sync_payload(ROOT, user_home / ".machineroom", origin="sync")
     install_full(ROOT, user_home / ".cursor", user_scope=True)
     (user_home / ".cursor" / "hooks.json").unlink()
     assert cursor_full_check(user_home).outcome == "fail"

@@ -1,97 +1,30 @@
 #!/usr/bin/env python3
 """beforeShellExecution gate for host mutation and outbound network.
 
-Does not execute the received command. Stdlib only. Always exit 0 with JSON.
-failClosed on the hook definition covers real crashes; this script never uses
-exit 2.
+The policy lives in ``extensions/machineroom/deny-list.json`` and is shared with
+the Pi extension, so the two harnesses cannot drift. This script does not execute
+the received command. Stdlib only. Always exit 0 with JSON: ``failClosed`` on the
+hook definition covers a real crash, and internal errors answer ``deny``.
 """
 
 from __future__ import annotations
 
 import json
-import re
 import sys
-from typing import Any
+from pathlib import Path
 
-_DENY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (
-        re.compile(r"\b(apt-get|apt|dnf|pacman)\b", re.I),
-        "Package-manager mutation is denied. Use run_registered with local-maintenance.",
-    ),
-    (
-        re.compile(r"\bsystemctl\b", re.I),
-        "systemctl is denied. Use run_registered with local-maintenance or local-security.",
-    ),
-    (
-        re.compile(r"\brm\s+-rf\b", re.I),
-        "rm -rf is denied. Use run_registered with the matching local-* skill.",
-    ),
-    (
-        re.compile(r"\bmkfs\b", re.I),
-        "mkfs is denied. Host storage mutation requires run_registered (local-*).",
-    ),
-    (
-        re.compile(r"\bdd\s+if=", re.I),
-        "dd if= is denied. Host storage mutation requires run_registered (local-*).",
-    ),
-    (
-        re.compile(r"\b(shutdown|reboot)\b", re.I),
-        "shutdown/reboot is denied. Use run_registered with local-maintenance.",
-    ),
-    (
-        re.compile(r"\b(iptables|nft|ufw)\b", re.I),
-        "Firewall mutation is denied. Use run_registered with local-security.",
-    ),
-    (
-        re.compile(r"\b(ssh|scp)\b", re.I),
-        "ssh/scp is denied. Use run_registered with the matching local-* skill.",
-    ),
-    (
-        re.compile(r"\bsudo\b", re.I),
-        "sudo is denied. Use run_registered with the matching local-* skill.",
-    ),
-]
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tools"))
 
-_HELP_OR_VERSION = re.compile(r"(^|\s)(--help|-h|--version)(\s|$)")
-_RM_RF = re.compile(r"\brm\s+-rf\b", re.I)
-_TMP_ALLOW_PREFIXES = ("/tmp/ai-", "/tmp/test-", "/tmp/autoworkspace-")
+from execution.deny_list import DenyListError, decide_command, load_policy  # noqa: E402
 
 
 def _deny(user_message: str, agent_message: str) -> dict[str, str]:
-    return {
-        "permission": "deny",
-        "user_message": user_message,
-        "agent_message": agent_message,
-    }
+    return {"permission": "deny", "user_message": user_message, "agent_message": agent_message}
 
 
-def _ask(user_message: str, agent_message: str) -> dict[str, str]:
-    return {
-        "permission": "ask",
-        "user_message": user_message,
-        "agent_message": agent_message,
-    }
-
-
-def _allow() -> dict[str, str]:
-    return {"permission": "allow"}
-
-
-def _is_help_or_version(command: str) -> bool:
-    return bool(_HELP_OR_VERSION.search(command))
-
-
-def _rm_rf_only_allowed_tmp(command: str) -> bool:
-    """Allow rm -rf only when every absolute path is under approved /tmp prefixes."""
-    if not _RM_RF.search(command):
-        return False
-    paths = re.findall(r"(?:^|\s)(/[^\s;|&]+)", command)
-    if not paths:
-        return False
-    return all(p.startswith(_TMP_ALLOW_PREFIXES) for p in paths)
-
-
-def decide(payload: dict[str, Any]) -> dict[str, str]:
+def decide(payload: dict[str, object]) -> dict[str, str]:
+    """Decide one payload. Any malformed input or policy error denies (fail-closed)."""
     if "command" not in payload:
         return _deny(
             "Shell gate: missing command field.",
@@ -103,33 +36,14 @@ def decide(payload: dict[str, Any]) -> dict[str, str]:
             "Shell gate: command must be a string.",
             "beforeShellExecution command was not a string; denied.",
         )
-
-    if _rm_rf_only_allowed_tmp(command):
-        result = _allow()
-    else:
-        result = None
-        for pattern, agent_message in _DENY_PATTERNS:
-            if pattern.search(command):
-                result = _deny(
-                    f"Blocked host-mutating or privileged shell: {command[:120]}",
-                    agent_message,
-                )
-                break
-        if result is None and re.search(r"\b(curl|wget|nc)\b", command, re.I):
-            # Outbound network: allow only local help/version; else ask.
-            if _is_help_or_version(command):
-                result = _allow()
-            else:
-                result = _ask(
-                    f"Network shell requires confirmation: {command[:120]}",
-                    "Outbound network matched the shell gate. Prefer run_registered; ask the operator.",
-                )
-        if result is None:
-            result = _ask(
-                f"Shell gate matched; confirm: {command[:120]}",
-                "Command matched the host/network matcher. Prefer run_registered; ask the operator.",
-            )
-    return result
+    try:
+        policy = load_policy(ROOT)
+    except DenyListError as exc:
+        return _deny(
+            "Shell gate: policy unavailable.",
+            f"{exc}. Denied; fix the deny list or use run_registered.",
+        )
+    return decide_command(command, policy)
 
 
 def main() -> int:
@@ -146,8 +60,7 @@ def main() -> int:
             )
         else:
             result = decide(payload)
-    except Exception as exc:
-        # Broad catch: never crash-open; failClosed covers a real process crash.
+    except Exception as exc:  # broad catch: never crash-open
         result = _deny(
             "Shell gate: internal error.",
             f"shell_gate.py exception: {type(exc).__name__}. Denied; use run_registered.",

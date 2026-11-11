@@ -1,11 +1,11 @@
-# Plantillas `.autoworkspace/`
+# Plantillas `.machineroom/`
 
 Copiar al repo de producto:
 
 ```bash
-mkdir -p .autoworkspace/schemas
-cp templates/harness/project.yaml .autoworkspace/project.yaml
-cp templates/harness/status.yaml .autoworkspace/status.yaml
+mkdir -p .machineroom/schemas
+cp templates/harness/project.yaml .machineroom/project.yaml
+cp templates/harness/status.yaml .machineroom/status.yaml
 ```
 
 - `project.yaml` — variables del proyecto (profile, stack, skills, handoffs).

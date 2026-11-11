@@ -35,7 +35,7 @@ jobs:
       - name: Private denylist required before publish
         env:
           HYGIENE_DENYLIST: ${{ secrets.HYGIENE_DENYLIST }}
-          AUTOWORKSPACE_PRIVATE_PATTERNS: ${{ secrets.HYGIENE_DENYLIST }}
+          MACHINEROOM_PRIVATE_PATTERNS: ${{ secrets.HYGIENE_DENYLIST }}
         run: uv run --project tools python3 tools/validate/private_denylist.py
       - name: Publish from tag
         if: startsWith(github.ref, 'refs/tags/v')
@@ -102,8 +102,8 @@ jobs:
       - name: Archive source
         run: |
           set -euo pipefail
-          git archive --format=tar.gz --prefix="autoworkspace-${VERSION}/" -o "autoworkspace-${VERSION}.tar.gz" HEAD
-          echo "ARCHIVE=autoworkspace-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+          git archive --format=tar.gz --prefix="machineroom-${VERSION}/" -o "machineroom-${VERSION}.tar.gz" HEAD
+          echo "ARCHIVE=machineroom-${VERSION}.tar.gz" >> "$GITHUB_ENV"
       - name: Checksum source archive
         run: sha256sum "${ARCHIVE}" > SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -167,12 +167,12 @@ jobs:
         run: |
           set -euo pipefail
           TMP=$(mktemp -d)
-          gh release download "v${VERSION}" --dir "$TMP" --pattern "autoworkspace-${VERSION}.tar.gz" --pattern SHA256SUMS
+          gh release download "v${VERSION}" --dir "$TMP" --pattern "machineroom-${VERSION}.tar.gz" --pattern SHA256SUMS
           (
             cd "$TMP"
             sha256sum -c SHA256SUMS
           )
-          gh attestation verify "$TMP/autoworkspace-${VERSION}.tar.gz" --repo "${GITHUB_REPOSITORY}"
+          gh attestation verify "$TMP/machineroom-${VERSION}.tar.gz" --repo "${GITHUB_REPOSITORY}"
           echo "Public assets + checksum + attestation OK for v${VERSION}"
       - name: Bootstrap smoke (Pi + Cursor, no models)
         env:

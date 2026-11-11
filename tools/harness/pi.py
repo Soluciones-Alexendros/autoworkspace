@@ -59,7 +59,7 @@ def rpc_commands(cwd: Path, *, timeout: int = 20, env: dict[str, str] | None = N
     )
     try:
         stdout, stderr = process.communicate(
-            json.dumps({"id": "aw-skills", "type": "get_commands"}) + "\n", timeout=timeout
+            json.dumps({"id": "mr-skills", "type": "get_commands"}) + "\n", timeout=timeout
         )
     except subprocess.TimeoutExpired:
         os.killpg(process.pid, signal.SIGKILL)

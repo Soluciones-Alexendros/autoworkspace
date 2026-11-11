@@ -30,7 +30,7 @@ if [ "$ONLY_PYTEST" = 1 ] || [ "$ONLY_SMOKE" = 1 ]; then FULL=0; fi
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$ROOT"
 
-echo "=== Autoworkspace validation (canonical) ==="
+echo "=== Machineroom validation (canonical) ==="
 
 if [ "$FULL" = 1 ]; then
   echo "[1] skill_spec.py (catalog + frontmatter + domain)"
@@ -41,6 +41,12 @@ if [ "$FULL" = 1 ]; then
 
   echo "[3] release_coherence.py"
   python3 tools/validate/release_coherence.py --root "$ROOT"
+
+  echo "[3a] naming_gate.py (pre-8.0 name only where it is load-bearing)"
+  python3 tools/validate/naming_gate.py
+
+  echo "[3b] contract_parity.py (rule SSOT vs sessionStart pointer)"
+  python3 tools/validate/contract_parity.py
 
   echo "[4] hygiene.py"
   python3 tools/validate/hygiene.py --root "$ROOT"
@@ -54,7 +60,7 @@ if [ "$FULL" = 1 ]; then
   python3 tools/skill-index/generate.py --check --root "$ROOT"
 
   echo "[5b] frozen catalog snapshot"
-  python3 tools/skill-index/generate.py --json | diff -q - docs/architecture/skill-index-7.0.0.json
+  python3 tools/skill-index/generate.py --json | diff -q - docs/architecture/skill-index-8.0.0.json
 fi
 
 if [ "$CHECK_INDEX" = 1 ] && [ "$FULL" = 0 ]; then

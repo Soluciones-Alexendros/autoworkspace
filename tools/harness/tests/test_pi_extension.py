@@ -26,6 +26,6 @@ def test_packaged_extension_registers_native_command(tmp_path: Path) -> None:
     env = dict(os.environ, HOME=str(home))
     subprocess.run(["pi", "install", str(ROOT)], env=env, check=True, capture_output=True)
     commands = rpc_commands(project, env=env)
-    status = [command for command in commands if command.get("name") == "aw-status"]
+    status = [command for command in commands if command.get("name") == "mr-status"]
     assert len(status) == 1
     assert status[0]["source"] == "extension"

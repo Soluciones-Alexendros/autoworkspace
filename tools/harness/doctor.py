@@ -122,7 +122,7 @@ def skill_link_check(root: Path, harness: str, *, source_root: Path | None = Non
 
 
 def cursor_full_check(root: Path) -> Check:  # noqa: C901, PLR0911  # v1/v2 + user/project link checks
-    manifest = root.resolve() / ".cursor" / ".autoworkspace-full-manifest.json"
+    manifest = root.resolve() / ".cursor" / ".machineroom-full-manifest.json"
     try:
         data = json.loads(manifest.read_text(encoding="utf-8"))
         entries = _full_manifest_entries(data)
@@ -147,10 +147,10 @@ def cursor_full_check(root: Path) -> Check:  # noqa: C901, PLR0911  # v1/v2 + us
                 return Check("cursor-full-components", "A", "fail", f"user link escapes runtime: {relative}")
         elif not link_text.is_absolute():
             return Check("cursor-full-components", "A", "fail", f"project link must be absolute: {relative}")
-    required = {"agents/aw-verifier.md", "hooks.json", "hooks/shell_gate.py"}
+    required = {"agents/mr-verifier.md", "hooks.json", "hooks/shell_gate.py"}
     if not user_scope:
         # User rules live in Cursor Settings, so the project rule is project-scope only.
-        required.add("rules/autoworkspace.mdc")
+        required.add("rules/machineroom.mdc")
     if not required <= {relative for relative, _kind in entries}:
         return Check("cursor-full-components", "A", "fail", "full component manifest is incomplete")
     scope = "user" if user_scope else "project"
@@ -226,7 +226,7 @@ def collect_checks(  # noqa: PLR0913  # doctor entry: keyword-only harness/nativ
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Autoworkspace harness doctor")
+    parser = argparse.ArgumentParser(description="Machineroom harness doctor")
     parser.add_argument("--harness", choices=("pi", "cursor", "all"), default="all")
     parser.add_argument("--target", type=Path, default=Path("."))
     parser.add_argument("--source", type=Path, help="Package/catalog source when it differs from target")

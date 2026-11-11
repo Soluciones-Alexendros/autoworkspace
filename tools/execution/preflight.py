@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from execution.approval import env_with_legacy
 
 
 @dataclass
@@ -97,8 +98,7 @@ def preflight_contract(
     if dist == "workspace-required" and ws is None and skill_root is None:
         result.ok = False
         result.blocked_reasons.append(
-            "workspace-required skill: install full autoworkspace (skills/ + tools/); "
-            "cwd is not an implicit installation"
+            "workspace-required skill: install full machineroom (skills/ + tools/); cwd is not an implicit installation"
         )
         return result
 
@@ -129,7 +129,7 @@ def preflight_contract(
         result.blocked_reasons.extend(bin_check.blocked_reasons)
     result.optional_missing.extend(bin_check.optional_missing)
 
-    net_allowed = allow_network if allow_network is not None else os.environ.get("AUTOWORKSPACE_ALLOW_NETWORK") == "1"
+    net_allowed = allow_network if allow_network is not None else env_with_legacy("ALLOW_NETWORK") == "1"
     if reqs.get("network") and not net_allowed:
         result.ok = False
         result.blocked_reasons.append("network:required-but-not-authorized")

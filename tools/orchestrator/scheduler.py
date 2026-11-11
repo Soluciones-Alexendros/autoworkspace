@@ -18,6 +18,7 @@ WORKSPACE_ROUTER = Path(__file__).resolve().parents[1] / "workspace-router"
 if str(WORKSPACE_ROUTER) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROUTER))
 
+from state_paths import state_file  # noqa: E402
 from status_bump import (  # noqa: E402
     block_task,
     cancel_task,
@@ -183,7 +184,7 @@ class Scheduler:
             if not run_id:
                 continue
             # Prefer artifacts under the current workspace run directory naming.
-            candidates = list((self.repo / ".autoworkspace" / "runs").glob(f"*/{task_id}.patch"))
+            candidates = list(state_file(self.repo, "runs").glob(f"*/{task_id}.patch"))
             if not candidates:
                 continue
             patch = sorted(candidates)[-1]

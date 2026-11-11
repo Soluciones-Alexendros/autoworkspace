@@ -47,7 +47,7 @@ def test_f01_execute_without_policy_blocks(monkeypatch: pytest.MonkeyPatch, tmp_
     monkeypatch.setattr(clean_routine, "which", lambda c: "/bin/true" if c == "apt" else None)
     monkeypatch.setattr(clean_routine, "run_capture", spy)
     monkeypatch.setattr(clean_routine, "run", lambda *a, **k: "")
-    monkeypatch.delenv("AUTOWORKSPACE_ALLOW_HOST_MUTATION", raising=False)
+    monkeypatch.delenv("MACHINEROOM_ALLOW_HOST_MUTATION", raising=False)
     rc = clean_routine.main(["--execute", "--snapshot-id", "missing-snap"])
     assert rc != 0
     assert not any("apt" in c or "journalctl --vacuum" in c for c in spy.calls)
@@ -55,7 +55,7 @@ def test_f01_execute_without_policy_blocks(monkeypatch: pytest.MonkeyPatch, tmp_
 
 def test_f02_create_snapshot_requires_approval(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(clean_routine, "which", lambda c: "/bin/true" if c == "apt" else None)
-    monkeypatch.delenv("AUTOWORKSPACE_APPROVAL_PROVIDER", raising=False)
+    monkeypatch.delenv("MACHINEROOM_APPROVAL_PROVIDER", raising=False)
 
     def fake_run_capture(cmd: str, timeout: int = 10) -> None:
         raise AssertionError(f"mutation/create before approval: {cmd}")

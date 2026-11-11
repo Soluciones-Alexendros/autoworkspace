@@ -74,7 +74,7 @@ def test_failed_verification_is_not_successful_evidence(tmp_path: Path) -> None:
     executed = _run(tmp_path, params={"repo": str(tmp_path), "content": "wrong\n"})
     assert executed.outcome == "failed"
     payload = json.loads(
-        (tmp_path / ".autoworkspace" / "evidence" / f"{executed.run_id}.json").read_text(encoding="utf-8")
+        (tmp_path / ".machineroom" / "evidence" / f"{executed.run_id}.json").read_text(encoding="utf-8")
     )
     assert payload["outcome"] == "failed"
     with pytest.raises(ValueError, match="outcome"):

@@ -1,6 +1,6 @@
 ---
-name: aw-worker
-description: Execute one bounded autoworkspace task in an isolated context
+name: mr-worker
+description: Execute one bounded machineroom task in an isolated context
 ---
 
 Execute exactly one task packet. Stay within its declared read/write scope and

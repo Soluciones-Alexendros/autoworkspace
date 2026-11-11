@@ -21,7 +21,7 @@ def test_dry_run_simulates(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_execute_blocked_without_approval(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(clean_routine, "which", lambda c: "/bin/true" if c == "apt" else None)
-    monkeypatch.delenv("AUTOWORKSPACE_APPROVAL_PROVIDER", raising=False)
+    monkeypatch.delenv("MACHINEROOM_APPROVAL_PROVIDER", raising=False)
     snap = tmp_path / "snap-ok"
     snap.mkdir()
     (snap / "metadata.json").write_text('{"backend_status":"ok"}', encoding="utf-8")

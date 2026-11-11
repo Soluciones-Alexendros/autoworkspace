@@ -123,8 +123,16 @@ def sys_stdin_isatty() -> bool:
     return sys.stdin.isatty()
 
 
+def env_with_legacy(name: str, default: str = "") -> str:
+    """Read ``MACHINEROOM_<name>`` then the pre-8.0 ``AUTOWORKSPACE_<name>`` (D3/H2)."""
+    current = os.environ.get(f"MACHINEROOM_{name}")
+    if current is not None:
+        return current
+    return os.environ.get(f"AUTOWORKSPACE_{name}", default)
+
+
 def provider_from_env() -> ApprovalProvider:
-    mode = os.environ.get("AUTOWORKSPACE_APPROVAL_PROVIDER", "deny")
+    mode = env_with_legacy("APPROVAL_PROVIDER", "deny")
     if mode == "interactive":
         return InteractiveProvider()
     return DenyProvider()
