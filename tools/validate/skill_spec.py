@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -323,14 +324,14 @@ class FrontmatterResult:
     """Result of frontmatter validation."""
 
     __slots__ = (
-        "name_ok",
-        "license_ok",
-        "compatibility_ok",
-        "metadata_ok",
         "allowed_tools_ok",
-        "execution_link_ok",
-        "no_execution_yaml_ok",
+        "compatibility_ok",
         "errors",
+        "execution_link_ok",
+        "license_ok",
+        "metadata_ok",
+        "name_ok",
+        "no_execution_yaml_ok",
     )
 
     def __init__(self) -> None:
@@ -370,14 +371,9 @@ class FrontmatterResult:
         return len(self.errors) == 0
 
 
-def validate_frontmatter(
-    skill: str, fm: dict[str, Any], meta: dict[str, Any], root: Path, names: set[str], sdir: Path
-) -> FrontmatterResult:
-    """Validate all frontmatter fields in a single pass."""
-    result = FrontmatterResult()
-    tool_ids = _registry_tool_ids(root)
-
-    # name & description & license
+def _validate_name_and_description(
+    skill: str, fm: dict[str, Any], names: set[str], result: FrontmatterResult
+) -> None:
     name = fm.get("name", "")
     if name != skill:
         result.add_error(skill, f"name '{name}' != carpeta '{skill}'")
@@ -401,13 +397,17 @@ def validate_frontmatter(
     if fm.get("license") != "MIT":
         result.add_error(skill, "license != MIT")
 
-    # compatibility
+
+def _validate_compatibility(skill: str, fm: dict[str, Any], result: FrontmatterResult) -> None:
     raw = str(fm.get("compatibility", ""))
     parts = {part.strip() for part in raw.split(",") if part.strip()}
     if parts != {"cursor", "pi"}:
         result.add_error(skill, f"compatibility debe ser solo cursor, pi: {raw!r}")
 
-    # metadata
+
+def _validate_metadata(
+    skill: str, meta: dict[str, Any], result: FrontmatterResult
+) -> str:
     required_meta: dict[str, str | None] = {
         "author": None,
         "version": None,
@@ -432,8 +432,12 @@ def validate_frontmatter(
 
     if tipo and tipo not in TIPOS:
         result.add_error(skill, f"unknown type: {tipo} (must be one of: {', '.join(sorted(TIPOS))})")
+    return tipo
 
-    # execution link
+
+def _validate_execution_link(
+    skill: str, meta: dict[str, Any], tool_ids: frozenset[str], tipo: str, result: FrontmatterResult
+) -> None:
     execution = meta.get("execution")
     if execution is not None:
         if not isinstance(execution, str) or not NAME_RE.match(execution):
@@ -445,7 +449,8 @@ def validate_frontmatter(
     elif skill in tool_ids:
         result.add_error(skill, "skill en registry requiere metadata.execution")
 
-    # allowed-tools
+
+def _validate_allowed_tools(skill: str, fm: dict[str, Any], tipo: str, result: FrontmatterResult) -> None:
     allowed_tools_raw = fm.get("allowed-tools", fm.get("allowed_tools"))
     tools = parse_allowed_tools(allowed_tools_raw)
     if tools is None:
@@ -464,9 +469,46 @@ def validate_frontmatter(
             if extra:
                 result.add_error(skill, f"allowed-tools excede máximo para type={tipo}: {sorted(extra)}")
 
-    # execution.yaml
+
+def _validate_execution_yaml(skill: str, sdir: Path, result: FrontmatterResult) -> None:
     if (sdir / "execution.yaml").is_file():
         result.add_error(skill, "execution.yaml bajo skills/ está prohibido; usar tools/execution/registry.yaml")
+
+
+class _ValidationContext:
+    __slots__ = (
+        "skill", "fm", "meta", "root", "names", "sdir",
+    )
+
+    def __init__(
+        self,
+        skill: str,
+        fm: dict[str, Any],
+        meta: dict[str, Any],
+        root: Path,
+        names: set[str],
+        sdir: Path,
+    ) -> None:
+        self.skill = skill
+        self.fm = fm
+        self.meta = meta
+        self.root = root
+        self.names = names
+        self.sdir = sdir
+
+
+def validate_frontmatter(ctx: _ValidationContext) -> FrontmatterResult:
+    """Validate all frontmatter fields in a single pass."""
+    result = FrontmatterResult()
+    tool_ids = _registry_tool_ids(ctx.root)
+
+    _validate_name_and_description(ctx.skill, ctx.fm, ctx.names, result)
+    _validate_compatibility(ctx.skill, ctx.fm, result)
+    tipo = _validate_metadata(ctx.skill, ctx.meta, result)
+    tool_ids = _registry_tool_ids(ctx.root)
+    _validate_execution_link(ctx.skill, ctx.meta, tool_ids, tipo, result)
+    _validate_allowed_tools(ctx.skill, ctx.fm, tipo, result)
+    _validate_execution_yaml(ctx.skill, ctx.sdir, result)
 
     return result
 
@@ -504,7 +546,7 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
         return
 
     # Unified frontmatter validation
-    fm_result = validate_frontmatter(skill, fm, meta, root, names, sdir)
+    fm_result = validate_frontmatter(_ValidationContext(skill, fm, meta, root, names, sdir))
     ERRORS.extend(fm_result.errors)
 
     body = _check_body_size(skill, text)

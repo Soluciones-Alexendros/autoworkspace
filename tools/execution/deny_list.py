@@ -16,11 +16,10 @@ from __future__ import annotations
 
 import json
 import re
-from typing import cast
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 COMPONENT = "deny-list"
 DENY_LIST_NAME = Path("extensions") / "machineroom" / "deny-list.json"
