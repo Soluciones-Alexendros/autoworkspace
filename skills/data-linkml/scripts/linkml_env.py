@@ -40,9 +40,7 @@ class ReportDict(TypedDict):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Pre-flight LinkML environment check (data-linkml skill)."
-    )
+    parser = argparse.ArgumentParser(description="Pre-flight LinkML environment check (data-linkml skill).")
     parser.add_argument("--venv-dir", help="virtualenv directory (bin/linkml inside)")
     parser.add_argument("--linkml", help="linkml executable to check (overrides discovery)")
     parser.add_argument("--json", action="store_true", help="JSON output instead of Markdown")

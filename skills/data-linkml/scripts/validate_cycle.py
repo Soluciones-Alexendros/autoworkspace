@@ -65,9 +65,7 @@ class ReportDict(TypedDict):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Layered LinkML validation cycle (data-linkml skill)."
-    )
+    parser = argparse.ArgumentParser(description="Layered LinkML validation cycle (data-linkml skill).")
     parser.add_argument("--schema", required=True, help="LinkML schema YAML file")
     parser.add_argument("--target-class", required=True, help="target class for instance validation")
     parser.add_argument("--data", nargs="+", required=True, help="instance data files")
@@ -111,8 +109,7 @@ def main() -> int:
     binpath = find_linkml(args)
     if not binpath:
         print(
-            "ERROR: linkml CLI no encontrado. Instala con scripts/bootstrap_arch.sh "
-            "o apunta --linkml/--venv-dir.",
+            "ERROR: linkml CLI no encontrado. Instala con scripts/bootstrap_arch.sh o apunta --linkml/--venv-dir.",
             file=sys.stderr,
         )
         return EXIT_MISSING
@@ -238,11 +235,7 @@ def main() -> int:
         )
 
     layers = report["layers"]
-    blocking = [
-        l
-        for l in layers
-        if l.get("status") in {"fail", "not_run"} and l.get("layer") in {1, 2, 3, 4}
-    ]
+    blocking = [l for l in layers if l.get("status") in {"fail", "not_run"} and l.get("layer") in {1, 2, 3, 4}]
     report["verdict"] = "PASS" if not blocking else "FAIL"
 
     _emit(args, report)
