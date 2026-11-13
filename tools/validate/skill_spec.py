@@ -321,9 +321,16 @@ def check_upstash_modes(sdir: Path) -> None:
 
 class FrontmatterResult:
     """Result of frontmatter validation."""
+
     __slots__ = (
-        "name_ok", "license_ok", "compatibility_ok", "metadata_ok",
-        "allowed_tools_ok", "execution_link_ok", "no_execution_yaml_ok", "errors",
+        "name_ok",
+        "license_ok",
+        "compatibility_ok",
+        "metadata_ok",
+        "allowed_tools_ok",
+        "execution_link_ok",
+        "no_execution_yaml_ok",
+        "errors",
     )
 
     def __init__(self) -> None:
@@ -343,7 +350,13 @@ class FrontmatterResult:
             self.name_ok = False
         elif "compatibility" in msg.lower():
             self.compatibility_ok = False
-        elif "metadata" in msg.lower() or "version" in msg.lower() or "domain" in msg.lower() or "type" in msg.lower() or "language" in msg.lower():
+        elif (
+            "metadata" in msg.lower()
+            or "version" in msg.lower()
+            or "domain" in msg.lower()
+            or "type" in msg.lower()
+            or "language" in msg.lower()
+        ):
             self.metadata_ok = False
         elif "allowed-tools" in msg.lower() or "allowed_tools" in msg.lower():
             self.allowed_tools_ok = False
@@ -357,7 +370,9 @@ class FrontmatterResult:
         return len(self.errors) == 0
 
 
-def validate_frontmatter(skill: str, fm: dict[str, Any], meta: dict[str, Any], root: Path, names: set[str], sdir: Path) -> FrontmatterResult:
+def validate_frontmatter(
+    skill: str, fm: dict[str, Any], meta: dict[str, Any], root: Path, names: set[str], sdir: Path
+) -> FrontmatterResult:
     """Validate all frontmatter fields in a single pass."""
     result = FrontmatterResult()
     tool_ids = _registry_tool_ids(root)

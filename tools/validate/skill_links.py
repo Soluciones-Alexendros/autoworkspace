@@ -237,7 +237,7 @@ def check_adr_citations(root: Path) -> None:
                 if norm_cite != norm_file and norm_cite not in file_status.lower():
                     ADR_STATUS_ERRORS.append(
                         f"{md.relative_to(root)}:{i}: {adr_id} citado como «{cited_status.strip()}» "
-                        f"pero el fichero declara «{file_status}\""
+                        f'pero el fichero declara «{file_status}"'
                     )
 
 

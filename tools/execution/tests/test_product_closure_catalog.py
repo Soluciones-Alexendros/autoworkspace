@@ -48,6 +48,11 @@ def test_c01_historical_matrix_remains_intact() -> None:
     plan = ROOT / "tasks" / "plan-product-closure-final.md"
     text = plan.read_text(encoding="utf-8")
     assert "Matriz de capacidades congelada" in text
-    assert ("operaciones" in text and "skills" in text) or "16 skills" in text or "17 skills" in text or "18 skills" in text
+    assert (
+        ("operaciones" in text and "skills" in text)
+        or "16 skills" in text
+        or "17 skills" in text
+        or "18 skills" in text
+    )
     tools = load_tools(force=True)
     assert sum(len(t.operations) for t in tools.values()) == EXPECTED_OPERATIONS
