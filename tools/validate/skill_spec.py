@@ -471,17 +471,16 @@ def _validate_execution_yaml(skill: str, sdir: Path, result: FrontmatterResult) 
 
 
 class _ValidationContext:
-    __slots__ = (
-        "fm",
-        "meta",
-        "names",
-        "root",
-        "sdir",
-        "skill",
-    )
+    skill: str
+    fm: dict[str, Any]
+    meta: dict[str, Any]
+    root: Path
+    names: set[str]
+    sdir: Path
 
     def __init__(
         self,
+        *,
         skill: str,
         fm: dict[str, Any],
         meta: dict[str, Any],
@@ -546,7 +545,16 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
         return
 
     # Unified frontmatter validation
-    fm_result = validate_frontmatter(_ValidationContext(skill, fm, meta, root, names, sdir))
+    fm_result = validate_frontmatter(
+        _ValidationContext(
+            skill=skill,
+            fm=fm,
+            meta=meta,
+            root=root,
+            names=names,
+            sdir=sdir,
+        )
+    )
     ERRORS.extend(fm_result.errors)
 
     body = _check_body_size(skill, text)
