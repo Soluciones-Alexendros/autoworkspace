@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -470,17 +471,10 @@ def _validate_execution_yaml(skill: str, sdir: Path, result: FrontmatterResult) 
         result.add_error(skill, "execution.yaml bajo skills/ está prohibido; usar tools/execution/registry.yaml")
 
 
-class _ValidationContext:
-    skill: str
-    fm: dict[str, Any]
-    meta: dict[str, Any]
-    root: Path
-    names: set[str]
-    sdir: Path
+class _ValidationParams:
 
     def __init__(
         self,
-        *,
         skill: str,
         fm: dict[str, Any],
         meta: dict[str, Any],
@@ -494,6 +488,44 @@ class _ValidationContext:
         self.root = root
         self.names = names
         self.sdir = sdir
+
+    skill: str
+    fm: dict[str, Any]
+    meta: dict[str, Any]
+    root: Path
+    names: set[str]
+    sdir: Path
+
+
+class _ValidationContext:
+    params: _ValidationParams
+
+    def __init__(self, params: _ValidationParams) -> None:
+        self.params = params
+
+    @property
+    def skill(self) -> str:
+        return self.params.skill
+
+    @property
+    def fm(self) -> dict[str, Any]:
+        return self.params.fm
+
+    @property
+    def meta(self) -> dict[str, Any]:
+        return self.params.meta
+
+    @property
+    def root(self) -> Path:
+        return self.params.root
+
+    @property
+    def names(self) -> set[str]:
+        return self.params.names
+
+    @property
+    def sdir(self) -> Path:
+        return self.params.sdir
 
 
 def validate_frontmatter(ctx: _ValidationContext) -> FrontmatterResult:
@@ -547,12 +579,14 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
     # Unified frontmatter validation
     fm_result = validate_frontmatter(
         _ValidationContext(
-            skill=skill,
-            fm=fm,
-            meta=meta,
-            root=root,
-            names=names,
-            sdir=sdir,
+            _ValidationParams(
+                skill=skill,
+                fm=fm,
+                meta=meta,
+                root=root,
+                names=names,
+                sdir=sdir,
+            )
         )
     )
     ERRORS.extend(fm_result.errors)
