@@ -472,7 +472,6 @@ def _validate_execution_yaml(skill: str, sdir: Path, result: FrontmatterResult) 
 
 
 class _ValidationParams:
-
     def __init__(
         self,
         skill: str,
