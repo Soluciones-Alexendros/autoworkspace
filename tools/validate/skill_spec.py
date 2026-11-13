@@ -371,9 +371,7 @@ class FrontmatterResult:
         return len(self.errors) == 0
 
 
-def _validate_name_and_description(
-    skill: str, fm: dict[str, Any], names: set[str], result: FrontmatterResult
-) -> None:
+def _validate_name_and_description(skill: str, fm: dict[str, Any], names: set[str], result: FrontmatterResult) -> None:
     name = fm.get("name", "")
     if name != skill:
         result.add_error(skill, f"name '{name}' != carpeta '{skill}'")
@@ -405,9 +403,7 @@ def _validate_compatibility(skill: str, fm: dict[str, Any], result: FrontmatterR
         result.add_error(skill, f"compatibility debe ser solo cursor, pi: {raw!r}")
 
 
-def _validate_metadata(
-    skill: str, meta: dict[str, Any], result: FrontmatterResult
-) -> str:
+def _validate_metadata(skill: str, meta: dict[str, Any], result: FrontmatterResult) -> str:
     required_meta: dict[str, str | None] = {
         "author": None,
         "version": None,
@@ -477,7 +473,12 @@ def _validate_execution_yaml(skill: str, sdir: Path, result: FrontmatterResult) 
 
 class _ValidationContext:
     __slots__ = (
-        "skill", "fm", "meta", "root", "names", "sdir",
+        "skill",
+        "fm",
+        "meta",
+        "root",
+        "names",
+        "sdir",
     )
 
     def __init__(
