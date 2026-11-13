@@ -472,12 +472,12 @@ def _validate_execution_yaml(skill: str, sdir: Path, result: FrontmatterResult) 
 
 class _ValidationContext:
     __slots__ = (
-        "skill",
         "fm",
         "meta",
-        "root",
         "names",
+        "root",
         "sdir",
+        "skill",
     )
 
     def __init__(
