@@ -184,3 +184,50 @@ intents:
         "harness A/B/C",
         "doctor nativo",
       ]
+  modelado_linkml:
+    skills: [data-linkml]
+    patterns:
+      [
+        "linkml",
+        "esquema linkml",
+        "linkml schema",
+        "modelar datos",
+        "modelo de datos",
+        "yaml schema",
+        "crea un esquema",
+        "fichas de datos",
+      ]
+  validar_linkml:
+    skills: [data-linkml]
+    patterns:
+      [
+        "validar datos",
+        "valida el esquema",
+        "linkml validate",
+        "linkml lint",
+        "no me valida",
+        "instancia inválida",
+        "metamodelo",
+      ]
+  generar_artefactos_linkml:
+    skills: [data-linkml]
+    patterns:
+      [
+        "gen-project",
+        "generar json schema",
+        "generar pydantic",
+        "generar sql desde esquema",
+        "json-ld",
+        "artefactos linkml",
+        "generador linkml",
+      ]
+  instalar_linkml:
+    skills: [data-linkml]
+    patterns:
+      [
+        "instalar linkml",
+        "bootstrap linkml",
+        "entorno linkml",
+        "venv linkml",
+        "preparar linkml",
+      ]

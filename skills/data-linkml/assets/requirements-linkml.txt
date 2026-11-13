@@ -1,0 +1,4 @@
+# Pinned LinkML environment (Arch Linux bootstrap).
+# Verified 2026-11-12: PyPI linkml 1.12.1, Apache-2.0, Python >=3.10.
+# Transitive dependencies ship wheels for linux x86_64 (no compilation).
+linkml==1.12.1

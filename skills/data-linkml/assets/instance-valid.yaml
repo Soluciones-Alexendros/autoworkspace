@@ -1,0 +1,8 @@
+# Valid instance for the laboratory schema (Catalog root).
+sources:
+  - source_code: fuente-ejemplo
+    source_name: Diccionario de ejemplo
+words:
+  - term: ejemplo
+    source_ref: fuente-ejemplo
+    definition: Definición ficticia para probar el modelo.

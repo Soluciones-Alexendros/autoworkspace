@@ -27,7 +27,7 @@ def _user_home(tmp_path: Path) -> Path:
 def test_full_install_idempotence_and_manifest(tmp_path: Path) -> None:
     target = tmp_path / "project"
     first = install_full(ROOT, target)
-    expected = 24
+    expected = 25
     assert first["installed"] == expected
     assert first["changed"] == expected
     assert first["components"] == "full"
@@ -54,7 +54,7 @@ def test_full_install_idempotence_and_manifest(tmp_path: Path) -> None:
     assert len(manifest["resources"]) == expected
 
 
-USER_SCOPE_COMPONENTS = 23  # 17 skills + 3 agents + hooks.json + 2 hook scripts
+USER_SCOPE_COMPONENTS = 24  # 18 skills + 3 agents + hooks.json + 2 hook scripts
 
 
 def test_user_scope_generates_hooks_and_omits_project_rule(tmp_path: Path) -> None:

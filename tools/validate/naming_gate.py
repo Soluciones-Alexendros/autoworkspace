@@ -108,7 +108,7 @@ ALLOWED_FILES = {
     # invalidate every committed plan, so the parser keeps accepting it.
     "tools/contracts/plan.py",
     "tools/contracts/tests/test_plan.py",
-    "tools/skill-router/tests/test_catalog_17.py",
+    "tools/skill-router/tests/test_catalog_18.py",
     "templates/harness/plan.md",
     "tools/orchestrator/run.py",
     "tools/orchestrator/tests/test_full_flow.py",

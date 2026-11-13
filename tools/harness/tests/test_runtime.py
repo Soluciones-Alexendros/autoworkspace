@@ -16,7 +16,7 @@ from harness.cursor_install import ConflictError, install_full, uninstall_full  
 from harness.doctor import cursor_full_check, skill_link_check  # noqa: E402
 from harness.runtime import make_relative_symlink, sync_payload  # noqa: E402
 
-USER_SCOPE_COMPONENTS = 23  # 17 skills + 3 agents + hooks.json + 2 hook scripts
+USER_SCOPE_COMPONENTS = 24  # 18 skills + 3 agents + hooks.json + 2 hook scripts
 
 
 def _runtime(home: Path) -> Path:

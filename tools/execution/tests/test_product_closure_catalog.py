@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from execution.registry import load_tools  # noqa: E402
 
-EXPECTED_SKILLS = 17
+EXPECTED_SKILLS = 18
 EXPECTED_REGISTRY_TOOLS = 12
 EXPECTED_OPERATIONS = 38
 AUDIT_SKILLS = frozenset(
@@ -26,7 +26,7 @@ AUDIT_SKILLS = frozenset(
 SKILLS = ROOT / "skills"
 
 
-def test_v43_sixteen_skills_registry_ops() -> None:
+def test_v43_eighteen_skills_registry_ops() -> None:
     names = sorted(p.name for p in SKILLS.iterdir() if (p / "SKILL.md").is_file())
     assert len(names) == EXPECTED_SKILLS
     for name in names:
@@ -48,6 +48,6 @@ def test_c01_historical_matrix_remains_intact() -> None:
     plan = ROOT / "tasks" / "plan-product-closure-final.md"
     text = plan.read_text(encoding="utf-8")
     assert "Matriz de capacidades congelada" in text
-    assert ("operaciones" in text and "skills" in text) or "16 skills" in text or "17 skills" in text
+    assert ("operaciones" in text and "skills" in text) or "16 skills" in text or "17 skills" in text or "18 skills" in text
     tools = load_tools(force=True)
     assert sum(len(t.operations) for t in tools.values()) == EXPECTED_OPERATIONS

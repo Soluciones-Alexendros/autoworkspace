@@ -28,13 +28,13 @@ SKILLS = ROOT / "skills"
 
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
-SKILL_TOKEN_RE = re.compile(r"\b((?:plan|local|project|web|role)-[a-z0-9-]+)\b")
-ARROW_RE = re.compile(r"→\s*`?((?:plan|local|project|web|role)-[a-z0-9-]+)`?")
+SKILL_TOKEN_RE = re.compile(r"\b((?:plan|local|project|web|role|data)-[a-z0-9-]+)\b")
+ARROW_RE = re.compile(r"→\s*`?((?:plan|local|project|web|role|data)-[a-z0-9-]+)`?")
 H2_RE = re.compile(r"^## (.+?)\s*$", re.M)
 PROHIBITED_DIRS = {"agents", "infrastructure", "languages"}
 MAX_DESCRIPTION_CHARS = 1024
 MAX_NAME_CHARS = 64
-DOMINIOS = {"plan", "local", "project", "web", "role"}
+DOMINIOS = {"plan", "local", "project", "web", "role", "data"}
 TIPOS = {"atomic", "orchestrator", "router", "audit"}
 REQUIRED_H2 = ("Overview", "When to Use")
 FORBIDDEN_H2 = {
