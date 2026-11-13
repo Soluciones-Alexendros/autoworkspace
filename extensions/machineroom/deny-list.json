@@ -53,8 +53,20 @@
     "pattern": "\\b(curl|wget|nc)\\b",
     "message": "Outbound network matched the shell gate. Prefer run_registered; ask the operator."
   },
+  "networkAllow": {
+    "patterns": [
+      "https?://api\\.github\\.com/.*",
+      "https?://raw\\.githubusercontent\\.com/.*",
+      "https?://pypi\\.org/.*",
+      "https?://registry\\.npmjs\\.org/.*",
+      "https?://crates\\.io/.*",
+      "https?://registry\\.yarnpkg\\.com/.*"
+    ],
+    "message": "Allowed network: trusted domain."
+  },
   "allow": {
     "helpOrVersion": "(^|\\s)(--help|-h|--version)(\\s|$)",
-    "tmpPrefixes": ["/tmp/ai-", "/tmp/test-", "/tmp/machineroom-"]
+    "tmpPrefixes": ["/tmp/ai-", "/tmp/test-", "/tmp/machineroom-"],
+    "sudoReadonly": "\\bsudo\\s+(cat|less|head|tail|grep|systemctl\\s+status|journalctl|ls|stat|find|status)\\b"
   }
 }

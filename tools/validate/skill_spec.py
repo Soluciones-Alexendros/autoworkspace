@@ -319,39 +319,80 @@ def check_upstash_modes(sdir: Path) -> None:
                 err(sdir.name, f"modes/{mode.name}/references/ contiene subdirectorio: {sub.name}/")
 
 
-def _check_frontmatter_name(skill: str, fm: dict[str, Any], names: set[str]) -> None:
+class FrontmatterResult:
+    """Result of frontmatter validation."""
+    __slots__ = (
+        "name_ok", "license_ok", "compatibility_ok", "metadata_ok",
+        "allowed_tools_ok", "execution_link_ok", "no_execution_yaml_ok", "errors",
+    )
+
+    def __init__(self) -> None:
+        self.name_ok = True
+        self.license_ok = True
+        self.compatibility_ok = True
+        self.metadata_ok = True
+        self.allowed_tools_ok = True
+        self.execution_link_ok = True
+        self.no_execution_yaml_ok = True
+        self.errors: list[str] = []
+
+    def add_error(self, skill: str, msg: str) -> None:
+        self.errors.append(f"[{skill}] {msg}")
+        # Mark relevant field as failed
+        if "name" in msg.lower() or "description" in msg.lower() or "license" in msg.lower():
+            self.name_ok = False
+        elif "compatibility" in msg.lower():
+            self.compatibility_ok = False
+        elif "metadata" in msg.lower() or "version" in msg.lower() or "domain" in msg.lower() or "type" in msg.lower() or "language" in msg.lower():
+            self.metadata_ok = False
+        elif "allowed-tools" in msg.lower() or "allowed_tools" in msg.lower():
+            self.allowed_tools_ok = False
+        elif "execution" in msg.lower():
+            self.execution_link_ok = False
+        elif "execution.yaml" in msg.lower():
+            self.no_execution_yaml_ok = False
+
+    @property
+    def is_ok(self) -> bool:
+        return len(self.errors) == 0
+
+
+def validate_frontmatter(skill: str, fm: dict[str, Any], meta: dict[str, Any], root: Path, names: set[str], sdir: Path) -> FrontmatterResult:
+    """Validate all frontmatter fields in a single pass."""
+    result = FrontmatterResult()
+    tool_ids = _registry_tool_ids(root)
+
+    # name & description & license
     name = fm.get("name", "")
     if name != skill:
-        err(skill, f"name '{name}' != carpeta '{skill}'")
+        result.add_error(skill, f"name '{name}' != carpeta '{skill}'")
     if not NAME_RE.match(str(name)) or len(str(name)) > MAX_NAME_CHARS:
-        err(skill, f"name inválido: '{name}'")
+        result.add_error(skill, f"name inválido: '{name}'")
 
     desc = fm.get("description", "")
     if not isinstance(desc, str):
-        err(skill, "description debe ser string")
+        result.add_error(skill, "description debe ser string")
         desc = ""
-    check_description(skill, desc, names)
+    if not (1 <= len(desc) <= MAX_DESCRIPTION_CHARS):
+        result.add_error(skill, f"description len={len(desc)} (1-1024)")
+    if "Use when" not in desc:
+        result.add_error(skill, "description without 'Use when'")
+    if "Not for" not in desc and "Do not use" not in desc:
+        result.add_error(skill, "description without exclusion clause ('Not for'/'Do not use')")
+    for target in ARROW_RE.findall(desc):
+        if target not in names:
+            result.add_error(skill, f"description apunta a skill inexistente: {target}")
 
     if fm.get("license") != "MIT":
-        err(skill, "license != MIT")
+        result.add_error(skill, "license != MIT")
 
+    # compatibility
+    raw = str(fm.get("compatibility", ""))
+    parts = {part.strip() for part in raw.split(",") if part.strip()}
+    if parts != {"cursor", "pi"}:
+        result.add_error(skill, f"compatibility debe ser solo cursor, pi: {raw!r}")
 
-def _check_execution_link(skill: str, meta: dict[str, Any], root: Path) -> None:
-    tipo = meta.get("type", "")
-    execution = meta.get("execution")
-    tool_ids = _registry_tool_ids(root)
-    if execution is not None:
-        if not isinstance(execution, str) or not NAME_RE.match(execution):
-            err(skill, f"metadata.execution inválido: {execution!r}")
-        elif execution not in tool_ids:
-            err(skill, f"metadata.execution={execution!r} no existe en registry")
-        elif tipo == "audit":
-            err(skill, "type audit no puede declarar metadata.execution")
-    elif skill in tool_ids:
-        err(skill, "skill en registry requiere metadata.execution")
-
-
-def _check_metadata(skill: str, meta: dict[str, Any], root: Path) -> None:
+    # metadata
     required_meta: dict[str, str | None] = {
         "author": None,
         "version": None,
@@ -359,47 +400,60 @@ def _check_metadata(skill: str, meta: dict[str, Any], root: Path) -> None:
         "type": None,
         "language": "en",
     }
+    tipo = str(meta.get("type", ""))
     for key, expected in required_meta.items():
         if key not in meta:
-            err(skill, f"metadata sin '{key}'")
+            result.add_error(skill, f"metadata sin '{key}'")
         elif expected is not None and meta[key] != expected:
-            err(skill, f"metadata.{key}='{meta[key]}' expected '{expected}'")
+            result.add_error(skill, f"metadata.{key}='{meta[key]}' expected '{expected}'")
 
     ver = meta.get("version", "")
     if ver and not SEMVER_RE.match(str(ver)):
-        err(skill, f"version no semver X.Y.Z o X.Y.Z-prerelease: '{ver}'")
+        result.add_error(skill, f"version no semver X.Y.Z o X.Y.Z-prerelease: '{ver}'")
 
     dom = meta.get("domain", "")
     if dom and dom not in DOMINIOS:
-        err(skill, f"unknown domain: {dom}")
+        result.add_error(skill, f"unknown domain: {dom}")
 
-    tipo = meta.get("type", "")
     if tipo and tipo not in TIPOS:
-        err(skill, f"unknown type: {tipo} (must be one of: {', '.join(sorted(TIPOS))})")
+        result.add_error(skill, f"unknown type: {tipo} (must be one of: {', '.join(sorted(TIPOS))})")
 
-    _check_execution_link(skill, meta, root)
+    # execution link
+    execution = meta.get("execution")
+    if execution is not None:
+        if not isinstance(execution, str) or not NAME_RE.match(execution):
+            result.add_error(skill, f"metadata.execution inválido: {execution!r}")
+        elif execution not in tool_ids:
+            result.add_error(skill, f"metadata.execution={execution!r} no existe en registry")
+        elif tipo == "audit":
+            result.add_error(skill, "type audit no puede declarar metadata.execution")
+    elif skill in tool_ids:
+        result.add_error(skill, "skill en registry requiere metadata.execution")
 
-
-def _check_allowed_tools(skill: str, fm: dict[str, Any], meta: dict[str, Any]) -> None:
-    tipo = str(meta.get("type") or "")
-    raw = fm.get("allowed-tools", fm.get("allowed_tools"))
-    tools = parse_allowed_tools(raw)
+    # allowed-tools
+    allowed_tools_raw = fm.get("allowed-tools", fm.get("allowed_tools"))
+    tools = parse_allowed_tools(allowed_tools_raw)
     if tools is None:
-        err(skill, "allowed-tools ausente o inválido")
-        return
-    if not tools:
-        err(skill, "allowed-tools vacío")
-        return
-    if tipo == "audit" and tools & AUDIT_FORBIDDEN_TOOLS:
-        err(
-            skill,
-            f"type audit no puede incluir Write/Bash; got {sorted(tools & AUDIT_FORBIDDEN_TOOLS)}",
-        )
-    allowed_max = ALLOWED_TOOLS_BY_TYPE.get(tipo)
-    if allowed_max is not None:
-        extra = tools - allowed_max
-        if extra:
-            err(skill, f"allowed-tools excede máximo para type={tipo}: {sorted(extra)}")
+        result.add_error(skill, "allowed-tools ausente o inválido")
+    elif not tools:
+        result.add_error(skill, "allowed-tools vacío")
+    else:
+        if tipo == "audit" and tools & AUDIT_FORBIDDEN_TOOLS:
+            result.add_error(
+                skill,
+                f"type audit no puede incluir Write/Bash; got {sorted(tools & AUDIT_FORBIDDEN_TOOLS)}",
+            )
+        allowed_max: frozenset[str] | None = ALLOWED_TOOLS_BY_TYPE.get(tipo)
+        if allowed_max is not None:
+            extra = tools - allowed_max
+            if extra:
+                result.add_error(skill, f"allowed-tools excede máximo para type={tipo}: {sorted(extra)}")
+
+    # execution.yaml
+    if (sdir / "execution.yaml").is_file():
+        result.add_error(skill, "execution.yaml bajo skills/ está prohibido; usar tools/execution/registry.yaml")
+
+    return result
 
 
 def _check_no_skill_execution_yaml(skill: str, sdir: Path) -> None:
@@ -429,16 +483,14 @@ def check_skill(root: Path, sdir: Path, names: set[str]) -> None:
     if fm is None:
         return
 
-    _check_frontmatter_name(skill, fm, names)
-    check_compatibility(skill, fm)
-    _check_no_skill_execution_yaml(skill, sdir)
-
     meta = fm.get("metadata", {})
     if not isinstance(meta, dict):
         err(skill, "metadata debe ser un dict")
         return
-    _check_metadata(skill, meta, root)
-    _check_allowed_tools(skill, fm, meta)
+
+    # Unified frontmatter validation
+    fm_result = validate_frontmatter(skill, fm, meta, root, names, sdir)
+    ERRORS.extend(fm_result.errors)
 
     body = _check_body_size(skill, text)
     check_headings(skill, body, has_exec_scripts(sdir))
