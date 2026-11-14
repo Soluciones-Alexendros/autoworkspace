@@ -471,7 +471,7 @@ def _validate_execution_yaml(skill: str, sdir: Path, result: FrontmatterResult) 
 
 
 class _ValidationParams:
-    def __init__(
+    def __init__(  # noqa: PLR0913  # contrato de parámetros: keyword-only, espejo del frontmatter
         self,
         *,
         skill: str,

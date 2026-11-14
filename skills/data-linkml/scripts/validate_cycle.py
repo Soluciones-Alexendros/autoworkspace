@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Ciclo de validación por capas para una skill data-linkml.
 
-Capas 1–4 (sintaxis YAML → metamodelo → lint → instancia) con veredictos
+Capas 1-4 (sintaxis YAML → metamodelo → lint → instancia) con veredictos
 esperados para casos positivos y negativos. Registra herramienta, versión,
-comando, código de salida y resultado. Las capas 5–7 (conjunto/dominio,
+comando, código de salida y resultado. Las capas 5-7 (conjunto/dominio,
 artefacto, evidencia) quedan fuera: las cubren comprobadores propios del
 proyecto (ver references/validation.md).
 
@@ -235,7 +235,9 @@ def main() -> int:
         )
 
     layers = report["layers"]
-    blocking = [l for l in layers if l.get("status") in {"fail", "not_run"} and l.get("layer") in {1, 2, 3, 4}]
+    blocking = [
+        layer for layer in layers if layer.get("status") in {"fail", "not_run"} and layer.get("layer") in {1, 2, 3, 4}
+    ]
     report["verdict"] = "PASS" if not blocking else "FAIL"
 
     _emit(args, report)
