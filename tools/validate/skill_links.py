@@ -65,6 +65,34 @@ ALLOWED_OWNERS = frozenset(
 OWNER_ERRORS: list[str] = []
 
 
+# Common file scanning helper
+def _scan_files(
+    root: Path,
+    suffixes: set[str],
+    scan_dirs: tuple[str, ...],
+    extra_root_files: tuple[str, ...] = (),
+) -> list[Path]:
+    """Scan root files and directories for files with given suffixes."""
+    files: list[Path] = []
+    for name in extra_root_files:
+        path = root / name
+        if path.is_file():
+            files.append(path)
+    for dirname in scan_dirs:
+        base = root / dirname
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if path.is_file() and path.suffix in suffixes:
+                files.append(path)
+    out: list[Path] = []
+    for path in files:
+        if TERM_SKIP_PARTS & set(path.parts):
+            continue
+        out.append(path)
+    return out
+
+
 def load_terminology(root: Path) -> list[dict[str, object]]:
     """Read the machine block of docs/GLOSARIO.md (```json ... ```)."""
     glossary = root / GLOSSARY_REL
@@ -88,27 +116,9 @@ def _allowed(rel: str, allow_paths: object) -> bool:
 
 
 def _term_files(root: Path) -> list[Path]:
-    files: list[Path] = []
-    for name in TERM_SCAN_ROOT:
-        path = root / name
-        if path.is_file():
-            files.append(path)
-    for dirname in TERM_SCAN_DIRS:
-        base = root / dirname
-        if not base.is_dir():
-            continue
-        for path in sorted(base.rglob("*")):
-            if path.is_file() and path.suffix in TERM_SUFFIXES:
-                files.append(path)
-    out: list[Path] = []
-    for path in files:
-        if TERM_SKIP_PARTS & set(path.parts):
-            continue
-        rel = path.relative_to(root).as_posix()
-        if rel == GLOSSARY_REL:
-            continue
-        out.append(path)
-    return out
+    files = _scan_files(root, TERM_SUFFIXES, TERM_SCAN_DIRS, TERM_SCAN_ROOT)
+    # Exclude the glossary file itself
+    return [p for p in files if p.relative_to(root).as_posix() != GLOSSARY_REL]
 
 
 def _compile_terms(entries: list[dict[str, object]]) -> TermPatterns:
@@ -147,19 +157,7 @@ def check_terminology(root: Path) -> None:
 
 
 def _link_files(root: Path) -> list[Path]:
-    files: list[Path] = []
-    for name in TERM_SCAN_ROOT:
-        path = root / name
-        if path.is_file():
-            files.append(path)
-    for dirname in LINK_SCAN_DIRS:
-        base = root / dirname
-        if not base.is_dir():
-            continue
-        for path in sorted(base.rglob("*")):
-            if path.is_file() and path.suffix in LINK_SUFFIXES:
-                files.append(path)
-    return [p for p in files if not (TERM_SKIP_PARTS & set(p.parts))]
+    return _scan_files(root, LINK_SUFFIXES, LINK_SCAN_DIRS, TERM_SCAN_ROOT)
 
 
 def check_github_owners(root: Path) -> None:
@@ -239,7 +237,7 @@ def check_adr_citations(root: Path) -> None:
                 if norm_cite != norm_file and norm_cite not in file_status.lower():
                     ADR_STATUS_ERRORS.append(
                         f"{md.relative_to(root)}:{i}: {adr_id} citado como «{cited_status.strip()}» "
-                        f"pero el fichero declara «{file_status}»"
+                        f'pero el fichero declara «{file_status}"'
                     )
 
 

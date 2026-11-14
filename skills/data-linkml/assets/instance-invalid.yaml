@@ -1,0 +1,8 @@
+# Invalid instance for the laboratory schema: the word is missing the
+# required attribute 'definition'. Validation must reject it.
+sources:
+  - source_code: fuente-ejemplo
+    source_name: Diccionario de ejemplo
+words:
+  - term: ejemplo
+    source_ref: fuente-ejemplo

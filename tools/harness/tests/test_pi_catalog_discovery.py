@@ -40,4 +40,4 @@ def test_pi_announces_the_whole_catalog_after_rename() -> None:
     assert RENAMED in announced
     # A stale user runtime (~/.machineroom migration pending) may still announce
     # the pre-rename id; that is host state, covered by the closure migration and
-    # asserted absent at repository level in test_catalog_17.py.
+    # asserted absent at repository level in test_catalog_18.py.

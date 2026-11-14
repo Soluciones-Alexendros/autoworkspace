@@ -1,6 +1,6 @@
 [project]
 name = "machineroom"
-version = "8.0.0"
+version = "8.1.0"
 description = "Machineroom — agentic pipeline and fleet canon host"
 requires-python = ">=3.12"
 dependencies = []

@@ -1,0 +1,53 @@
+# Laboratory schema: source cards and words in a container.
+# Fictitious example URIs (example.org) — provisional, never published.
+# Demonstrates: tree_root, imports, default_range, required, multivalued,
+# inlined_as_list, and the descriptions the linter recommends.
+# It does NOT implement referential integrity: the string match between
+# Word.source_ref and Source.source_code is only textual
+# (see references/validation.md, layer 5).
+id: https://example.org/lab/cards
+name: lab_cards
+description: Minimal laboratory schema of source cards and words.
+prefixes:
+  linkml: https://w3id.org/linkml/
+  demo: https://example.org/lab/cards/
+default_prefix: demo
+default_range: string
+imports:
+  - linkml:types
+classes:
+  Catalog:
+    description: Container of the laboratory cards.
+    tree_root: true
+    attributes:
+      sources:
+        description: Sources referenced by the words.
+        range: Source
+        multivalued: true
+        inlined_as_list: true
+      words:
+        description: Words recorded in the laboratory.
+        range: Word
+        multivalued: true
+        inlined_as_list: true
+  Source:
+    description: A concrete source of definitions.
+    attributes:
+      source_code:
+        description: Stable code that identifies the source.
+        required: true
+      source_name:
+        description: Human readable name of the source.
+        required: true
+  Word:
+    description: A word entry with its definition.
+    attributes:
+      term:
+        description: The word itself.
+        required: true
+      source_ref:
+        description: Code of the source this definition comes from.
+        required: true
+      definition:
+        description: Definition text as attributed to the source.
+        required: true

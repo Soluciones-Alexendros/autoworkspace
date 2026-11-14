@@ -6,6 +6,18 @@ La versión `2.1.0` de `package.json` no se publicó (no hubo tag ni sección de
 
 ## [Unreleased]
 
+### Added
+
+- Skill `data-linkml` (new `data` domain, first of its branch): model, validate,
+  generate and evolve data schemas and instances with LinkML, with layered
+  verification, an Arch Linux one-shot bootstrap (pacman + venv under
+  `~/Projects/linkml/venvs/` + pinned
+  `linkml==1.12.1`), deterministic helpers (`linkml_env.py`,
+  `validate_cycle.py`) with smoke tests, 7 references and a lab asset set.
+- Router intents for LinkML modeling, validation, artifact generation and
+  installation (`tools/skill-router/intent-map.yaml`).
+- Skill validator accepts the `data` domain prefix (`tools/validate/skill_spec.py`).
+
 ## [8.0.0] - 2026-11-10
 
 BREAKING: the product, repository, machine runtime and project state directory
