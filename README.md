@@ -56,6 +56,19 @@ Plantillas de proyecto: `templates/harness/` → copiar a `<repo>/.machineroom/`
 
 Consulta `docs/harness-integration.md`, `docs/harness-setup.md` y `docs/routing.md`.
 
+### Herdr (terminal, plugin local)
+
+`herdr/` es un plugin de [Herdr](https://herdr.dev) que expone las skills, el enrutado de fase, el
+estado de `.machineroom/`, `make validate` y los doctores de harness como acciones y paneles:
+
+```bash
+herdr plugin link "$PWD/herdr"
+herdr plugin action list --plugin machineroom
+```
+
+`prefix+m` panel · `prefix+shift+m` skills · `prefix+g` enrutar selección · `prefix+shift+v`
+validar · `prefix+o` doctores. Detalles y atajos en `herdr/README.md`.
+
 ## Skills por dominio
 
 18 skills en 6 dominios. La tabla la escribe `tools/skill-index/generate.py` entre los marcadores.
