@@ -96,6 +96,46 @@ if [ "$FULL" = 1 ]; then
   while IFS= read -r -d '' f; do
     bash -n "$f"
   done < <(find scripts skills tools -name '*.sh' -print0 2>/dev/null; printf '%s\0' run-validation.sh)
+
+  echo "[10] Herdr plugin (manifest + paneles)"
+  python3 - <<'PY'
+import json
+import os
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+root = Path.cwd()
+plugin = root / "herdr"
+manifest = tomllib.loads((plugin / "herdr-plugin.toml").read_text(encoding="utf-8"))
+for key in ("id", "name", "version", "min_herdr_version"):
+    assert manifest.get(key), f"manifest sin {key}"
+panes = {pane["id"] for pane in manifest.get("panes", [])}
+actions = manifest.get("actions", [])
+assert actions, "manifest sin acciones"
+for action in actions:
+    command = action["command"]
+    assert command[:3] == ["python3", "bin/mmctl.py", "open"], command
+    entrypoint = f"{command[3]}-pane"
+    assert entrypoint in panes, f"accion {action['id']} apunta a un panel inexistente: {entrypoint}"
+
+env = dict(os.environ, HERDR_PLUGIN_ROOT=str(plugin), HERDR_PLUGIN_ID=manifest["id"])
+rendered = subprocess.run(
+    ["python3", "bin/mmctl.py", "pane", "skills"],
+    cwd=plugin,
+    env=env,
+    stdin=subprocess.DEVNULL,
+    capture_output=True,
+    text=True,
+    timeout=120,
+)
+assert rendered.returncode == 0, rendered.stderr
+expected = [skill["name"] for skill in json.loads((root / "skill-index.json").read_text(encoding="utf-8"))["skills"]]
+missing = [name for name in expected if name not in rendered.stdout]
+assert not missing, f"el panel no lista: {missing}"
+print(f"herdr plugin: {len(actions)} acciones, {len(panes)} paneles, {len(expected)} skills")
+PY
 fi
 
 echo "=== All checks passed ==="

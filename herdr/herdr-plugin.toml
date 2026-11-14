@@ -1,0 +1,102 @@
+id = "machineroom"
+name = "Machineroom"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Skill catalog, phase routing, project status, validation and harness doctors for Machineroom repos."
+platforms = ["linux", "macos"]
+
+# Every action opens a plugin pane: plugin commands have no terminal of their
+# own, and the panes double as the keyboard surface (see [[panes]]).
+
+[[actions]]
+id = "dashboard"
+title = "Machineroom: panel"
+description = "Resumen del repo activo con acceso a skills, fases, validación y doctores."
+contexts = ["workspace"]
+command = ["python3", "bin/mmctl.py", "open", "dashboard"]
+
+[[actions]]
+id = "skills"
+title = "Machineroom: catálogo de skills"
+description = "Las 18 skills por dominio, con su tipo y propósito."
+contexts = ["workspace"]
+command = ["python3", "bin/mmctl.py", "open", "skills"]
+
+[[actions]]
+id = "route"
+title = "Machineroom: enrutar selección"
+description = "Pasa el texto seleccionado por tools/skill-router y propone las 3 skills que encajan."
+contexts = ["selection"]
+command = ["python3", "bin/mmctl.py", "open", "route"]
+
+[[actions]]
+id = "status"
+title = "Machineroom: estado del proyecto"
+description = "Git, fase declarada y contenido de .machineroom/."
+contexts = ["workspace"]
+command = ["python3", "bin/mmctl.py", "open", "status"]
+
+[[actions]]
+id = "phase"
+title = "Machineroom: enrutar fase"
+description = "DEFINE → SCHEMAS → IMPLEMENT → VALIDATE → INTEGRATE → STATUS vía tools/workspace-router."
+contexts = ["workspace"]
+command = ["python3", "bin/mmctl.py", "open", "phase"]
+
+[[actions]]
+id = "validate"
+title = "Machineroom: validar repo"
+description = "make validate (o run-validation.sh) en un panel dividido."
+contexts = ["workspace"]
+command = ["python3", "bin/mmctl.py", "open", "validate"]
+
+[[actions]]
+id = "doctor"
+title = "Machineroom: doctores de harness"
+description = "tools/harness/doctor.py y estado de los enlaces de skills en Pi y Cursor."
+contexts = ["global"]
+command = ["python3", "bin/mmctl.py", "open", "doctor"]
+
+[[panes]]
+id = "dashboard-pane"
+title = "Machineroom"
+description = "Panel con atajos del pipeline."
+placement = "overlay"
+command = ["python3", "bin/mmctl.py", "pane", "dashboard"]
+
+[[panes]]
+id = "skills-pane"
+title = "Machineroom · skills"
+placement = "overlay"
+command = ["python3", "bin/mmctl.py", "pane", "skills"]
+
+[[panes]]
+id = "route-pane"
+title = "Machineroom · router"
+placement = "overlay"
+command = ["python3", "bin/mmctl.py", "pane", "route"]
+
+[[panes]]
+id = "status-pane"
+title = "Machineroom · estado"
+placement = "overlay"
+command = ["python3", "bin/mmctl.py", "pane", "status"]
+
+[[panes]]
+id = "phase-pane"
+title = "Machineroom · fases"
+placement = "overlay"
+command = ["python3", "bin/mmctl.py", "pane", "phase"]
+
+[[panes]]
+id = "doctor-pane"
+title = "Machineroom · doctores"
+placement = "overlay"
+command = ["python3", "bin/mmctl.py", "pane", "doctor"]
+
+[[panes]]
+id = "validate-pane"
+title = "Machineroom · validate"
+description = "Gate completo del repo en un split."
+placement = "split"
+command = ["python3", "bin/mmctl.py", "pane", "validate"]
